@@ -1,0 +1,31 @@
+project_id = "gftycnjxbfxfrwwkexlm"
+
+[functions.generate-trip-name]
+verify_jwt = true
+
+[functions.search-places]
+verify_jwt = true
+
+[functions.fetch-url-metadata]
+verify_jwt = true
+
+[functions.generate-recommendations]
+verify_jwt = false
+
+[functions.extract-tripbit-details]
+verify_jwt = true
+
+[functions.send-friend-invite]
+verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.get-mapbox-token]
+verify_jwt = true
+
+[functions.trip-invite-og]
+verify_jwt = false
