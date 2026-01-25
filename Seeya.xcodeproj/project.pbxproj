@@ -6,12 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		ED47C1D52F252BA000521AD3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = ED47C1D62F252BA000521AD3 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		ED47C1C62F252B7000521AD3 /* Seeya.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Seeya.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		ED47C1C82F252B7000521AD3 /* Seeya */ = {
+		ED47C1D72F252BB000521AD3 /* Seeya */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Seeya;
 			sourceTree = "<group>";
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ED47C1D52F252BA000521AD3 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -32,7 +37,7 @@
 		ED47C1BD2F252B7000521AD3 = {
 			isa = PBXGroup;
 			children = (
-				ED47C1C82F252B7000521AD3 /* Seeya */,
+				ED47C1D72F252BB000521AD3 /* Seeya */,
 				ED47C1C72F252B7000521AD3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,10 +66,11 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				ED47C1C82F252B7000521AD3 /* Seeya */,
+				ED47C1D72F252BB000521AD3 /* Seeya */,
 			);
 			name = Seeya;
 			packageProductDependencies = (
+				ED47C1D62F252BA000521AD3 /* Supabase */,
 			);
 			productName = Seeya;
 			productReference = ED47C1C62F252B7000521AD3 /* Seeya.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = ED47C1BD2F252B7000521AD3;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				ED47C1D42F252B9000521AD3 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = ED47C1C72F252B7000521AD3 /* Products */;
 			projectDirPath = "";
@@ -328,6 +337,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		ED47C1D42F252B9000521AD3 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		ED47C1D62F252BA000521AD3 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ED47C1D42F252B9000521AD3 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = ED47C1BE2F252B7000521AD3 /* Project object */;
 }
