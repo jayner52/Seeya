@@ -9,6 +9,10 @@ struct TripParticipant: Codable, Identifiable, Sendable {
     let respondedAt: Date?
     var user: Profile?
 
+    // New relationships for location/tripbit-level participation
+    var participantLocations: [TripParticipantLocation]?
+    var participantTripbits: [TripParticipantTripbit]?
+
     enum CodingKeys: String, CodingKey {
         case id
         case tripId = "trip_id"
@@ -17,6 +21,35 @@ struct TripParticipant: Codable, Identifiable, Sendable {
         case invitedAt = "invited_at"
         case respondedAt = "responded_at"
         case user = "profiles"
+        case participantLocations = "trip_participant_locations"
+        case participantTripbits = "trip_participant_tripbits"
+    }
+
+    // MARK: - Computed Properties
+
+    /// Returns true if participant is invited to the full trip (no location restrictions)
+    var isFullTripParticipant: Bool {
+        participantLocations == nil || participantLocations?.isEmpty == true
+    }
+
+    /// Returns location IDs this participant is invited to
+    var invitedLocationIds: Set<UUID> {
+        Set(participantLocations?.map { $0.locationId } ?? [])
+    }
+
+    /// Returns tripbit IDs this participant is invited to
+    var invitedTripbitIds: Set<UUID> {
+        Set(participantTripbits?.map { $0.tripbitId } ?? [])
+    }
+
+    /// Returns confirmed location IDs
+    var confirmedLocationIds: Set<UUID> {
+        Set(participantLocations?.filter { $0.status == .confirmed }.map { $0.locationId } ?? [])
+    }
+
+    /// Returns confirmed tripbit IDs
+    var confirmedTripbitIds: Set<UUID> {
+        Set(participantTripbits?.filter { $0.status == .confirmed }.map { $0.tripbitId } ?? [])
     }
 }
 

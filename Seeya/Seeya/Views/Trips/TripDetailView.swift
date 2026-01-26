@@ -143,7 +143,11 @@ struct TripDetailView: View {
             EditTripView(viewModel: viewModel, trip: currentTrip)
         }
         .sheet(isPresented: $showInviteSheet) {
-            InviteFriendsSheet(viewModel: viewModel, tripId: currentTrip.id)
+            InviteTravelPalsSheet(trip: currentTrip) {
+                Task {
+                    await viewModel.fetchTrip(id: currentTrip.id)
+                }
+            }
         }
         .sheet(isPresented: $showAddRecommendation) {
             AddRecommendationSheet(viewModel: viewModel, tripId: currentTrip.id)

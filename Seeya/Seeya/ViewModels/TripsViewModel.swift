@@ -607,6 +607,70 @@ final class TripsViewModel {
         return await updateParticipationStatus(participantId: participant.id, tripId: tripId, status: status)
     }
 
+    // MARK: - Invite with Location Selection
+
+    func inviteParticipantWithLocations(tripId: UUID, userId: UUID, locationIds: [UUID]?) async -> Bool {
+        do {
+            // Create the participant record
+            let invite = InviteParticipant(tripId: tripId, userId: userId)
+
+            let createdParticipant: TripParticipant = try await SupabaseService.shared.client
+                .from("trip_participants")
+                .insert(invite)
+                .select()
+                .single()
+                .execute()
+                .value
+
+            print("✅ [TripsViewModel] Created participant: \(createdParticipant.id)")
+
+            // Add location-level participation if locations are specified
+            if let locationIds = locationIds, !locationIds.isEmpty {
+                for locationId in locationIds {
+                    let locationParticipation = CreateTripParticipantLocation(
+                        participantId: createdParticipant.id,
+                        locationId: locationId
+                    )
+
+                    try await SupabaseService.shared.client
+                        .from("trip_participant_locations")
+                        .insert(locationParticipation)
+                        .execute()
+                }
+                print("✅ [TripsViewModel] Added \(locationIds.count) location participations")
+            }
+
+            await fetchTrip(id: tripId)
+            return true
+        } catch {
+            print("❌ [TripsViewModel] Error inviting participant with locations: \(error)")
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    // MARK: - Respond to Location-Level Invitation
+
+    func respondToLocationInvitation(participantLocationId: UUID, tripId: UUID, accept: Bool) async -> Bool {
+        do {
+            let status: ParticipationStatus = accept ? .confirmed : .declined
+            let update = UpdateTripParticipantLocation(status: status)
+
+            try await SupabaseService.shared.client
+                .from("trip_participant_locations")
+                .update(update)
+                .eq("id", value: participantLocationId.uuidString)
+                .execute()
+
+            await fetchTrip(id: tripId)
+            return true
+        } catch {
+            print("❌ [TripsViewModel] Error updating location participation: \(error)")
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     // MARK: - Recommendations
 
     func addRecommendation(
