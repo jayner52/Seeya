@@ -5,22 +5,24 @@ import UIKit
 // MARK: - Calendar Types
 
 enum CalendarViewMode: String, CaseIterable {
-    case oneMonth = "1"
-    case threeMonths = "3"
-    case sixMonths = "6"
-    case twelveMonths = "12"
+    case full = "Full"
+    case split = "Split"
+    case grid = "Grid"
 
-    var monthCount: Int {
+    var columnCount: Int {
         switch self {
-        case .oneMonth: return 1
-        case .threeMonths: return 3
-        case .sixMonths: return 6
-        case .twelveMonths: return 12
+        case .full: return 1
+        case .split: return 2
+        case .grid: return 3
         }
     }
 
     var isCompact: Bool {
-        self == .sixMonths || self == .twelveMonths
+        self != .full
+    }
+
+    var isExtraCompact: Bool {
+        self == .grid
     }
 }
 
@@ -94,9 +96,13 @@ struct UpcomingTripInfo: Identifiable {
 @MainActor
 final class CalendarViewModel {
     // State
-    var viewMode: CalendarViewMode = .twelveMonths
+    var viewMode: CalendarViewMode = .split
     var currentDate: Date = Date()
     var filter: CalendarTripFilter = .all
+
+    // Infinite scroll state
+    var monthsBeforeCurrent: Int = 12  // Load 12 months before
+    var monthsAfterCurrent: Int = 24   // Load 24 months after
 
     // Data
     var userTrips: [CalendarTrip] = []
@@ -111,6 +117,9 @@ final class CalendarViewModel {
     var selectedDate: Date?
     var showMonthPicker = false
     var showDetailSheet = false
+    var showCreateTripSheet = false
+    var createTripStartDate: Date?
+    var tripIdToNavigate: UUID? // For navigating to full trip view
 
     private var cachedUserId: UUID?
 
@@ -187,9 +196,11 @@ final class CalendarViewModel {
     var monthsToDisplay: [Date] {
         var months: [Date] = []
         let calendar = Calendar.current
+        let startOfCurrentMonth = calendar.startOfMonth(for: Date())
 
-        for i in 0..<viewMode.monthCount {
-            if let month = calendar.date(byAdding: .month, value: i, to: calendar.startOfMonth(for: currentDate)) {
+        // Generate months from (monthsBeforeCurrent) ago to (monthsAfterCurrent) ahead
+        for i in -monthsBeforeCurrent...monthsAfterCurrent {
+            if let month = calendar.date(byAdding: .month, value: i, to: startOfCurrentMonth) {
                 months.append(month)
             }
         }
@@ -197,23 +208,23 @@ final class CalendarViewModel {
         return months
     }
 
+    // Index of current month in the array (for scroll positioning)
+    var currentMonthIndex: Int {
+        monthsBeforeCurrent
+    }
+
+    func loadMorePastMonths() {
+        monthsBeforeCurrent += 12
+    }
+
+    func loadMoreFutureMonths() {
+        monthsAfterCurrent += 12
+    }
+
     var dateRangeText: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM yyyy"
-
-        let startStr = formatter.string(from: currentDate)
-
-        guard let endDate = Calendar.current.date(byAdding: .month, value: viewMode.monthCount - 1, to: currentDate) else {
-            return startStr
-        }
-
-        let endStr = formatter.string(from: endDate)
-
-        if startStr == endStr {
-            return startStr
-        }
-
-        return "\(startStr) - \(endStr)"
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: Date())
     }
 
     var monthTitleText: String {
@@ -226,8 +237,7 @@ final class CalendarViewModel {
 
     func navigateMonths(_ delta: Int) {
         let calendar = Calendar.current
-        let monthDelta = delta * viewMode.monthCount
-        if let newDate = calendar.date(byAdding: .month, value: monthDelta, to: currentDate) {
+        if let newDate = calendar.date(byAdding: .month, value: delta, to: currentDate) {
             currentDate = newDate
         }
     }
@@ -534,6 +544,22 @@ final class CalendarViewModel {
         guard let userId = await getCurrentUserId() else { return }
 
         do {
+            let today = Calendar.current.startOfDay(for: Date())
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+            let todayStr = formatter.string(from: today)
+
+            // Fetch trips where user is owner
+            let ownedTrips: [Trip] = try await SupabaseService.shared.client
+                .from("trips")
+                .select("*, trip_locations(*, cities(*, countries(*)))")
+                .eq("user_id", value: userId.uuidString)
+                .gte("start_date", value: todayStr)
+                .order("start_date", ascending: true)
+                .limit(6)
+                .execute()
+                .value
+
             // Get trip IDs where user is participant
             let participations: [TripParticipant] = try await SupabaseService.shared.client
                 .from("trip_participants")
@@ -543,28 +569,25 @@ final class CalendarViewModel {
                 .execute()
                 .value
 
-            guard !participations.isEmpty else {
-                upcomingTrips = []
-                return
+            var participatingTrips: [Trip] = []
+            if !participations.isEmpty {
+                let tripIds = participations.map { $0.tripId.uuidString }
+                participatingTrips = try await SupabaseService.shared.client
+                    .from("trips")
+                    .select("*, trip_locations(*, cities(*, countries(*)))")
+                    .in("id", values: tripIds)
+                    .neq("user_id", value: userId.uuidString) // Exclude owned trips (already fetched)
+                    .gte("start_date", value: todayStr)
+                    .order("start_date", ascending: true)
+                    .limit(6)
+                    .execute()
+                    .value
             }
 
-            let tripIds = participations.map { $0.tripId.uuidString }
-            let today = Calendar.current.startOfDay(for: Date())
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withFullDate]
-            let todayStr = formatter.string(from: today)
+            // Combine and sort all trips
+            let allTrips = (ownedTrips + participatingTrips).sorted { $0.startDate ?? Date.distantFuture < $1.startDate ?? Date.distantFuture }
 
-            let trips: [Trip] = try await SupabaseService.shared.client
-                .from("trips")
-                .select("*, trip_locations(*, cities(*, countries(*)))")
-                .in("id", values: tripIds)
-                .gte("start_date", value: todayStr)
-                .order("start_date", ascending: true)
-                .limit(6)
-                .execute()
-                .value
-
-            upcomingTrips = trips.compactMap { trip in
+            upcomingTrips = allTrips.prefix(6).compactMap { trip in
                 guard let startDate = trip.startDate,
                       let endDate = trip.endDate else { return nil }
 

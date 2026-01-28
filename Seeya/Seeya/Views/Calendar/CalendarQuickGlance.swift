@@ -1,70 +1,97 @@
 import SwiftUI
 
 struct CalendarQuickGlance: View {
-    let nextTrip: UpcomingTripInfo?
-    let onTripTap: () -> Void
+    let upcomingTrips: [UpcomingTripInfo]
+    let onTripTap: (UpcomingTripInfo) -> Void
 
     var body: some View {
-        if let trip = nextTrip {
-            Button(action: onTripTap) {
-                HStack(spacing: 12) {
-                    // Trip icon
-                    ZStack {
-                        Circle()
-                            .fill(Color.seeyaPurple.opacity(0.1))
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "airplane.departure")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Color.seeyaPurple)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Next: \(trip.name)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.seeyaTextPrimary)
-                            .lineLimit(1)
-
-                        HStack(spacing: 8) {
-                            Text(countdownText(trip.daysUntil))
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(countdownColor(trip.daysUntil))
-
-                            Text("\u{2022}")
-                                .foregroundStyle(Color.seeyaTextTertiary)
-
-                            Text(trip.dateRange)
-                                .font(.caption)
-                                .foregroundStyle(Color.seeyaTextSecondary)
-                        }
-
-                        if let destination = trip.destination {
-                            Text(destination)
-                                .font(.caption)
-                                .foregroundStyle(Color.seeyaTextTertiary)
-                                .lineLimit(1)
-                        }
-                    }
-
+        if !upcomingTrips.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                // Header
+                HStack {
+                    Image(systemName: "airplane.departure")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.seeyaPurple)
+                    Text("Upcoming Trips")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.seeyaTextPrimary)
                     Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.seeyaTextTertiary)
                 }
-                .padding()
-                .background(Color.seeyaCardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+                .padding(.horizontal)
+                .padding(.top, 12)
+
+                // Trip list
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(upcomingTrips) { trip in
+                            UpcomingTripCard(trip: trip) {
+                                onTripTap(trip)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 12)
+                }
             }
-            .buttonStyle(.plain)
+            .background(Color.seeyaCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
         }
+    }
+}
+
+struct UpcomingTripCard: View {
+    let trip: UpcomingTripInfo
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 6) {
+                // Countdown badge
+                Text(countdownText(trip.daysUntil))
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(countdownColor(trip.daysUntil))
+                    .clipShape(Capsule())
+
+                // Trip name
+                Text(trip.name)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.seeyaTextPrimary)
+                    .lineLimit(1)
+
+                // Date range
+                Text(trip.dateRange)
+                    .font(.caption)
+                    .foregroundStyle(Color.seeyaTextSecondary)
+
+                // Destination
+                if let destination = trip.destination {
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin")
+                            .font(.system(size: 10))
+                        Text(destination)
+                            .lineLimit(1)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color.seeyaTextTertiary)
+                }
+            }
+            .padding(12)
+            .frame(width: 140, alignment: .leading)
+            .background(Color.seeyaSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
     }
 
     private func countdownText(_ days: Int) -> String {
         switch days {
         case 0: return "Today!"
         case 1: return "Tomorrow"
-        default: return "\(days) days"
+        default: return "In \(days) days"
         }
     }
 
@@ -80,39 +107,33 @@ struct CalendarQuickGlance: View {
 #Preview {
     VStack(spacing: 16) {
         CalendarQuickGlance(
-            nextTrip: UpcomingTripInfo(
-                id: UUID(),
-                name: "Colorado Ski Trip",
-                destination: "Aspen, CO",
-                startDate: Date().addingTimeInterval(86400 * 12),
-                endDate: Date().addingTimeInterval(86400 * 19),
-                daysUntil: 12
-            ),
-            onTripTap: {}
-        )
-
-        CalendarQuickGlance(
-            nextTrip: UpcomingTripInfo(
-                id: UUID(),
-                name: "Beach Getaway",
-                destination: "Miami, FL",
-                startDate: Date().addingTimeInterval(86400 * 2),
-                endDate: Date().addingTimeInterval(86400 * 5),
-                daysUntil: 2
-            ),
-            onTripTap: {}
-        )
-
-        CalendarQuickGlance(
-            nextTrip: UpcomingTripInfo(
-                id: UUID(),
-                name: "Weekend Trip",
-                destination: nil,
-                startDate: Date(),
-                endDate: Date().addingTimeInterval(86400 * 2),
-                daysUntil: 0
-            ),
-            onTripTap: {}
+            upcomingTrips: [
+                UpcomingTripInfo(
+                    id: UUID(),
+                    name: "Colorado Ski Trip",
+                    destination: "Aspen, CO",
+                    startDate: Date().addingTimeInterval(86400 * 12),
+                    endDate: Date().addingTimeInterval(86400 * 19),
+                    daysUntil: 12
+                ),
+                UpcomingTripInfo(
+                    id: UUID(),
+                    name: "Beach Getaway",
+                    destination: "Miami, FL",
+                    startDate: Date().addingTimeInterval(86400 * 20),
+                    endDate: Date().addingTimeInterval(86400 * 25),
+                    daysUntil: 20
+                ),
+                UpcomingTripInfo(
+                    id: UUID(),
+                    name: "Weekend Trip",
+                    destination: "Austin, TX",
+                    startDate: Date().addingTimeInterval(86400 * 2),
+                    endDate: Date().addingTimeInterval(86400 * 4),
+                    daysUntil: 2
+                )
+            ],
+            onTripTap: { _ in }
         )
     }
     .padding()

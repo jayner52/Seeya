@@ -677,7 +677,9 @@ final class TripsViewModel {
         tripId: UUID,
         title: String,
         description: String?,
-        category: RecommendationCategory
+        category: RecommendationCategory,
+        locationId: UUID? = nil,
+        googlePlaceId: String? = nil
     ) async -> Bool {
         guard let userId = await getCurrentUserId() else {
             errorMessage = "Not authenticated"
@@ -685,12 +687,14 @@ final class TripsViewModel {
         }
 
         do {
-            let recommendation = CreateRecommendation(
+            let recommendation = CreateTripRecommendation(
                 tripId: tripId,
                 userId: userId,
+                locationId: locationId,
                 title: title,
                 description: description,
-                category: category
+                category: category,
+                googlePlaceId: googlePlaceId
             )
 
             try await SupabaseService.shared.client

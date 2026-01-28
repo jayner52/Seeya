@@ -251,6 +251,158 @@ actor AIService {
         return nil
     }
 
+    // MARK: - Generate Destination Recommendations
+
+    struct AIRecommendation: Codable, Identifiable, Sendable {
+        let id: UUID
+        let title: String
+        let description: String
+        let category: String
+        let tips: String?
+        let estimatedCost: String?
+        let bestTimeToVisit: String?
+
+        init(id: UUID = UUID(), title: String, description: String, category: String, tips: String? = nil, estimatedCost: String? = nil, bestTimeToVisit: String? = nil) {
+            self.id = id
+            self.title = title
+            self.description = description
+            self.category = category
+            self.tips = tips
+            self.estimatedCost = estimatedCost
+            self.bestTimeToVisit = bestTimeToVisit
+        }
+    }
+
+    struct AIRecommendationsResponse: Codable, Sendable {
+        let restaurants: [AIRecommendation]
+        let activities: [AIRecommendation]
+        let stays: [AIRecommendation]
+        let tips: [AIRecommendation]
+    }
+
+    func generateDestinationRecommendations(
+        destination: String,
+        tripDates: (start: Date?, end: Date?)? = nil,
+        interests: [String] = [],
+        travelStyle: String? = nil
+    ) async throws -> AIRecommendationsResponse {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMMM yyyy"
+
+        var contextParts: [String] = []
+        if let dates = tripDates, let start = dates.start {
+            contextParts.append("traveling in \(dateFormatter.string(from: start))")
+        }
+        if !interests.isEmpty {
+            contextParts.append("interests include \(interests.joined(separator: ", "))")
+        }
+        if let style = travelStyle {
+            contextParts.append("travel style is \(style)")
+        }
+
+        let contextString = contextParts.isEmpty ? "" : " (\(contextParts.joined(separator: "; ")))"
+
+        let prompt = """
+        Generate travel recommendations for \(destination)\(contextString).
+
+        Provide authentic, local-favorite recommendations that a well-traveled friend would suggest. Focus on quality over tourist traps.
+
+        Return a JSON object with these arrays:
+        {
+            "restaurants": [
+                {
+                    "title": "Name of restaurant",
+                    "description": "Brief description of cuisine and vibe",
+                    "category": "restaurant",
+                    "tips": "Insider tip (best dish, reservation advice, etc.)",
+                    "estimatedCost": "$, $$, $$$, or $$$$",
+                    "bestTimeToVisit": "lunch, dinner, late night, etc."
+                }
+            ],
+            "activities": [
+                {
+                    "title": "Name of activity or attraction",
+                    "description": "What makes it special",
+                    "category": "activity",
+                    "tips": "Insider tip (best time, what to bring, etc.)",
+                    "estimatedCost": "Free, $, $$, etc.",
+                    "bestTimeToVisit": "morning, afternoon, sunset, etc."
+                }
+            ],
+            "stays": [
+                {
+                    "title": "Neighborhood or area name",
+                    "description": "Why stay here, vibe of the area",
+                    "category": "stay",
+                    "tips": "What's nearby, transportation tips"
+                }
+            ],
+            "tips": [
+                {
+                    "title": "Tip title",
+                    "description": "Local knowledge or travel hack",
+                    "category": "tip"
+                }
+            ]
+        }
+
+        Provide 3-4 items per category. Be specific with real places. Return ONLY valid JSON.
+        """
+
+        let response = try await callOpenRouter(prompt: prompt, maxTokens: 2000, temperature: 0.7)
+        return try parseRecommendationsJSON(response)
+    }
+
+    private func parseRecommendationsJSON(_ jsonString: String) throws -> AIRecommendationsResponse {
+        let cleanedJSON = jsonString
+            .replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let jsonData = cleanedJSON.data(using: .utf8) else {
+            throw AIServiceError.parsingError
+        }
+
+        struct RawRecommendation: Decodable {
+            let title: String
+            let description: String
+            let category: String
+            let tips: String?
+            let estimatedCost: String?
+            let bestTimeToVisit: String?
+        }
+
+        struct RawResponse: Decodable {
+            let restaurants: [RawRecommendation]?
+            let activities: [RawRecommendation]?
+            let stays: [RawRecommendation]?
+            let tips: [RawRecommendation]?
+        }
+
+        let decoder = JSONDecoder()
+        let raw = try decoder.decode(RawResponse.self, from: jsonData)
+
+        func convert(_ items: [RawRecommendation]?) -> [AIRecommendation] {
+            (items ?? []).map { item in
+                AIRecommendation(
+                    title: item.title,
+                    description: item.description,
+                    category: item.category,
+                    tips: item.tips,
+                    estimatedCost: item.estimatedCost,
+                    bestTimeToVisit: item.bestTimeToVisit
+                )
+            }
+        }
+
+        return AIRecommendationsResponse(
+            restaurants: convert(raw.restaurants),
+            activities: convert(raw.activities),
+            stays: convert(raw.stays),
+            tips: convert(raw.tips)
+        )
+    }
+
     // MARK: - Generate Trip Names
 
     func generateTripNames(

@@ -135,6 +135,9 @@ struct TravelerCard: View {
                     fullName: "John Doe",
                     avatarUrl: nil,
                     bio: nil,
+                    homeCity: nil,
+                    homeCityPlaceId: nil,
+                    onboardingCompleted: true,
                     createdAt: nil,
                     updatedAt: nil
                 ),

@@ -4,6 +4,11 @@ struct TripsView: View {
     @State private var viewModel = TripsViewModel()
     @State private var showCreateTrip = false
     @State private var selectedTrip: Trip?
+    @Binding var tripIdToOpen: UUID?
+
+    init(tripIdToOpen: Binding<UUID?> = .constant(nil)) {
+        _tripIdToOpen = tripIdToOpen
+    }
 
     var body: some View {
         NavigationStack {
@@ -67,6 +72,16 @@ struct TripsView: View {
             }
             .task {
                 await viewModel.fetchTrips()
+            }
+            .onChange(of: tripIdToOpen) { _, newTripId in
+                if let tripId = newTripId {
+                    // Find the trip and navigate to it
+                    if let trip = viewModel.trips.first(where: { $0.id == tripId }) {
+                        selectedTrip = trip
+                    }
+                    // Clear the navigation request
+                    tripIdToOpen = nil
+                }
             }
         }
     }

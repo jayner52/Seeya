@@ -51,6 +51,7 @@ enum DateMode: String, CaseIterable {
 struct CreateTripView: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var viewModel: TripsViewModel
+    var initialStartDate: Date? = nil
 
     // Wizard State
     @State private var currentStep: CreateTripStep = .whereWhen
@@ -62,6 +63,7 @@ struct CreateTripView: View {
     @State private var destinations: [TripsViewModel.TripDestination] = []
     @State private var dateMode: DateMode = .exact
     @State private var selectedMonth: Date? = nil
+    @State private var hasInitializedDate = false
 
     // Step 2: Vibe
     @State private var selectedVibes: Set<TripNameGenerator.TripVibe> = []
@@ -128,6 +130,22 @@ struct CreateTripView: View {
             .task {
                 await viewModel.fetchTripTypes()
                 await viewModel.fetchFriends()
+
+                // Initialize with provided start date if available
+                if let startDate = initialStartDate, !hasInitializedDate {
+                    hasInitializedDate = true
+                    if destinations.isEmpty {
+                        destinations.append(TripsViewModel.TripDestination(
+                            city: nil,
+                            customLocation: nil,
+                            startDate: startDate,
+                            endDate: Calendar.current.date(byAdding: .day, value: 3, to: startDate)
+                        ))
+                    } else {
+                        destinations[0].startDate = startDate
+                        destinations[0].endDate = Calendar.current.date(byAdding: .day, value: 3, to: startDate)
+                    }
+                }
             }
             .onChange(of: destinations) { _, _ in
                 updateNameSuggestions()

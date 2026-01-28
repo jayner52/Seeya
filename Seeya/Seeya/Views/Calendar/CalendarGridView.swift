@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CalendarGridView: View {
     @Bindable var viewModel: CalendarViewModel
+    var scrollToTodayTrigger: Bool = false
 
     var body: some View {
         if viewModel.isLoading {
@@ -15,50 +16,37 @@ struct CalendarGridView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 300)
         } else {
-            LazyVGrid(columns: gridColumns, spacing: SeeyaSpacing.md) {
-                ForEach(viewModel.monthsToDisplay, id: \.self) { month in
-                    CalendarGridMonthView(month: month, viewModel: viewModel)
+            ScrollViewReader { proxy in
+                LazyVGrid(columns: gridColumns, spacing: SeeyaSpacing.md) {
+                    ForEach(viewModel.monthsToDisplay, id: \.self) { month in
+                        CalendarGridMonthView(month: month, viewModel: viewModel)
+                            .id(month)
+                    }
+                }
+                .onAppear {
+                    // Scroll to current month on appear
+                    let calendar = Calendar.current
+                    let currentMonth = calendar.startOfMonth(for: Date())
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.none) {
+                            proxy.scrollTo(currentMonth, anchor: .top)
+                        }
+                    }
+                }
+                .onChange(of: scrollToTodayTrigger) { _, _ in
+                    let calendar = Calendar.current
+                    let currentMonth = calendar.startOfMonth(for: Date())
+                    withAnimation {
+                        proxy.scrollTo(currentMonth, anchor: .top)
+                    }
                 }
             }
-            .gesture(swipeGesture)
         }
     }
 
     private var gridColumns: [GridItem] {
-        let count: Int
-        switch viewModel.viewMode {
-        case .oneMonth:
-            count = 1
-        case .threeMonths:
-            count = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 1
-        case .sixMonths:
-            count = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
-        case .twelveMonths:
-            count = UIDevice.current.userInterfaceIdiom == .pad ? 4 : 3
-        }
+        let count = viewModel.viewMode.columnCount
         return Array(repeating: GridItem(.flexible(), spacing: SeeyaSpacing.md), count: count)
-    }
-
-    private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 50, coordinateSpace: .local)
-            .onEnded { value in
-                let horizontalAmount = value.translation.width
-                if horizontalAmount < -50 {
-                    // Swipe left - go forward
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        viewModel.navigateMonths(1)
-                    }
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
-                } else if horizontalAmount > 50 {
-                    // Swipe right - go back
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        viewModel.navigateMonths(-1)
-                    }
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
-                }
-            }
     }
 }
 
@@ -76,34 +64,38 @@ struct CalendarGridMonthView: View {
             // Month header
             HStack {
                 Text(monthYearString)
-                    .font(viewModel.viewMode.isCompact ? SeeyaTypography.labelMedium : SeeyaTypography.headlineSmall)
+                    .font(viewModel.viewMode.isExtraCompact ? .system(size: 10, weight: .medium) : (viewModel.viewMode.isCompact ? SeeyaTypography.labelMedium : SeeyaTypography.headlineSmall))
                     .foregroundStyle(Color.seeyaTextPrimary)
                 Spacer()
             }
-            .padding(.horizontal, SeeyaSpacing.sm)
-            .padding(.vertical, SeeyaSpacing.xs)
+            .padding(.horizontal, viewModel.viewMode.isExtraCompact ? SeeyaSpacing.xs : SeeyaSpacing.sm)
+            .padding(.vertical, viewModel.viewMode.isExtraCompact ? 4 : SeeyaSpacing.xs)
             .background(Color.seeyaSurface)
 
             // Weekday headers
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 0) {
                 ForEach(weekdays, id: \.self) { day in
                     Text(day)
-                        .font(viewModel.viewMode.isCompact ? SeeyaTypography.captionSmall : SeeyaTypography.caption)
+                        .font(viewModel.viewMode.isExtraCompact ? .system(size: 7) : (viewModel.viewMode.isCompact ? SeeyaTypography.captionSmall : SeeyaTypography.caption))
                         .foregroundStyle(Color.seeyaTextSecondary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, SeeyaSpacing.xxs)
+                        .padding(.vertical, viewModel.viewMode.isExtraCompact ? 2 : SeeyaSpacing.xxs)
                 }
             }
             .background(Color.seeyaSurface.opacity(0.5))
 
             // Days grid
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: viewModel.viewMode.isCompact ? 2 : 4) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: viewModel.viewMode.isExtraCompact ? 1 : (viewModel.viewMode.isCompact ? 2 : 4)) {
                 ForEach(daysInMonth, id: \.self) { day in
                     if viewModel.viewMode.isCompact {
                         CompactDayCellView(
                             date: day.date,
                             isCurrentMonth: day.isCurrentMonth,
-                            hasTrips: !viewModel.trips(for: day.date).isEmpty
+                            hasTrips: !viewModel.trips(for: day.date).isEmpty,
+                            isExtraCompact: viewModel.viewMode.isExtraCompact,
+                            onTap: {
+                                viewModel.selectDate(day.date)
+                            }
                         )
                     } else {
                         DayCellView(
@@ -121,6 +113,7 @@ struct CalendarGridMonthView: View {
             .padding(.horizontal, viewModel.viewMode.isCompact ? 2 : SeeyaSpacing.xs)
             .padding(.vertical, viewModel.viewMode.isCompact ? 4 : SeeyaSpacing.xs)
         }
+        .frame(minHeight: viewModel.viewMode.isExtraCompact ? 180 : (viewModel.viewMode.isCompact ? 260 : nil)) // Ensure uniform height for compact views
         .background(Color.seeyaCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)

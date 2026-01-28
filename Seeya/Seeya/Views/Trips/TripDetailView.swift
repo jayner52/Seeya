@@ -19,6 +19,12 @@ struct TripDetailView: View {
     @State private var showDeleteConfirmation = false
     @State private var selectedCategory: RecommendationCategory?
 
+    // AI Recommendations (inline)
+    @State private var aiRecommendations: [AIService.AIRecommendation] = []
+    @State private var isLoadingAI = false
+    @State private var showAIRecommendations = false
+    @State private var savedAIRecommendationIds: Set<UUID> = []
+
     // Tab selection
     @State private var selectedTab: TripTab = .planning
 
@@ -150,7 +156,20 @@ struct TripDetailView: View {
             }
         }
         .sheet(isPresented: $showAddRecommendation) {
-            AddRecommendationSheet(viewModel: viewModel, tripId: currentTrip.id)
+            AddRecommendationSheet(
+                tripId: currentTrip.id,
+                tripLocations: currentTrip.locations ?? [],
+                onAdd: { title, description, category, locationId, googlePlaceId, lat, lng in
+                    await viewModel.addRecommendation(
+                        tripId: currentTrip.id,
+                        title: title,
+                        description: description,
+                        category: category,
+                        locationId: locationId,
+                        googlePlaceId: googlePlaceId
+                    )
+                }
+            )
         }
         .confirmationDialog(
             "Delete Trip",
@@ -362,7 +381,58 @@ struct TripDetailView: View {
 
     private var recommendationsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Recommendations", action: { showAddRecommendation = true })
+            // Header with destination and buttons
+            HStack(spacing: 12) {
+                // Destination indicator
+                HStack(spacing: 6) {
+                    if let flag = currentTrip.locations?.first?.flagEmoji {
+                        Text(flag)
+                    }
+                    Text(currentTrip.destination)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                // Get AI Suggestions button
+                Button {
+                    fetchAIRecommendations()
+                } label: {
+                    HStack(spacing: 4) {
+                        if isLoadingAI {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "sparkles")
+                        }
+                        Text("Get AI Suggestions")
+                            .font(.caption)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.seeyaPurple.opacity(0.1))
+                    .foregroundStyle(Color.seeyaPurple)
+                    .clipShape(Capsule())
+                }
+                .disabled(isLoadingAI)
+
+                // Add Recommendation button
+                Button {
+                    showAddRecommendation = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text("Add")
+                            .font(.caption)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.seeyaPurple)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+                }
+            }
 
             // Category Filter
             ScrollView(.horizontal, showsIndicators: false) {
@@ -382,19 +452,74 @@ struct TripDetailView: View {
                 }
             }
 
-            // Recommendations List
+            // AI Recommendations (if showing)
+            if showAIRecommendations && !filteredAIRecommendations.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(.orange)
+                        Text("AI Suggestions for \(currentTrip.destination)")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+
+                        Spacer()
+
+                        Button {
+                            withAnimation {
+                                showAIRecommendations = false
+                                aiRecommendations = []
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    ForEach(filteredAIRecommendations) { aiRec in
+                        AIRecommendationRow(
+                            recommendation: aiRec,
+                            isSaved: savedAIRecommendationIds.contains(aiRec.id),
+                            onSaveToTrip: {
+                                saveAIRecommendationToTrip(aiRec)
+                            }
+                        )
+                    }
+                }
+                .padding()
+                .background(Color.orange.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            // Loading state
+            if isLoadingAI {
+                HStack {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        ProgressView()
+                        Text("Finding the best spots in \(currentTrip.destination)...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    Spacer()
+                }
+                .background(Color.seeyaCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            // Saved Recommendations List
             let recommendations = filteredRecommendations
 
-            if recommendations.isEmpty {
+            if recommendations.isEmpty && !showAIRecommendations {
                 EmptyStateView(
                     icon: "lightbulb",
                     title: "No Recommendations",
-                    message: "Add the first recommendation!",
-                    buttonTitle: "Add Recommendation",
-                    buttonAction: { showAddRecommendation = true }
+                    message: "Get AI suggestions or add your own!",
+                    buttonTitle: "Get AI Suggestions",
+                    buttonAction: { fetchAIRecommendations() }
                 )
                 .seeyaCard()
-            } else {
+            } else if !recommendations.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(recommendations.enumerated()), id: \.element.id) { index, recommendation in
                         if index > 0 {
@@ -417,6 +542,77 @@ struct TripDetailView: View {
             return recommendations.filter { $0.category == category }
         }
         return recommendations
+    }
+
+    private var filteredAIRecommendations: [AIService.AIRecommendation] {
+        if let category = selectedCategory {
+            return aiRecommendations.filter {
+                switch category {
+                case .restaurant: return $0.category == "restaurant"
+                case .activity: return $0.category == "activity"
+                case .stay: return $0.category == "stay"
+                case .tip: return $0.category == "tip"
+                }
+            }
+        }
+        return aiRecommendations
+    }
+
+    private func fetchAIRecommendations() {
+        isLoadingAI = true
+
+        Task {
+            do {
+                let response = try await AIService.shared.generateDestinationRecommendations(
+                    destination: currentTrip.destination,
+                    tripDates: (currentTrip.startDate, currentTrip.endDate)
+                )
+
+                // Flatten all recommendations into one array
+                var allRecs: [AIService.AIRecommendation] = []
+                allRecs.append(contentsOf: response.restaurants)
+                allRecs.append(contentsOf: response.activities)
+                allRecs.append(contentsOf: response.stays)
+                allRecs.append(contentsOf: response.tips)
+
+                withAnimation {
+                    aiRecommendations = allRecs
+                    showAIRecommendations = true
+                }
+            } catch {
+                print("❌ Error fetching AI recommendations: \(error)")
+            }
+            isLoadingAI = false
+        }
+    }
+
+    private func saveAIRecommendationToTrip(_ aiRec: AIService.AIRecommendation) {
+        Task {
+            let category: RecommendationCategory = {
+                switch aiRec.category {
+                case "restaurant": return .restaurant
+                case "activity": return .activity
+                case "stay": return .stay
+                case "tip": return .tip
+                default: return .tip
+                }
+            }()
+
+            let description = aiRec.tips != nil
+                ? "\(aiRec.description)\n\nTip: \(aiRec.tips!)"
+                : aiRec.description
+
+            let success = await viewModel.addRecommendation(
+                tripId: currentTrip.id,
+                title: aiRec.title,
+                description: description,
+                category: category
+            )
+
+            if success {
+                savedAIRecommendationIds.insert(aiRec.id)
+            }
+        }
     }
 
     // MARK: - Actions Section
@@ -535,6 +731,133 @@ struct RecommendationRow: View {
             Spacer()
         }
         .padding()
+    }
+}
+
+// MARK: - AI Recommendation Row
+
+struct AIRecommendationRow: View {
+    let recommendation: AIService.AIRecommendation
+    let isSaved: Bool
+    let onSaveToTrip: () -> Void
+
+    private var categoryColor: Color {
+        switch recommendation.category {
+        case "restaurant": return .orange
+        case "activity": return .green
+        case "stay": return .blue
+        case "tip": return Color(red: 0.85, green: 0.65, blue: 0.0)
+        default: return .gray
+        }
+    }
+
+    private var categoryIcon: String {
+        switch recommendation.category {
+        case "restaurant": return "fork.knife"
+        case "activity": return "figure.hiking"
+        case "stay": return "bed.double"
+        case "tip": return "lightbulb"
+        default: return "star"
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // AI indicator (yellow circle)
+            Circle()
+                .fill(Color.orange)
+                .frame(width: 8, height: 8)
+                .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 6) {
+                // Title row
+                HStack(alignment: .top) {
+                    Text(recommendation.title)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+
+                    Spacer()
+
+                    // Category badge
+                    HStack(spacing: 4) {
+                        Image(systemName: categoryIcon)
+                            .font(.caption2)
+                        Text(recommendation.category.capitalized)
+                            .font(.caption2)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(categoryColor.opacity(0.15))
+                    .foregroundStyle(categoryColor)
+                    .clipShape(Capsule())
+
+                    // Cost indicator
+                    if let cost = recommendation.estimatedCost {
+                        Text(cost)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                            .background(Color(.systemGray5))
+                            .clipShape(Capsule())
+                    }
+                }
+
+                // Description
+                Text(recommendation.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                // Tip if available
+                if let tips = recommendation.tips, !tips.isEmpty {
+                    HStack(alignment: .top, spacing: 4) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        Text(tips)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                // Footer row
+                HStack {
+                    // AI Suggestion badge
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.caption2)
+                        Text("AI Suggestion")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.orange)
+
+                    Spacer()
+
+                    // Save to Trip button
+                    Button {
+                        onSaveToTrip()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: isSaved ? "checkmark" : "plus")
+                                .font(.caption2)
+                            Text(isSaved ? "Saved" : "Save to Trip")
+                                .font(.caption2)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(isSaved ? Color.green.opacity(0.15) : Color.seeyaPurple.opacity(0.15))
+                        .foregroundStyle(isSaved ? .green : Color.seeyaPurple)
+                        .clipShape(Capsule())
+                    }
+                    .disabled(isSaved)
+                }
+            }
+        }
+        .padding()
+        .background(Color.seeyaCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 

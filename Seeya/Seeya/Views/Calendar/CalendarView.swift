@@ -2,6 +2,8 @@ import SwiftUI
 
 struct CalendarView: View {
     @State private var viewModel = CalendarViewModel()
+    @State private var scrollToTodayTrigger = false
+    var navigationState: AppNavigationState?
 
     var body: some View {
         NavigationStack {
@@ -36,11 +38,27 @@ struct CalendarView: View {
             .sheet(isPresented: $viewModel.showDetailSheet) {
                 CalendarDetailSheet(
                     selectedDate: $viewModel.selectedDate,
-                    viewModel: viewModel
+                    viewModel: viewModel,
+                    onNavigateToTrip: { tripId in
+                        viewModel.showDetailSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            navigationState?.navigateToTrip(tripId)
+                        }
+                    }
                 )
             }
             .sheet(item: $viewModel.selectedTrip) { trip in
                 TripPopoverView(trip: trip, viewModel: viewModel)
+            }
+            .sheet(isPresented: $viewModel.showCreateTripSheet, onDismiss: {
+                Task {
+                    await viewModel.fetchAllData()
+                }
+            }) {
+                CreateTripFromCalendarSheet(
+                    startDate: viewModel.createTripStartDate,
+                    onDismiss: {}
+                )
             }
         }
     }
@@ -50,22 +68,24 @@ struct CalendarView: View {
     private var compactLayout: some View {
         VStack(spacing: 0) {
             // Header with controls
-            CalendarHeaderCompact(viewModel: viewModel)
+            CalendarHeaderCompact(viewModel: viewModel) {
+                scrollToTodayTrigger.toggle()
+            }
 
             ScrollView {
                 VStack(spacing: SeeyaSpacing.md) {
-                    // Quick glance card showing next trip with countdown
-                    if let nextTrip = viewModel.nextTrip {
-                        CalendarQuickGlance(nextTrip: nextTrip) {
+                    // Quick glance card showing upcoming trips with countdown
+                    if !viewModel.upcomingTrips.isEmpty {
+                        CalendarQuickGlance(upcomingTrips: viewModel.upcomingTrips) { trip in
                             // Navigate to trip by selecting it
-                            if let calendarTrip = viewModel.userTrips.first(where: { $0.id == nextTrip.id }) {
+                            if let calendarTrip = viewModel.userTrips.first(where: { $0.id == trip.id }) {
                                 viewModel.selectedTrip = calendarTrip
                             }
                         }
                         .padding(.horizontal)
                     }
 
-                    CalendarGridView(viewModel: viewModel)
+                    CalendarGridView(viewModel: viewModel, scrollToTodayTrigger: scrollToTodayTrigger)
                         .padding(.horizontal)
                 }
                 .padding(.vertical)
@@ -84,15 +104,15 @@ struct CalendarView: View {
     private var regularLayout: some View {
         VStack(spacing: 0) {
             // Header
-            CalendarHeaderRegular(viewModel: viewModel)
-                .padding(.horizontal)
-                .padding(.top, SeeyaSpacing.sm)
+            CalendarHeaderRegular(viewModel: viewModel) {
+                scrollToTodayTrigger.toggle()
+            }
+            .padding(.horizontal)
+            .padding(.top, SeeyaSpacing.sm)
 
             HStack(alignment: .top, spacing: SeeyaSpacing.lg) {
                 // Main calendar
-                ScrollView {
-                    CalendarGridView(viewModel: viewModel)
-                }
+                CalendarGridView(viewModel: viewModel, scrollToTodayTrigger: scrollToTodayTrigger)
 
                 // Right sidebar - detail panel
                 CalendarDetailSidePanel(
@@ -116,27 +136,32 @@ struct CalendarView: View {
 
 struct CalendarHeaderCompact: View {
     @Bindable var viewModel: CalendarViewModel
+    var onTodayTapped: () -> Void = {}
 
     var body: some View {
         HStack(spacing: SeeyaSpacing.sm) {
-            Button("Today") {
-                withAnimation {
-                    viewModel.goToToday()
+            Button {
+                onTodayTapped()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "location.fill")
+                        .font(.caption)
+                    Text("Today")
                 }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.seeyaPurple)
             }
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(Color.seeyaPurple)
 
             Spacer()
 
-            // Compact view mode picker
+            // View mode picker with column-based options
             Picker("View", selection: $viewModel.viewMode) {
                 ForEach(CalendarViewMode.allCases, id: \.self) { mode in
                     Text(mode.rawValue).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 160)
+            .frame(width: 180)
         }
         .padding(.horizontal)
         .padding(.vertical, SeeyaSpacing.xs)
@@ -148,12 +173,13 @@ struct CalendarHeaderCompact: View {
 
 struct CalendarHeaderRegular: View {
     @Bindable var viewModel: CalendarViewModel
+    var onTodayTapped: () -> Void = {}
 
     var body: some View {
         HStack(spacing: SeeyaSpacing.md) {
             Button("Today") {
                 withAnimation {
-                    viewModel.goToToday()
+                    onTodayTapped()
                 }
             }
             .font(.subheadline.weight(.medium))
@@ -290,6 +316,20 @@ struct TripPopoverView: View {
         let year = yearFormatter.string(from: trip.endDate)
 
         return "\(startStr) - \(endStr), \(year)"
+    }
+}
+
+// MARK: - Create Trip From Calendar
+
+struct CreateTripFromCalendarSheet: View {
+    let startDate: Date?
+    let onDismiss: () -> Void
+
+    @State private var viewModel = TripsViewModel()
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        CreateTripView(viewModel: viewModel, initialStartDate: startDate)
     }
 }
 

@@ -8,7 +8,15 @@ struct ContentView: View {
             if authViewModel.isLoading {
                 ProgressView("Loading...")
             } else if authViewModel.isAuthenticated {
-                MainTabView(authViewModel: authViewModel)
+                if authViewModel.needsOnboarding {
+                    OnboardingContainerView {
+                        Task {
+                            await authViewModel.completeOnboarding()
+                        }
+                    }
+                } else {
+                    MainTabView(authViewModel: authViewModel)
+                }
             } else {
                 LoginView(viewModel: authViewModel)
             }

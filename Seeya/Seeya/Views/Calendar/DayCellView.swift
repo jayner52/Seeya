@@ -79,25 +79,45 @@ struct CompactDayCellView: View {
     let date: Date
     let isCurrentMonth: Bool
     let hasTrips: Bool
+    var isExtraCompact: Bool = false // For 12-month view
+    var onTap: (() -> Void)? = nil
 
     private let calendar = Calendar.current
 
     var body: some View {
-        VStack(spacing: 2) {
-            Text("\(calendar.component(.day, from: date))")
-                .font(.caption2)
-                .foregroundStyle(dayTextColor)
+        Button {
+            onTap?()
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+        } label: {
+            VStack(spacing: isExtraCompact ? 1 : 2) {
+                Text("\(calendar.component(.day, from: date))")
+                    .font(isExtraCompact ? .system(size: 9) : .caption2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .foregroundStyle(dayTextColor)
 
-            if hasTrips {
+                // Always show circle space to maintain consistent cell height
                 Circle()
-                    .fill(Color.seeyaPurple)
-                    .frame(width: 4, height: 4)
+                    .fill(hasTrips ? Color.seeyaPurple : Color.clear)
+                    .frame(width: isExtraCompact ? 3 : 4, height: isExtraCompact ? 3 : 4)
             }
+            .frame(maxWidth: .infinity, minHeight: isExtraCompact ? 20 : 28)
+            .padding(.vertical, isExtraCompact ? 1 : 4)
+            .background(backgroundColor)
+            .clipShape(RoundedRectangle(cornerRadius: isExtraCompact ? 2 : 4))
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
-        .background(isToday ? Color.seeyaPurple.opacity(0.1) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .buttonStyle(.plain)
+    }
+
+    private var backgroundColor: Color {
+        if isToday {
+            return Color.seeyaPurple.opacity(0.1)
+        }
+        if hasTrips {
+            return Color.seeyaPurple.opacity(0.05)
+        }
+        return Color.clear
     }
 
     private var isToday: Bool {
@@ -136,7 +156,8 @@ struct CompactDayCellView: View {
         CompactDayCellView(
             date: Date(),
             isCurrentMonth: true,
-            hasTrips: true
+            hasTrips: true,
+            onTap: {}
         )
     }
     .padding()

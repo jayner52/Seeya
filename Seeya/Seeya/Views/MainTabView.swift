@@ -1,62 +1,51 @@
 import SwiftUI
-import Supabase
+
+// MARK: - App Navigation State
+
+@Observable
+class AppNavigationState {
+    var selectedTab: AppTab = .trips
+    var tripIdToOpen: UUID?
+
+    enum AppTab: Hashable {
+        case trips
+        case explore
+        case calendar
+        case circle
+        case profile
+    }
+
+    func navigateToTrip(_ tripId: UUID) {
+        tripIdToOpen = tripId
+        selectedTab = .trips
+    }
+}
 
 struct MainTabView: View {
     @Bindable var authViewModel: AuthViewModel
-    @State private var userEmail: String = "Loading..."
+    @State private var navigationState = AppNavigationState()
 
     var body: some View {
-        TabView {
-            Tab("Trips", systemImage: "airplane") {
-                TripsView()
+        TabView(selection: $navigationState.selectedTab) {
+            Tab("Trips", systemImage: "airplane", value: .trips) {
+                TripsView(tripIdToOpen: $navigationState.tripIdToOpen)
             }
 
-            Tab("Friends", systemImage: "person.2") {
-                NavigationStack {
-                    Text("Friends Coming Soon")
-                        .navigationTitle("Friends")
-                }
+            Tab("Explore", systemImage: "sparkles", value: .explore) {
+                ExploreView()
             }
 
-            Tab("Profile", systemImage: "person.circle") {
-                NavigationStack {
-                    VStack(spacing: 20) {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 80))
-                            .foregroundStyle(.secondary)
-
-                        Text(userEmail)
-                            .font(.headline)
-
-                        Text("Profile Coming Soon")
-                            .foregroundStyle(.secondary)
-
-                        Spacer()
-
-                        Button("Sign Out", role: .destructive) {
-                            Task {
-                                await authViewModel.signOut()
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .padding(.bottom, 40)
-                    }
-                    .padding()
-                    .navigationTitle("Profile")
-                    .task {
-                        await loadUserEmail()
-                    }
-                }
+            Tab("Calendar", systemImage: "calendar", value: .calendar) {
+                CalendarView(navigationState: navigationState)
             }
-        }
-    }
 
-    private func loadUserEmail() async {
-        do {
-            let session = try await SupabaseService.shared.client.auth.session
-            userEmail = session.user.email ?? "No email"
-        } catch {
-            userEmail = "Not signed in"
+            Tab("Circle", systemImage: "person.2", value: .circle) {
+                TravelCircleView()
+            }
+
+            Tab("Profile", systemImage: "person.circle", value: .profile) {
+                ProfileView(authViewModel: authViewModel)
+            }
         }
     }
 }

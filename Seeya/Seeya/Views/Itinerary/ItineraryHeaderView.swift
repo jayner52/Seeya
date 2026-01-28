@@ -42,33 +42,25 @@ struct ItineraryHeaderView: View {
                 Spacer()
 
                 // Action Buttons
-                HStack(spacing: 8) {
+                HStack(spacing: 12) {
                     // Export Button
                     Button {
                         showExportOptions = true
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("Export")
-                        }
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.body)
+                            .foregroundStyle(Color.seeyaPurple)
                     }
-                    .buttonStyle(SeeyaSecondaryButtonStyle())
 
                     // Print Button
                     Button {
                         comingSoonFeature = "Print Itinerary"
                         showComingSoonAlert = true
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "printer")
-                            Text("Print")
-                        }
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        Image(systemName: "printer")
+                            .font(.body)
+                            .foregroundStyle(Color.seeyaPurple)
                     }
-                    .buttonStyle(SeeyaSecondaryButtonStyle())
                 }
             }
 

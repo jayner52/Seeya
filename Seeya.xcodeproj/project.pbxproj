@@ -7,17 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ED14DE932F29C31900E619AE /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = ED14DE922F29C31900E619AE /* GoogleSignIn */; };
+		ED14DE952F29C31900E619AE /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = ED14DE942F29C31900E619AE /* GoogleSignInSwift */; };
 		ED47C1D52F252BA000521AD3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = ED47C1D62F252BA000521AD3 /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ED14DE962F29C35900E619AE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; name = Info.plist; path = Seeya/Info.plist; sourceTree = "<group>"; };
 		ED47C1C62F252B7000521AD3 /* Seeya.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Seeya.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		ED47C1D72F252BB000521AD3 /* Seeya */ = {
+		ED47C1D72F252BB000521AD3 /* Seeya/Seeya */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Seeya;
+			path = Seeya/Seeya;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -27,7 +30,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ED14DE952F29C31900E619AE /* GoogleSignInSwift in Frameworks */,
 				ED47C1D52F252BA000521AD3 /* Supabase in Frameworks */,
+				ED14DE932F29C31900E619AE /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -37,7 +42,8 @@
 		ED47C1BD2F252B7000521AD3 = {
 			isa = PBXGroup;
 			children = (
-				ED47C1D72F252BB000521AD3 /* Seeya */,
+				ED14DE962F29C35900E619AE /* Info.plist */,
+				ED47C1D72F252BB000521AD3 /* Seeya/Seeya */,
 				ED47C1C72F252B7000521AD3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -66,11 +72,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				ED47C1D72F252BB000521AD3 /* Seeya */,
+				ED47C1D72F252BB000521AD3 /* Seeya/Seeya */,
 			);
 			name = Seeya;
 			packageProductDependencies = (
 				ED47C1D62F252BA000521AD3 /* Supabase */,
+				ED14DE922F29C31900E619AE /* GoogleSignIn */,
+				ED14DE942F29C31900E619AE /* GoogleSignInSwift */,
 			);
 			productName = Seeya;
 			productReference = ED47C1C62F252B7000521AD3 /* Seeya.app */;
@@ -102,6 +110,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				ED47C1D42F252B9000521AD3 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				ED14DE912F29C31900E619AE /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = ED47C1C72F252B7000521AD3 /* Products */;
@@ -262,6 +271,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Seeya/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -293,6 +303,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Seeya/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -339,6 +350,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		ED14DE912F29C31900E619AE /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
 		ED47C1D42F252B9000521AD3 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -350,6 +369,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		ED14DE922F29C31900E619AE /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ED14DE912F29C31900E619AE /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		ED14DE942F29C31900E619AE /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ED14DE912F29C31900E619AE /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
 		ED47C1D62F252BA000521AD3 /* Supabase */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = ED47C1D42F252B9000521AD3 /* XCRemoteSwiftPackageReference "supabase-swift" */;

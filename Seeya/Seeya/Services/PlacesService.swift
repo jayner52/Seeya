@@ -76,6 +76,44 @@ actor PlacesService {
         }
     }
 
+    /// Search for regions (cities and countries) - for wanderlist
+    func autocompleteRegions(query: String) async throws -> [PlacePrediction] {
+        guard !query.isEmpty else { return [] }
+        guard isConfigured else {
+            print("⚠️ [PlacesService] API key not configured")
+            return []
+        }
+
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        // Use (regions) type to get cities, countries, and other administrative areas
+        let urlString = "\(baseURL)/autocomplete/json?input=\(encodedQuery)&types=(regions)&key=\(apiKey)"
+
+        guard let url = URL(string: urlString) else {
+            throw PlacesError.invalidURL
+        }
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw PlacesError.invalidResponse
+        }
+
+        let result = try JSONDecoder().decode(AutocompleteResponse.self, from: data)
+
+        if result.status != "OK" && result.status != "ZERO_RESULTS" {
+            print("⚠️ [PlacesService] API error: \(result.status)")
+            throw PlacesError.apiError(result.status)
+        }
+
+        return result.predictions.map { prediction in
+            PlacePrediction(
+                id: prediction.place_id,
+                mainText: prediction.structured_formatting.main_text,
+                secondaryText: prediction.structured_formatting.secondary_text ?? ""
+            )
+        }
+    }
+
     // MARK: - Place Details
 
     func getPlaceDetails(placeId: String) async throws -> PlaceDetails {

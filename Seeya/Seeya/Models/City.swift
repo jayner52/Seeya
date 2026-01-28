@@ -35,13 +35,19 @@ struct Country: Codable, Identifiable, Hashable, Sendable {
     let name: String
     let code: String?
     let flagEmoji: String?
+    let continentId: UUID?
     let createdAt: Date?
+
+    // Relationship
+    var continent: Continent?
 
     enum CodingKeys: String, CodingKey {
         case id
         case name
         case code
         case flagEmoji = "flag_emoji"
+        case continentId = "continent_id"
         case createdAt = "created_at"
+        case continent = "continents"
     }
 }

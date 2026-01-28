@@ -5,34 +5,33 @@ struct TripCard: View {
     let isOwner: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: SeeyaSpacing.sm) {
             // Destination & Visibility
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: SeeyaSpacing.xxs) {
                     // Flag + Destination
-                    HStack(spacing: 6) {
+                    HStack(spacing: SeeyaSpacing.xs) {
                         if let flag = trip.locations?.first?.flagEmoji {
                             Text(flag)
-                                .font(.title3)
+                                .font(SeeyaTypography.headlineLarge)
                         }
                         Text(trip.destination)
-                            .font(.title3)
-                            .fontWeight(.semibold)
+                            .font(SeeyaTypography.headlineLarge)
                             .lineLimit(1)
                     }
 
                     Text(trip.dateRangeText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(SeeyaTypography.bodyMedium)
+                        .foregroundStyle(Color.seeyaTextSecondary)
                 }
 
                 Spacer()
 
                 if let visibility = trip.visibility, visibility != .fullDetails {
                     Image(systemName: visibility.icon)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(6)
+                        .font(.system(size: SeeyaIconSize.small))
+                        .foregroundStyle(Color.seeyaTextSecondary)
+                        .padding(SeeyaSpacing.xs)
                         .background(Color(.systemGray6))
                         .clipShape(Circle())
                 }
@@ -40,8 +39,8 @@ struct TripCard: View {
 
             // Trip Name
             Text(trip.name)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(SeeyaTypography.bodyMedium)
+                .foregroundStyle(Color.seeyaTextSecondary)
                 .lineLimit(1)
 
             // Participants
@@ -57,25 +56,22 @@ struct TripCard: View {
                 Spacer()
 
                 Text(trip.participantText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(SeeyaTypography.caption)
+                    .foregroundStyle(Color.seeyaTextSecondary)
 
                 if isOwner {
                     Text("Organizer")
-                        .font(.caption)
-                        .fontWeight(.medium)
+                        .font(SeeyaTypography.labelMedium)
                         .foregroundStyle(Color.seeyaPurple)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, SeeyaSpacing.xs)
+                        .padding(.vertical, SeeyaSpacing.xxs)
                         .background(Color.seeyaPurple.opacity(0.1))
                         .clipShape(Capsule())
                 }
             }
         }
-        .padding()
-        .background(Color.seeyaCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+        .padding(SeeyaSpacing.md)
+        .seeyaCard()
     }
 }
 

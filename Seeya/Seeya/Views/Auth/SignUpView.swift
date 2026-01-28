@@ -36,6 +36,46 @@ struct SignUpView: View {
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
+                // Google Sign-Up Button
+                Button {
+                    Task {
+                        await viewModel.signInWithGoogle()
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        GoogleLogoView()
+                            .frame(width: 20, height: 20)
+
+                        Text("Continue with Google")
+                            .fontWeight(.medium)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemBackground))
+                    .foregroundStyle(.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
+                }
+                .padding(.horizontal)
+                .disabled(viewModel.isLoading)
+
+                // Divider
+                HStack {
+                    Rectangle()
+                        .fill(Color(.systemGray4))
+                        .frame(height: 1)
+                    Text("or")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Rectangle()
+                        .fill(Color(.systemGray4))
+                        .frame(height: 1)
+                }
+                .padding(.horizontal)
+
                 VStack(spacing: 16) {
                     TextField("Full Name", text: $fullName)
                         .textFieldStyle(.roundedBorder)

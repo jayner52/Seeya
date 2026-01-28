@@ -6,6 +6,9 @@ struct Profile: Codable, Identifiable, Sendable, Hashable {
     let fullName: String
     let avatarUrl: String?
     let bio: String?
+    let homeCity: String?
+    let homeCityPlaceId: String?
+    let onboardingCompleted: Bool?
     let createdAt: Date?
     let updatedAt: Date?
 
@@ -15,6 +18,9 @@ struct Profile: Codable, Identifiable, Sendable, Hashable {
         case fullName = "full_name"
         case avatarUrl = "avatar_url"
         case bio
+        case homeCity = "home_city"
+        case homeCityPlaceId = "home_city_place_id"
+        case onboardingCompleted = "onboarding_completed"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
