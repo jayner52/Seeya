@@ -4,10 +4,16 @@ import Foundation
 actor AIService {
     static let shared = AIService()
 
-    private let apiKey = "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"
+    private var apiKey: String {
+        SecretsManager.openRouterAPIKey
+    }
     private let baseURL = "https://openrouter.ai/api/v1/chat/completions"
 
     private init() {}
+
+    var isConfigured: Bool {
+        !apiKey.isEmpty
+    }
 
     // MARK: - Parse Booking Screenshot
 

@@ -14,4 +14,8 @@ enum SecretsManager {
     static var googlePlacesAPIKey: String {
         secrets?["GOOGLE_PLACES_API_KEY"] as? String ?? ""
     }
+
+    static var openRouterAPIKey: String {
+        secrets?["OPENROUTER_API_KEY"] as? String ?? ""
+    }
 }
