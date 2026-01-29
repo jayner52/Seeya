@@ -1,0 +1,250 @@
+/* Google Font loaded via useEffect in App.tsx */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core palette - Yellow #FCED2E, Purple #D7C0F4, Green #B7DFBA/#143E1F */
+    --yellow-accent: 56 97% 58%;
+    --yellow-accent-foreground: 40 80% 20%;
+    --purple-accent: 266 69% 86%;
+    --purple-accent-foreground: 266 50% 30%;
+    --green-bg: 124 38% 80%;
+    --green-text: 136 51% 16%;
+    --beige: 40 30% 95%;
+    --pure-white: 0 0% 100%;
+    --pure-black: 0 0% 0%;
+    
+    /* Semantic tokens */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+
+    --card: 40 30% 95%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 56 97% 58%;
+    --primary-foreground: 0 0% 10%;
+
+    --secondary: 266 69% 86%;
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 40 20% 92%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 266 69% 86%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 20% 88%;
+    --input: 0 0% 100%;
+    --ring: 56 97% 58%;
+
+    --radius: 1rem;
+
+    --sidebar-background: 40 30% 95%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 56 97% 58%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 266 69% 86%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 40 20% 88%;
+    --sidebar-ring: 56 97% 58%;
+
+    /* Custom shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.06);
+    --shadow-card: 0 8px 30px -8px hsl(0 0% 0% / 0.1);
+    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 0% / 0.15);
+
+    /* Typography */
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .dark {
+    --yellow-accent-foreground: 56 80% 85%;
+    --purple-accent-foreground: 266 60% 80%;
+    --green-bg: 136 30% 20%;
+    --green-text: 124 38% 75%;
+    
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 56 97% 58%;
+    --primary-foreground: 0 0% 10%;
+
+    --secondary: 266 40% 35%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 266 40% 35%;
+    --accent-foreground: 0 0% 95%;
+
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 56 97% 58%;
+
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 56 97% 58%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 56 97% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: var(--font-body);
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply tracking-tight font-semibold;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-display-italic {
+    font-family: var(--font-display);
+    font-style: italic;
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  /* Elegant quote styling */
+  .quote {
+    font-family: var(--font-display);
+    font-style: italic;
+    @apply text-muted-foreground;
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Smooth animations */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.4s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Print styles for itinerary */
+@media print {
+  /* Hide non-essential elements */
+  nav,
+  button,
+  .fixed,
+  .sticky {
+    display: none !important;
+  }
+
+  /* Reset page margins */
+  @page {
+    margin: 0.75in;
+    size: A4;
+  }
+
+  /* Make content fill page */
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Use light theme colors for print */
+  .itinerary-print-view {
+    color: #1a1a1a !important;
+    background: white !important;
+  }
+
+  .itinerary-print-view * {
+    color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+}
