@@ -30,15 +30,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
 
-      if (session?.user) {
+      if (user && !error) {
         set({
           user: {
-            id: session.user.id,
-            email: session.user.email!,
-            user_metadata: session.user.user_metadata,
+            id: user.id,
+            email: user.email!,
+            user_metadata: user.user_metadata,
           },
           isAuthenticated: true,
           isLoading: false,
@@ -50,7 +51,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Listen for auth changes
       supabase.auth.onAuthStateChange(async (event, session) => {
-        if (session?.user) {
+        // Ignore INITIAL_SESSION - we already handled it above with getUser()
+        if (event === 'INITIAL_SESSION') {
+          return;
+        }
+
+        if (event === 'SIGNED_IN' && session?.user) {
           set({
             user: {
               id: session.user.id,
@@ -60,7 +66,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isAuthenticated: true,
           });
           await get().fetchProfile();
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           set({
             user: null,
             profile: null,
@@ -77,13 +83,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signIn: async (email: string, password: string) => {
     const supabase = createClient();
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
       return { error: error.message };
+    }
+
+    // Update auth state immediately after successful sign-in
+    if (data.user) {
+      set({
+        user: {
+          id: data.user.id,
+          email: data.user.email!,
+          user_metadata: data.user.user_metadata,
+        },
+        isAuthenticated: true,
+        isLoading: false,
+      });
+      await get().fetchProfile();
     }
 
     return {};

@@ -37,13 +37,24 @@ export default function TripsPage() {
         .eq('user_id', user!.id)
         .eq('status', 'accepted');
 
-      if (!participations || participations.length === 0) {
+      const participantTripIds = participations?.map((p) => p.trip_id) || [];
+
+      // Get trips where user is the owner (user_id in trips table)
+      const { data: ownedTrips } = await supabase
+        .from('trips')
+        .select('id')
+        .eq('user_id', user!.id);
+
+      const ownedTripIds = ownedTrips?.map((t) => t.id) || [];
+
+      // Combine and deduplicate trip IDs
+      const allTripIds = Array.from(new Set([...participantTripIds, ...ownedTripIds]));
+
+      if (allTripIds.length === 0) {
         setTrips([]);
         setIsLoading(false);
         return;
       }
-
-      const tripIds = participations.map((p) => p.trip_id);
 
       // Get trip details
       const { data: tripsData } = await supabase
@@ -55,7 +66,7 @@ export default function TripsPage() {
           start_date,
           end_date
         `)
-        .in('id', tripIds)
+        .in('id', allTripIds)
         .order('start_date', { ascending: true });
 
       if (!tripsData) {
@@ -81,7 +92,7 @@ export default function TripsPage() {
             avatar_url
           )
         `)
-        .in('trip_id', tripIds)
+        .in('trip_id', allTripIds)
         .eq('status', 'accepted');
 
       // Combine data

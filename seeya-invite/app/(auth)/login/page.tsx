@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/stores/authStore';
-import { createBrowserClient } from '@/lib/supabase/browser';
+import { createClient } from '@/lib/supabase/client';
 import { Card, Button, Input } from '@/components/ui';
 import { Mail, Eye, EyeOff } from 'lucide-react';
 
@@ -27,29 +27,16 @@ export default function LoginPage() {
   const signIn = useAuthStore((state) => state.signIn);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(searchParams?.get('error') || null);
+  const [showLoginHelp, setShowLoginHelp] = useState(false);
+  const [lastEmail, setLastEmail] = useState<string>('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     setError(null);
-
-    try {
-      const supabase = createBrowserClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`,
-        },
-      });
-
-      if (error) {
-        setError(error.message);
-        setIsGoogleLoading(false);
-      }
-    } catch (err) {
-      setError('Failed to initiate Google sign-in');
-      setIsGoogleLoading(false);
-    }
+    setShowLoginHelp(false);
+    // Use server-side OAuth to properly handle PKCE
+    window.location.href = `/api/auth/login?next=${encodeURIComponent(redirect)}`;
   };
 
   const {
@@ -62,18 +49,31 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setError(null);
-    const result = await signIn(data.email, data.password);
+    setShowLoginHelp(false);
+    setLastEmail(data.email);
 
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
+    try {
+      const result = await signIn(data.email, data.password);
 
-    // If there's an invite code, redirect to accept page
-    if (inviteCode) {
-      router.push(`/invite/${inviteCode}/accept`);
-    } else {
-      router.push(redirect);
+      if (result.error) {
+        // Check if it's an invalid credentials error - likely means Google-only account
+        if (result.error.toLowerCase().includes('invalid') ||
+            result.error.toLowerCase().includes('credentials')) {
+          setShowLoginHelp(true);
+        }
+        setError(result.error);
+        return;
+      }
+
+      // Use full page reload to ensure cookies are properly sent to server
+      if (inviteCode) {
+        window.location.href = `/invite/${inviteCode}/accept`;
+      } else {
+        window.location.href = redirect;
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Sign in error:', err);
     }
   };
 
@@ -90,7 +90,27 @@ export default function LoginPage() {
 
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-100 text-red-700 text-sm">
-          {error}
+          <p>{error}</p>
+          {showLoginHelp && (
+            <div className="mt-3 pt-3 border-t border-red-200 space-y-2">
+              <p className="text-red-600 font-medium">Did you sign up with Google?</p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  className="text-left text-seeya-purple hover:underline"
+                >
+                  → Sign in with Google instead
+                </button>
+                <Link
+                  href={`/forgot-password${lastEmail ? `?email=${encodeURIComponent(lastEmail)}` : ''}`}
+                  className="text-seeya-purple hover:underline"
+                >
+                  → Set a password for email login
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

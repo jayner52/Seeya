@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function AuthCallbackPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [status, setStatus] = useState('Signing you in...');
   const [error, setError] = useState<string | null>(null);
   const processed = useRef(false);
@@ -12,46 +16,45 @@ export default function AuthCallbackPage() {
     if (processed.current) return;
     processed.current = true;
 
-    const handleCallback = () => {
-      // Get the next URL from query params
-      const params = new URLSearchParams(window.location.search);
-      const next = params.get('next') || '/trips';
+    const handleCallback = async () => {
+      // Get the authorization code from URL query params (PKCE flow)
+      const code = searchParams?.get('code');
+      const next = searchParams?.get('next') || '/trips';
+      const errorParam = searchParams?.get('error');
+      const errorDescription = searchParams?.get('error_description');
 
-      // Check for error in URL hash
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const hashError = hashParams.get('error');
-      const errorDescription = hashParams.get('error_description');
-
-      if (hashError) {
-        setError(errorDescription || hashError);
+      // Handle OAuth errors from provider
+      if (errorParam) {
+        setError(errorDescription || errorParam);
         return;
       }
 
-      // Check if we have tokens in the hash (implicit flow)
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-
-      if (!accessToken) {
-        setError('No access token received');
+      if (!code) {
+        setError('No authorization code received');
         return;
       }
 
-      setStatus('Processing authentication...');
+      setStatus('Completing sign in...');
 
-      // Redirect to server route that will set cookies and redirect to destination
-      const setSessionUrl = new URL('/api/auth/set-session', window.location.origin);
-      setSessionUrl.searchParams.set('access_token', accessToken);
-      if (refreshToken) {
-        setSessionUrl.searchParams.set('refresh_token', refreshToken);
+      try {
+        const supabase = createClient();
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (exchangeError) {
+          setError(exchangeError.message);
+          return;
+        }
+
+        setStatus('Success! Redirecting...');
+        window.location.href = next;
+      } catch (err) {
+        console.error('Callback error:', err);
+        setError('Failed to complete sign in');
       }
-      setSessionUrl.searchParams.set('next', next);
-
-      // Redirect to server route
-      window.location.replace(setSessionUrl.toString());
     };
 
     handleCallback();
-  }, []);
+  }, [searchParams, router]);
 
   if (error) {
     return (

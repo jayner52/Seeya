@@ -23,8 +23,6 @@ export function PopularDestinationsSection({
   onDestinationClick,
   className,
 }: PopularDestinationsSectionProps) {
-  if (destinations.length === 0) return null;
-
   return (
     <div className={className}>
       <div className="flex items-center gap-2 mb-4">
@@ -32,46 +30,58 @@ export function PopularDestinationsSection({
         <h2 className="text-lg font-semibold text-seeya-text">Popular in Your Circle</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {destinations.slice(0, 6).map((dest, index) => (
-          <button
-            key={dest.id}
-            onClick={() => onDestinationClick?.(dest)}
-            className="text-left"
-          >
-            <Card
-              variant="outline"
-              padding="md"
-              className="hover:shadow-sm transition-shadow h-full"
+      {destinations.length === 0 ? (
+        <Card variant="outline" padding="md" className="text-center">
+          <div className="text-3xl mb-2">📍</div>
+          <p className="text-sm text-seeya-text-secondary">
+            Discover trending destinations
+          </p>
+          <p className="text-xs text-seeya-text-tertiary mt-1">
+            Popular places from your friends' trips will appear here
+          </p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {destinations.slice(0, 6).map((dest, index) => (
+            <button
+              key={dest.id}
+              onClick={() => onDestinationClick?.(dest)}
+              className="text-left"
             >
-              <div className="flex items-start gap-2 mb-2">
-                <div
-                  className={cn(
-                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white',
-                    index === 0 ? 'bg-yellow-500' :
-                    index === 1 ? 'bg-gray-400' :
-                    index === 2 ? 'bg-amber-600' :
-                    'bg-gray-300'
-                  )}
-                >
-                  {index + 1}
+              <Card
+                variant="outline"
+                padding="md"
+                className="hover:shadow-sm transition-shadow h-full"
+              >
+                <div className="flex items-start gap-2 mb-2">
+                  <div
+                    className={cn(
+                      'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white',
+                      index === 0 ? 'bg-yellow-500' :
+                      index === 1 ? 'bg-gray-400' :
+                      index === 2 ? 'bg-amber-600' :
+                      'bg-gray-300'
+                    )}
+                  >
+                    {index + 1}
+                  </div>
+                  <MapPin size={16} className="text-seeya-purple mt-1" />
                 </div>
-                <MapPin size={16} className="text-seeya-purple mt-1" />
-              </div>
-              <h3 className="font-semibold text-seeya-text truncate">
-                {dest.name}
-              </h3>
-              <p className="text-sm text-seeya-text-secondary truncate">
-                {dest.country}
-              </p>
-              <div className="flex items-center gap-1 mt-2 text-xs text-seeya-text-tertiary">
-                <Users size={12} />
-                <span>{dest.friendCount} friends visited</span>
-              </div>
-            </Card>
-          </button>
-        ))}
-      </div>
+                <h3 className="font-semibold text-seeya-text truncate">
+                  {dest.name}
+                </h3>
+                <p className="text-sm text-seeya-text-secondary truncate">
+                  {dest.country}
+                </p>
+                <div className="flex items-center gap-1 mt-2 text-xs text-seeya-text-tertiary">
+                  <Users size={12} />
+                  <span>{dest.friendCount} friends visited</span>
+                </div>
+              </Card>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -31,15 +31,7 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Try getSession first (reads from cookies directly)
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-  // Debug logging
-  console.log('Middleware - Path:', request.nextUrl.pathname);
-  console.log('Middleware - Cookies:', request.cookies.getAll().map(c => c.name));
-  console.log('Middleware - Session:', session?.user?.email || 'null');
-  if (sessionError) console.log('Middleware - Session Error:', sessionError.message);
-
+  const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user || null;
 
   // Protected routes

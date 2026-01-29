@@ -26,8 +26,6 @@ export function TravelingNowSection({ friends, className }: TravelingNowSectionP
   const travelingNow = friends.filter((f) => f.isNow);
   const upcoming = friends.filter((f) => !f.isNow);
 
-  if (friends.length === 0) return null;
-
   return (
     <div className={className}>
       <div className="flex items-center gap-2 mb-4">
@@ -35,36 +33,48 @@ export function TravelingNowSection({ friends, className }: TravelingNowSectionP
         <h2 className="text-lg font-semibold text-seeya-text">Your Circle</h2>
       </div>
 
-      <div className="space-y-4">
-        {/* Traveling Now */}
-        {travelingNow.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-seeya-success uppercase tracking-wide mb-2 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-seeya-success animate-pulse" />
-              Traveling Now
-            </p>
-            <div className="space-y-2">
-              {travelingNow.map((friend) => (
-                <FriendTripCard key={friend.id} friend={friend} />
-              ))}
+      {friends.length === 0 ? (
+        <Card variant="outline" padding="md" className="text-center">
+          <div className="text-3xl mb-2">✈️</div>
+          <p className="text-sm text-seeya-text-secondary">
+            See where your friends are headed
+          </p>
+          <p className="text-xs text-seeya-text-tertiary mt-1">
+            Add friends to see their upcoming trips
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {/* Traveling Now */}
+          {travelingNow.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-seeya-success uppercase tracking-wide mb-2 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-seeya-success animate-pulse" />
+                Traveling Now
+              </p>
+              <div className="space-y-2">
+                {travelingNow.map((friend) => (
+                  <FriendTripCard key={friend.id} friend={friend} />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Upcoming */}
-        {upcoming.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-seeya-text-secondary uppercase tracking-wide mb-2">
-              Upcoming
-            </p>
-            <div className="space-y-2">
-              {upcoming.slice(0, 3).map((friend) => (
-                <FriendTripCard key={friend.id} friend={friend} />
-              ))}
+          {/* Upcoming */}
+          {upcoming.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-seeya-text-secondary uppercase tracking-wide mb-2">
+                Upcoming
+              </p>
+              <div className="space-y-2">
+                {upcoming.slice(0, 3).map((friend) => (
+                  <FriendTripCard key={friend.id} friend={friend} />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

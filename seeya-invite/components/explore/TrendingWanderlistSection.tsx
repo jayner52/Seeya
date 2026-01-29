@@ -28,8 +28,6 @@ export function TrendingWanderlistSection({
   onAddToWanderlist,
   className,
 }: TrendingWanderlistSectionProps) {
-  if (places.length === 0) return null;
-
   return (
     <div className={className}>
       <div className="flex items-center gap-2 mb-4">
@@ -37,19 +35,33 @@ export function TrendingWanderlistSection({
         <h2 className="text-lg font-semibold text-seeya-text">Trending Wanderlist</h2>
       </div>
 
-      <p className="text-sm text-seeya-text-secondary mb-4">
-        Places your friends want to visit
-      </p>
+      {places.length === 0 ? (
+        <Card variant="outline" padding="md" className="text-center">
+          <div className="text-3xl mb-2">✨</div>
+          <p className="text-sm text-seeya-text-secondary">
+            See dream destinations
+          </p>
+          <p className="text-xs text-seeya-text-tertiary mt-1">
+            Places your friends want to visit will appear here
+          </p>
+        </Card>
+      ) : (
+        <>
+          <p className="text-sm text-seeya-text-secondary mb-4">
+            Places your friends want to visit
+          </p>
 
-      <div className="space-y-3">
-        {places.slice(0, 5).map((place) => (
-          <TrendingPlaceCard
-            key={place.id}
-            place={place}
-            onAdd={onAddToWanderlist}
-          />
-        ))}
-      </div>
+          <div className="space-y-3">
+            {places.slice(0, 5).map((place) => (
+              <TrendingPlaceCard
+                key={place.id}
+                place={place}
+                onAdd={onAddToWanderlist}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

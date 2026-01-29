@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/stores/authStore';
-import { createBrowserClient } from '@/lib/supabase/browser';
+import { createClient } from '@/lib/supabase/client';
 import { Card, Button, Input } from '@/components/ui';
 import { Mail, Eye, EyeOff, User } from 'lucide-react';
 
@@ -37,27 +37,11 @@ export default function SignupPage() {
   const [success, setSuccess] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     setError(null);
-
-    try {
-      const supabase = createBrowserClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`,
-        },
-      });
-
-      if (error) {
-        setError(error.message);
-        setIsGoogleLoading(false);
-      }
-    } catch (err) {
-      setError('Failed to initiate Google sign-in');
-      setIsGoogleLoading(false);
-    }
+    // Use server-side OAuth to properly handle PKCE
+    window.location.href = `/api/auth/login?next=${encodeURIComponent(redirect)}`;
   };
 
   const {

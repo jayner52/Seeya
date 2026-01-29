@@ -344,12 +344,6 @@ export default function ExplorePage() {
     );
   }
 
-  const hasNoData =
-    recommendations.length === 0 &&
-    travelingFriends.length === 0 &&
-    popularDestinations.length === 0 &&
-    trendingPlaces.length === 0;
-
   return (
     <div className="p-6">
       {/* Header */}
@@ -363,90 +357,78 @@ export default function ExplorePage() {
         </p>
       </div>
 
-      {hasNoData ? (
-        <Card variant="elevated" padding="lg" className="text-center py-16">
-          <div className="text-6xl mb-4">🌍</div>
-          <h2 className="text-xl font-semibold text-seeya-text mb-2">
-            Nothing to explore yet
-          </h2>
-          <p className="text-seeya-text-secondary max-w-md mx-auto">
-            Add friends to your travel circle to see their trips, recommendations, and wanderlists here.
-          </p>
-        </Card>
-      ) : (
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Search and filters */}
-            <div className="space-y-4">
-              <SearchBar
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search recommendations..."
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Main content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Search and filters */}
+          <div className="space-y-4">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search recommendations..."
+            />
+            <CategoryFilter
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+            />
+            {countries.length > 0 && (
+              <CountryChips
+                countries={countries}
+                selectedCountry={selectedCountry}
+                onCountrySelect={setSelectedCountry}
               />
-              <CategoryFilter
-                selectedCategory={selectedCategory}
-                onCategoryChange={setSelectedCategory}
-              />
-              {countries.length > 0 && (
-                <CountryChips
-                  countries={countries}
-                  selectedCountry={selectedCountry}
-                  onCountrySelect={setSelectedCountry}
-                />
-              )}
-            </div>
-
-            {/* Recommendations grid */}
-            {filteredRecommendations.length > 0 ? (
-              <div className="grid sm:grid-cols-2 gap-4">
-                {filteredRecommendations.map((rec) => (
-                  <RecommendationCard
-                    key={rec.id}
-                    recommendation={rec}
-                    onSave={handleSaveRecommendation}
-                    onUnsave={handleUnsaveRecommendation}
-                  />
-                ))}
-              </div>
-            ) : recommendations.length > 0 ? (
-              <Card variant="outline" padding="lg" className="text-center">
-                <p className="text-seeya-text-secondary">
-                  No recommendations match your filters
-                </p>
-              </Card>
-            ) : (
-              <Card variant="outline" padding="lg" className="text-center">
-                <div className="text-4xl mb-3">💡</div>
-                <h3 className="font-semibold text-seeya-text mb-1">
-                  No recommendations yet
-                </h3>
-                <p className="text-sm text-seeya-text-secondary">
-                  Recommendations from your friends&apos; trips will appear here
-                </p>
-              </Card>
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Traveling Now / Upcoming */}
-            <TravelingNowSection friends={travelingFriends} />
-
-            {/* Popular Destinations */}
-            <PopularDestinationsSection
-              destinations={popularDestinations}
-              onDestinationClick={(dest) => setSelectedCountry(dest.country)}
-            />
-
-            {/* Trending Wanderlist */}
-            <TrendingWanderlistSection
-              places={trendingPlaces}
-              onAddToWanderlist={handleAddToWanderlist}
-            />
-          </div>
+          {/* Recommendations grid */}
+          {filteredRecommendations.length > 0 ? (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {filteredRecommendations.map((rec) => (
+                <RecommendationCard
+                  key={rec.id}
+                  recommendation={rec}
+                  onSave={handleSaveRecommendation}
+                  onUnsave={handleUnsaveRecommendation}
+                />
+              ))}
+            </div>
+          ) : recommendations.length > 0 ? (
+            <Card variant="outline" padding="lg" className="text-center">
+              <p className="text-seeya-text-secondary">
+                No recommendations match your filters
+              </p>
+            </Card>
+          ) : (
+            <Card variant="outline" padding="lg" className="text-center">
+              <div className="text-4xl mb-3">💡</div>
+              <h3 className="font-semibold text-seeya-text mb-1">
+                No recommendations yet
+              </h3>
+              <p className="text-sm text-seeya-text-secondary">
+                Recommendations from your friends&apos; trips will appear here
+              </p>
+            </Card>
+          )}
         </div>
-      )}
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Traveling Now / Upcoming */}
+          <TravelingNowSection friends={travelingFriends} />
+
+          {/* Popular Destinations */}
+          <PopularDestinationsSection
+            destinations={popularDestinations}
+            onDestinationClick={(dest) => setSelectedCountry(dest.country)}
+          />
+
+          {/* Trending Wanderlist */}
+          <TrendingWanderlistSection
+            places={trendingPlaces}
+            onAddToWanderlist={handleAddToWanderlist}
+          />
+        </div>
+      </div>
     </div>
   );
 }
