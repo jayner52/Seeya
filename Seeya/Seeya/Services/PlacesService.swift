@@ -28,7 +28,9 @@ struct PlaceDetails {
 actor PlacesService {
     static let shared = PlacesService()
 
-    private let apiKey = "AIzaSyBS0e5TnVyJd1PCBESPBACkdQt4Dbej6Rw"
+    private var apiKey: String {
+        SecretsManager.googlePlacesAPIKey
+    }
 
     private let baseURL = "https://maps.googleapis.com/maps/api/place"
 

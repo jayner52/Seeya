@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets - NEVER commit API keys
+Secrets.plist
+**/Secrets.plist
+
+# iOS
+*.xcuserstate
+xcuserdata/
+DerivedData/
