@@ -1,102 +1,130 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useAuthStore } from '@/stores/authStore';
 import {
   Card,
   Button,
   Badge,
-  Avatar,
   StackedAvatars,
   Spinner,
 } from '@/components/ui';
-import { formatDateRange, getDaysUntil, formatDate } from '@/lib/utils/date';
+import {
+  TripTabNav,
+  PlanningTab,
+  ItineraryTab,
+  AddTripBitSheet,
+} from '@/components/trips';
+import type { TripTab } from '@/components/trips';
+import { formatDateRange, getDaysUntil } from '@/lib/utils/date';
 import {
   MapPin,
   Calendar,
-  Users,
-  Share2,
-  Plus,
-  Plane,
-  Hotel,
-  Utensils,
-  Ticket,
-  ChevronRight,
+  Settings,
   ArrowLeft,
+  MoreHorizontal,
 } from 'lucide-react';
-import Link from 'next/link';
-import type { TripWithDetails, TripBit } from '@/types';
-
-const categoryIcons: Record<string, typeof Plane> = {
-  flight: Plane,
-  hotel: Hotel,
-  restaurant: Utensils,
-  activity: Ticket,
-  transport: MapPin,
-};
+import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
 
 export default function TripDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { user } = useAuthStore();
   const tripId = params?.id as string;
+
   const [trip, setTrip] = useState<TripWithDetails | null>(null);
   const [tripbits, setTripbits] = useState<TripBit[]>([]);
+  const [inviteLink, setInviteLink] = useState<TripInviteLink | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TripTab>('planning');
+  const [showAddSheet, setShowAddSheet] = useState(false);
+  const [addSheetCategory, setAddSheetCategory] = useState<TripBitCategory | undefined>();
+  const [showMenu, setShowMenu] = useState(false);
 
-  useEffect(() => {
-    async function fetchTrip() {
-      const supabase = createClient();
+  const fetchTrip = useCallback(async () => {
+    const supabase = createClient();
 
-      // Get trip
-      const { data: tripData } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('id', tripId)
-        .single();
+    // Get trip
+    const { data: tripData } = await supabase
+      .from('trips')
+      .select('*')
+      .eq('id', tripId)
+      .single();
 
-      if (!tripData) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Get locations
-      const { data: locations } = await supabase
-        .from('trip_locations')
-        .select(`
-          *,
-          city:cities (id, name, country, country_code, continent)
-        `)
-        .eq('trip_id', tripId)
-        .order('order_index');
-
-      // Get participants
-      const { data: participants } = await supabase
-        .from('trip_participants')
-        .select(`
-          *,
-          user:profiles (id, full_name, avatar_url)
-        `)
-        .eq('trip_id', tripId)
-        .eq('status', 'accepted');
-
-      // Get tripbits
-      const { data: bits } = await supabase
-        .from('tripbits')
-        .select('*')
-        .eq('trip_id', tripId)
-        .order('date', { ascending: true });
-
-      setTrip({
-        ...tripData,
-        locations: locations || [],
-        participants: participants || [],
-      });
-      setTripbits(bits || []);
+    if (!tripData) {
       setIsLoading(false);
+      return;
     }
 
-    fetchTrip();
+    // Get locations
+    const { data: locations } = await supabase
+      .from('trip_locations')
+      .select(`
+        *,
+        city:cities (id, name, country, country_code, continent)
+      `)
+      .eq('trip_id', tripId)
+      .order('order_index');
+
+    // Get participants (all statuses)
+    const { data: participants } = await supabase
+      .from('trip_participants')
+      .select(`
+        *,
+        user:profiles (id, full_name, avatar_url)
+      `)
+      .eq('trip_id', tripId);
+
+    // Get tripbits
+    const { data: bits } = await supabase
+      .from('tripbits')
+      .select('*')
+      .eq('trip_id', tripId)
+      .order('date', { ascending: true });
+
+    // Get existing invite link
+    const { data: invite } = await supabase
+      .from('trip_invite_links')
+      .select('*')
+      .eq('trip_id', tripId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    setTrip({
+      ...tripData,
+      locations: locations || [],
+      participants: participants || [],
+    });
+    setTripbits(bits || []);
+    setInviteLink(invite);
+    setIsLoading(false);
   }, [tripId]);
+
+  useEffect(() => {
+    fetchTrip();
+  }, [fetchTrip]);
+
+  const handleAddTripBit = (category?: TripBitCategory) => {
+    setAddSheetCategory(category);
+    setShowAddSheet(true);
+  };
+
+  const handleTripBitClick = (tripBit: TripBit) => {
+    // TODO: Open trip bit detail modal
+    console.log('View trip bit:', tripBit);
+  };
+
+  const handleInviteClick = () => {
+    // Switch to planning tab if on itinerary
+    setActiveTab('planning');
+    // Scroll to invite section (optional enhancement)
+  };
+
+  const isOwner = trip?.user_id === user?.id;
 
   if (isLoading) {
     return (
@@ -129,19 +157,52 @@ export default function TripDetailPage() {
   const acceptedParticipants = trip.participants.filter(
     (p) => p.status === 'accepted'
   );
+  const firstLocation = trip.locations[0];
 
   return (
     <div className="min-h-screen">
       {/* Header */}
       <div className="bg-gradient-to-br from-seeya-purple to-purple-700 text-white">
         <div className="p-6">
-          <Link
-            href="/trips"
-            className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4"
-          >
-            <ArrowLeft size={20} />
-            <span>Back to Trips</span>
-          </Link>
+          <div className="flex items-center justify-between mb-4">
+            <Link
+              href="/trips"
+              className="inline-flex items-center gap-2 text-white/80 hover:text-white"
+            >
+              <ArrowLeft size={20} />
+              <span>Back to Trips</span>
+            </Link>
+
+            {/* Menu */}
+            {isOwner && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <MoreHorizontal size={20} />
+                </button>
+                {showMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowMenu(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20">
+                      <Link
+                        href={`/trips/${tripId}/edit`}
+                        className="flex items-center gap-2 px-4 py-2 text-seeya-text hover:bg-gray-50"
+                        onClick={() => setShowMenu(false)}
+                      >
+                        <Settings size={16} />
+                        <span>Edit Trip</span>
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex items-start justify-between">
             <div>
@@ -157,8 +218,29 @@ export default function TripDetailPage() {
                     In {daysUntil} days
                   </Badge>
                 )}
+                {daysUntil !== null && daysUntil === 0 && (
+                  <Badge
+                    variant="default"
+                    className="bg-seeya-success text-white border-0"
+                  >
+                    Today!
+                  </Badge>
+                )}
               </div>
 
+              {/* Location */}
+              {firstLocation && (
+                <div className="flex items-center gap-2 text-white/80 mb-1">
+                  <MapPin size={16} />
+                  <span>
+                    {firstLocation.name}
+                    {trip.locations.length > 1 &&
+                      ` +${trip.locations.length - 1} more`}
+                  </span>
+                </div>
+              )}
+
+              {/* Dates */}
               {dateRange && (
                 <div className="flex items-center gap-2 text-white/80">
                   <Calendar size={16} />
@@ -166,15 +248,6 @@ export default function TripDetailPage() {
                 </div>
               )}
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-white/30 text-white hover:bg-white/10"
-              leftIcon={<Share2 size={16} />}
-            >
-              Share
-            </Button>
           </div>
 
           {/* Travelers */}
@@ -185,108 +258,60 @@ export default function TripDetailPage() {
               size="md"
             />
             <span className="text-white/80 text-sm">
-              {acceptedParticipants.length} travelers
+              {acceptedParticipants.length}{' '}
+              {acceptedParticipants.length === 1 ? 'traveler' : 'travelers'}
             </span>
           </div>
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="px-6 py-4 bg-white border-b border-gray-100 sticky top-0 z-10">
+        <TripTabNav
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          className="max-w-md"
+        />
+      </div>
+
       {/* Content */}
       <div className="p-6">
-        {/* Locations */}
-        {trip.locations.length > 0 && (
-          <section className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-seeya-text flex items-center gap-2">
-                <MapPin className="text-seeya-purple" size={20} />
-                Destinations
-              </h2>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {trip.locations.map((location, index) => (
-                <Card
-                  key={location.id}
-                  variant="outline"
-                  padding="md"
-                  className="flex-shrink-0 min-w-[200px]"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-seeya-purple/10 flex items-center justify-center text-sm font-medium text-seeya-purple">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="font-medium text-seeya-text">
-                        {location.name}
-                      </p>
-                      {location.city && (
-                        <p className="text-sm text-seeya-text-secondary">
-                          {location.city.country}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
+        {activeTab === 'planning' ? (
+          <PlanningTab
+            tripId={tripId}
+            tripBits={tripbits}
+            participants={trip.participants}
+            existingInviteCode={inviteLink?.code}
+            onAddTripBit={handleAddTripBit}
+            onTripBitClick={handleTripBitClick}
+            onInviteClick={handleInviteClick}
+          />
+        ) : (
+          <ItineraryTab
+            tripBits={tripbits}
+            startDate={trip.start_date}
+            endDate={trip.end_date}
+            onTripBitClick={handleTripBitClick}
+            onAddClick={() => handleAddTripBit()}
+          />
         )}
-
-        {/* TripBits / Itinerary */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-seeya-text flex items-center gap-2">
-              <Calendar className="text-seeya-purple" size={20} />
-              Itinerary
-            </h2>
-            <Button variant="secondary" size="sm" leftIcon={<Plus size={16} />}>
-              Add
-            </Button>
-          </div>
-
-          {tripbits.length === 0 ? (
-            <Card
-              variant="outline"
-              padding="lg"
-              className="text-center text-seeya-text-secondary"
-            >
-              <p className="mb-4">No plans added yet</p>
-              <Button variant="purple" size="sm" leftIcon={<Plus size={16} />}>
-                Add Your First Plan
-              </Button>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {tripbits.map((bit) => {
-                const Icon = categoryIcons[bit.category] || Ticket;
-                return (
-                  <Card key={bit.id} variant="outline" padding="md">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-seeya-purple/10 flex items-center justify-center">
-                        <Icon className="text-seeya-purple" size={20} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-seeya-text truncate">
-                          {bit.title}
-                        </p>
-                        {bit.date && (
-                          <p className="text-sm text-seeya-text-secondary">
-                            {formatDate(bit.date, 'EEE, MMM d')}
-                            {bit.time && ` at ${bit.time}`}
-                          </p>
-                        )}
-                      </div>
-                      <ChevronRight
-                        size={20}
-                        className="text-seeya-text-secondary"
-                      />
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </section>
       </div>
+
+      {/* Add Trip Bit Sheet */}
+      <AddTripBitSheet
+        tripId={tripId}
+        initialCategory={addSheetCategory}
+        isOpen={showAddSheet}
+        onClose={() => {
+          setShowAddSheet(false);
+          setAddSheetCategory(undefined);
+        }}
+        onSuccess={() => {
+          setShowAddSheet(false);
+          setAddSheetCategory(undefined);
+          fetchTrip(); // Refresh data
+        }}
+      />
     </div>
   );
 }

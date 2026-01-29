@@ -94,6 +94,31 @@ export type TripBitCategory =
   | 'note'
   | 'other';
 
+export type FriendshipStatus = 'pending' | 'accepted' | 'declined';
+
+export interface Friendship {
+  id: string;
+  requester_id: string;
+  addressee_id: string;
+  status: FriendshipStatus;
+  created_at: string;
+  requester?: Profile;
+  addressee?: Profile;
+}
+
+export interface WanderlistItem {
+  id: string;
+  user_id: string;
+  country_id?: string;
+  city_id?: string;
+  place_name?: string;
+  place_id?: string;
+  notes?: string;
+  created_at?: string;
+  country?: { name: string; continent: string };
+  city?: City;
+}
+
 // Extended types for API responses
 export interface TripWithDetails extends Trip {
   locations: TripLocation[];

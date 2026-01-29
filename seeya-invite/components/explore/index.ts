@@ -1,0 +1,9 @@
+export { SearchBar } from './SearchBar';
+export { CategoryFilter } from './CategoryFilter';
+export type { RecommendationCategory } from './CategoryFilter';
+export { CountryChips } from './CountryChips';
+export { RecommendationCard } from './RecommendationCard';
+export type { Recommendation } from './RecommendationCard';
+export { TravelingNowSection } from './TravelingNowSection';
+export { PopularDestinationsSection } from './PopularDestinationsSection';
+export { TrendingWanderlistSection } from './TrendingWanderlistSection';

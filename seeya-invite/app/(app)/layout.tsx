@@ -13,11 +13,13 @@ import {
   Menu,
   X,
   Calendar,
+  Sparkles,
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
   { label: 'Trips', href: '/trips', icon: Plane },
+  { label: 'Explore', href: '/explore', icon: Sparkles },
   { label: 'Calendar', href: '/calendar', icon: Calendar },
   { label: 'Circle', href: '/circle', icon: Users },
   { label: 'Profile', href: '/profile', icon: User },

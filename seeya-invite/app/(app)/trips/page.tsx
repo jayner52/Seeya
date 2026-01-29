@@ -118,9 +118,11 @@ export default function TripsPage() {
             {trips.length} {trips.length === 1 ? 'trip' : 'trips'}
           </p>
         </div>
-        <Button variant="purple" leftIcon={<Plus size={20} />}>
-          New Trip
-        </Button>
+        <Link href="/trips/new">
+          <Button variant="purple" leftIcon={<Plus size={20} />}>
+            New Trip
+          </Button>
+        </Link>
       </div>
 
       {/* Trips List */}
@@ -134,9 +136,11 @@ export default function TripsPage() {
             Start planning your next adventure! Create a trip and invite your
             friends to join.
           </p>
-          <Button variant="purple" leftIcon={<Plus size={20} />}>
-            Create Your First Trip
-          </Button>
+          <Link href="/trips/new">
+            <Button variant="purple" leftIcon={<Plus size={20} />}>
+              Create Your First Trip
+            </Button>
+          </Link>
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
