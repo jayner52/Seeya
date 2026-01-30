@@ -58,14 +58,14 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
         return;
       }
 
-      const { data: locationsData } = await supabase
+      const { data: locationsData, error: locError } = await supabase
         .from('trip_locations')
-        .select(`
-          *,
-          city:cities (id, name, country, country_code)
-        `)
+        .select('*')
         .eq('trip_id', tripId)
         .order('order_index');
+
+      console.log('EditTripForm - locations query error:', locError);
+      console.log('EditTripForm - tripId:', tripId);
 
       setTrip({ ...tripData, locations: locationsData || [], participants: [] });
 
@@ -79,15 +79,17 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       setFlexibleDates(tripData.flexible_dates || false);
       setVisibility(tripData.visibility || 'full_details');
 
-      if (locationsData) {
-        setLocations(
-          locationsData.map((loc) => ({
-            id: loc.id,
-            name: loc.custom_location || loc.name || loc.city?.name || '',
-            cityId: loc.city_id || undefined,
-            country: loc.city?.country,
-          }))
-        );
+      if (locationsData && locationsData.length > 0) {
+        console.log('EditTripForm - mapping locations:', locationsData);
+        const mappedLocations = locationsData.map((loc: Record<string, unknown>) => ({
+          id: loc.id as string,
+          name: (loc.custom_location as string) || (loc.name as string) || '',
+          cityId: (loc.city_id as string) || undefined,
+        }));
+        console.log('EditTripForm - mappedLocations:', mappedLocations);
+        setLocations(mappedLocations);
+      } else {
+        console.log('EditTripForm - no locations found for trip');
       }
 
       setIsLoading(false);
