@@ -1,7 +1,14 @@
 import type { Profile } from './database';
 
-// Calendar view modes
-export type CalendarViewMode = '1mo' | '3mo' | '6mo' | '12mo';
+// Calendar view modes (compactness-based like iOS)
+export type CalendarViewMode = 'full' | 'split' | 'grid';
+
+// View mode configuration
+export const VIEW_MODE_CONFIG = {
+  full: { columns: 1, label: 'Full', isCompact: false, isExtraCompact: false },
+  split: { columns: 2, label: 'Split', isCompact: true, isExtraCompact: false },
+  grid: { columns: 3, label: 'Grid', isCompact: true, isExtraCompact: true },
+} as const;
 
 // Trip filter options
 export type TripFilter = 'all' | 'my_trips' | 'shared';

@@ -1,78 +1,60 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { useCalendarStore } from '@/stores/calendarStore';
-import { format, addMonths } from 'date-fns';
+import { format } from 'date-fns';
 import type { CalendarViewMode } from '@/types/calendar';
+import { VIEW_MODE_CONFIG } from '@/types/calendar';
 import { cn } from '@/lib/utils/cn';
 
-const VIEW_OPTIONS: { value: CalendarViewMode; label: string }[] = [
-  { value: '1mo', label: '1 Mo' },
-  { value: '3mo', label: '3 Mo' },
-  { value: '6mo', label: '6 Mo' },
-  { value: '12mo', label: '12 Mo' },
-];
+const VIEW_OPTIONS: CalendarViewMode[] = ['full', 'split', 'grid'];
 
-export function CalendarHeader() {
-  const { viewMode, currentDate, setViewMode, navigateMonths, goToToday } = useCalendarStore();
+interface CalendarHeaderProps {
+  onScrollToToday?: () => void;
+}
 
-  // Calculate date range display
-  const getDateRangeDisplay = () => {
-    const monthCount = viewMode === '1mo' ? 1 : viewMode === '3mo' ? 3 : viewMode === '6mo' ? 6 : 12;
-    const endDate = addMonths(currentDate, monthCount - 1);
+export function CalendarHeader({ onScrollToToday }: CalendarHeaderProps) {
+  const { viewMode, currentDate, setViewMode, goToToday } = useCalendarStore();
 
-    const startStr = format(currentDate, 'MMM yyyy');
-    const endStr = format(endDate, 'MMM yyyy');
-
-    if (startStr === endStr) return startStr;
-    return `${format(currentDate, 'MMM yyyy')} - ${endStr}`;
+  const handleTodayClick = () => {
+    goToToday();
+    onScrollToToday?.();
   };
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-      {/* Left: Navigation */}
+      {/* Left: Today button and date */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => navigateMonths(-1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Previous"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <button
-            onClick={() => navigateMonths(1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Next"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
-
-        <Button variant="outline" size="sm" onClick={goToToday}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleTodayClick}
+          className="text-seeya-purple hover:text-seeya-purple hover:bg-seeya-purple/10"
+        >
+          <MapPin size={14} className="mr-1" />
           Today
         </Button>
 
-        <h2 className="text-lg font-semibold text-seeya-text">
-          {getDateRangeDisplay()}
-        </h2>
+        <span className="text-sm text-seeya-text-secondary">
+          {format(new Date(), 'MMMM yyyy')}
+        </span>
       </div>
 
-      {/* Right: View Mode Selector */}
+      {/* Right: View Mode Selector (compactness) */}
       <div className="flex items-center bg-gray-100 rounded-lg p-1">
-        {VIEW_OPTIONS.map((option) => (
+        {VIEW_OPTIONS.map((mode) => (
           <button
-            key={option.value}
-            onClick={() => setViewMode(option.value)}
+            key={mode}
+            onClick={() => setViewMode(mode)}
             className={cn(
-              'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-              viewMode === option.value
+              'px-4 py-1.5 text-sm font-medium rounded-md transition-colors',
+              viewMode === mode
                 ? 'bg-white text-seeya-purple shadow-sm'
                 : 'text-seeya-text-secondary hover:text-seeya-text'
             )}
           >
-            {option.label}
+            {VIEW_MODE_CONFIG[mode].label}
           </button>
         ))}
       </div>

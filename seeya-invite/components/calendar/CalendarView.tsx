@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { Spinner } from '@/components/ui';
@@ -15,7 +15,7 @@ import type { CalendarTrip, TravelPal, UpcomingTrip } from '@/types/calendar';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarFilters } from './CalendarFilters';
 import { CalendarLegend } from './CalendarLegend';
-import { CalendarGrid } from './CalendarGrid';
+import { CalendarGrid, CalendarGridRef } from './CalendarGrid';
 import { TravelPalsSidebar } from './TravelPalsSidebar';
 import { UpcomingTripsList } from './UpcomingTripsList';
 import { TripPopover } from './TripPopover';
@@ -23,6 +23,7 @@ import { TripPopover } from './TripPopover';
 export function CalendarView() {
   const { user } = useAuthStore();
   const { filter, enabledPals } = useCalendarStore();
+  const calendarGridRef = useRef<CalendarGridRef>(null);
 
   // Data states
   const [userTrips, setUserTrips] = useState<CalendarTrip[]>([]);
@@ -99,6 +100,11 @@ export function CalendarView() {
     return trips;
   }, [userTrips, palTrips, filter]);
 
+  // Handle scroll to today
+  const handleScrollToToday = () => {
+    calendarGridRef.current?.scrollToToday();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -111,12 +117,13 @@ export function CalendarView() {
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Main calendar area */}
       <div className="flex-1 min-w-0">
-        <CalendarHeader />
+        <CalendarHeader onScrollToToday={handleScrollToToday} />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <CalendarFilters trips={userTrips} />
           <CalendarLegend />
         </div>
         <CalendarGrid
+          ref={calendarGridRef}
           trips={displayTrips}
           onTripClick={setSelectedTrip}
         />

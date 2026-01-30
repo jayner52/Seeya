@@ -3,8 +3,8 @@ import { addMonths } from 'date-fns';
 import type { CalendarViewMode, TripFilter, CalendarState } from '@/types/calendar';
 
 export const useCalendarStore = create<CalendarState>((set, get) => ({
-  // Initial state
-  viewMode: '12mo',
+  // Initial state - default to 'split' like iOS
+  viewMode: 'split',
   currentDate: new Date(),
   filter: 'all',
   enabledPals: new Set<string>(),
@@ -44,12 +44,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   navigateMonths: (delta: number) => {
-    const { currentDate, viewMode } = get();
-    // Navigate by the view increment
-    const monthDelta = viewMode === '1mo' ? delta :
-                       viewMode === '3mo' ? delta * 3 :
-                       viewMode === '6mo' ? delta * 6 : delta * 12;
-    set({ currentDate: addMonths(currentDate, monthDelta) });
+    const { currentDate } = get();
+    // Simple navigation by single month (used for scrolling to today)
+    set({ currentDate: addMonths(currentDate, delta) });
   },
 
   goToToday: () => {
