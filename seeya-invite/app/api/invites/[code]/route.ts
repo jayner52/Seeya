@@ -37,7 +37,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Get trip
     const { data: trip, error: tripError } = await supabase
       .from('trips')
-      .select('id, name, description, start_date, end_date, user_id, created_at, updated_at')
+      .select('id, name, description, start_date, end_date, user_id, created_at, updated_at, visibility')
       .eq('id', invite.trip_id)
       .single();
 

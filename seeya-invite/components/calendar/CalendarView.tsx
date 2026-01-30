@@ -48,6 +48,10 @@ export function CalendarView() {
           fetchUpcomingTrips(user!.id),
         ]);
 
+        console.log('[CalendarView] Fetched trips:', trips);
+        console.log('[CalendarView] Fetched pals:', pals);
+        console.log('[CalendarView] Fetched upcoming:', upcoming);
+
         setUserTrips(trips);
         setTravelPals(pals);
         setUpcomingTrips(upcoming);

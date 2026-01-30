@@ -42,7 +42,8 @@ async function getInviteData(code: string) {
       end_date,
       user_id,
       created_at,
-      updated_at
+      updated_at,
+      visibility
     `
     )
     .eq('id', invite.trip_id)

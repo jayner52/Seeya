@@ -8,13 +8,18 @@ import type {
 } from '@/types/calendar';
 import { getPalColor, LEGEND_COLORS } from '@/types/calendar';
 
-// Helper to get city name from Supabase nested relation (can be array or object)
-function getCityName(city: unknown): string | undefined {
-  if (!city) return undefined;
-  if (Array.isArray(city)) {
-    return city[0]?.name;
+// Helper to get destination from location (returns "City, Country" format like iOS)
+function getDestination(location: any): string | undefined {
+  if (!location) return undefined;
+
+  const city = Array.isArray(location.city) ? location.city[0] : location.city;
+  const cityName = city?.name || location.name;
+  const countryName = city?.country;
+
+  if (cityName && countryName) {
+    return `${cityName}, ${countryName}`;
   }
-  return (city as { name?: string })?.name;
+  return cityName;
 }
 
 // Fetch user's trips (owned + participating)
@@ -22,7 +27,7 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
   const supabase = createClient();
 
   // Get trips where user is owner
-  const { data: ownedTrips } = await supabase
+  const { data: ownedTrips, error: ownedError } = await supabase
     .from('trips')
     .select(`
       id,
@@ -30,6 +35,7 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
       start_date,
       end_date,
       user_id,
+      visibility,
       trip_locations (
         name,
         order_index,
@@ -38,6 +44,8 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
     `)
     .eq('user_id', userId)
     .not('start_date', 'is', null);
+
+  console.log('[Calendar] Owned trips query:', { userId, ownedTrips, ownedError });
 
   // Get trips where user is participant
   const { data: participations } = await supabase
@@ -81,17 +89,16 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
       if (!trip.start_date || !trip.end_date) continue;
 
       const locations = trip.trip_locations || [];
-      const firstLocation = locations.sort((a: any, b: any) => a.order_index - b.order_index)[0];
-      const destination = firstLocation
-        ? (getCityName(firstLocation.city) || firstLocation.name)
-        : undefined;
+      const sortedLocations = [...locations].sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
+      const firstLocation = sortedLocations[0];
+      const destination = getDestination(firstLocation);
 
       trips.push({
         id: trip.id,
         name: trip.name,
         start_date: trip.start_date,
         end_date: trip.end_date,
-        visibility: 'full_details' as VisibilityLevel,
+        visibility: (trip.visibility as VisibilityLevel) || 'full_details',
         owner: {
           id: userId,
           full_name: userProfile?.full_name || 'You',
@@ -104,8 +111,11 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
     }
   }
 
+  console.log('[Calendar] Processed owned trips:', trips.length);
+
   // Process participating trips
   if (participations) {
+    console.log('[Calendar] Participations:', participations.length);
     for (const p of participations) {
       const trip = p.trip as any;
       if (!trip || !trip.start_date || !trip.end_date) continue;
@@ -113,10 +123,9 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
       if (trip.user_id === userId) continue;
 
       const locations = trip.trip_locations || [];
-      const firstLocation = locations.sort((a: any, b: any) => a.order_index - b.order_index)[0];
-      const destination = firstLocation
-        ? (getCityName(firstLocation.city) || firstLocation.name)
-        : undefined;
+      const sortedLocations = [...locations].sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
+      const firstLocation = sortedLocations[0];
+      const destination = getDestination(firstLocation);
 
       const owner = Array.isArray(trip.owner) ? trip.owner[0] : trip.owner;
       const role: TripRole = p.status === 'accepted' ? 'accepted' : 'invited';
@@ -139,6 +148,7 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
     }
   }
 
+  console.log('[Calendar] Total user trips:', trips.length, trips.map(t => ({ id: t.id, name: t.name, start: t.start_date, end: t.end_date })));
   return trips;
 }
 
@@ -257,10 +267,9 @@ export async function fetchPalTrips(
 
     const owner = Array.isArray(trip.owner) ? trip.owner[0] : trip.owner;
     const locations = trip.trip_locations || [];
-    const firstLocation = locations.sort((a: any, b: any) => a.order_index - b.order_index)[0];
-    const destination = firstLocation
-      ? (getCityName(firstLocation.city) || firstLocation.name)
-      : undefined;
+    const sortedLocations = [...locations].sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
+    const firstLocation = sortedLocations[0];
+    const destination = getDestination(firstLocation);
 
     calendarTrips.push({
       id: trip.id,
@@ -287,18 +296,8 @@ export async function fetchUpcomingTrips(userId: string): Promise<UpcomingTrip[]
   const supabase = createClient();
   const today = new Date().toISOString().split('T')[0];
 
-  // Get trip IDs where user is participant
-  const { data: participations } = await supabase
-    .from('trip_participants')
-    .select('trip_id')
-    .eq('user_id', userId)
-    .eq('status', 'accepted');
-
-  if (!participations || participations.length === 0) return [];
-
-  const tripIds = participations.map((p) => p.trip_id);
-
-  const { data: trips } = await supabase
+  // Get owned trips
+  const { data: ownedTrips } = await supabase
     .from('trips')
     .select(`
       id,
@@ -310,19 +309,60 @@ export async function fetchUpcomingTrips(userId: string): Promise<UpcomingTrip[]
         city:cities (name, country)
       )
     `)
-    .in('id', tripIds)
+    .eq('user_id', userId)
     .gte('start_date', today)
-    .order('start_date', { ascending: true })
-    .limit(6);
+    .not('start_date', 'is', null);
 
-  if (!trips) return [];
+  // Get trip IDs where user is participant (not owner)
+  const { data: participations } = await supabase
+    .from('trip_participants')
+    .select('trip_id')
+    .eq('user_id', userId)
+    .eq('status', 'accepted');
 
-  return trips.map((trip) => {
+  let participatingTrips: any[] = [];
+  if (participations && participations.length > 0) {
+    const tripIds = participations.map((p) => p.trip_id);
+
+    const { data: trips } = await supabase
+      .from('trips')
+      .select(`
+        id,
+        name,
+        start_date,
+        user_id,
+        trip_locations (
+          name,
+          order_index,
+          city:cities (name, country)
+        )
+      `)
+      .in('id', tripIds)
+      .neq('user_id', userId) // Exclude owned trips (already fetched above)
+      .gte('start_date', today)
+      .not('start_date', 'is', null);
+
+    participatingTrips = trips || [];
+  }
+
+  // Combine and deduplicate
+  const allTrips = [...(ownedTrips || []), ...participatingTrips];
+  const uniqueTrips = allTrips.filter((trip, index, self) =>
+    index === self.findIndex((t) => t.id === trip.id)
+  );
+
+  // Sort by start_date and limit to 6
+  const sortedTrips = uniqueTrips
+    .sort((a, b) => new Date(a.start_date!).getTime() - new Date(b.start_date!).getTime())
+    .slice(0, 6);
+
+  console.log('[Calendar] Upcoming trips:', sortedTrips.length);
+
+  return sortedTrips.map((trip) => {
     const locations = trip.trip_locations || [];
-    const firstLocation = locations.sort((a: any, b: any) => a.order_index - b.order_index)[0];
-    const destination = firstLocation
-      ? (getCityName(firstLocation.city) || firstLocation.name)
-      : undefined;
+    const sortedLocations = [...locations].sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
+    const firstLocation = sortedLocations[0];
+    const destination = getDestination(firstLocation);
 
     const startDate = new Date(trip.start_date!);
     const now = new Date();
