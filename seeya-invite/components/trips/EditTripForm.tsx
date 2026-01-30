@@ -69,6 +69,8 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
 
       setTrip({ ...tripData, locations: locationsData || [], participants: [] });
 
+      console.log('EditTripForm - locationsData:', locationsData);
+
       // Populate form state
       setName(tripData.name);
       setDescription(tripData.description || '');
