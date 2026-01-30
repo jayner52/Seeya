@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd seeya-invite && npm run build",
-  "outputDirectory": "seeya-invite/.next",
-  "installCommand": "cd seeya-invite && npm install",
-  "framework": "nextjs"
-}
