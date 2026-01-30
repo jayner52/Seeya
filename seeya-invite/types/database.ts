@@ -23,13 +23,20 @@ export interface Trip {
 export interface TripLocation {
   id: string;
   trip_id: string;
-  city_id: string | null;
-  name: string;
-  arrival_date: string | null;
-  departure_date: string | null;
+  city_id?: string | null;
+  country_id?: string | null;
+  name?: string;  // Web uses this
+  custom_location?: string;  // iOS uses this
+  arrival_date?: string | null;
+  departure_date?: string | null;
   order_index: number;
   created_at: string;
   city?: City;
+}
+
+// Helper to get location display name (works with both iOS and web data)
+export function getLocationDisplayName(location: TripLocation): string {
+  return location.name || location.custom_location || location.city?.name || 'Unknown location';
 }
 
 export interface City {

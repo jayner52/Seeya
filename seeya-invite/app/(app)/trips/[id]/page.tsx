@@ -28,6 +28,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
+import { getLocationDisplayName } from '@/types/database';
 
 export default function TripDetailPage() {
   const params = useParams();
@@ -233,7 +234,7 @@ export default function TripDetailPage() {
                 <div className="flex items-center gap-2 text-white/80 mb-1">
                   <MapPin size={16} />
                   <span>
-                    {firstLocation.name}
+                    {getLocationDisplayName(firstLocation)}
                     {trip.locations.length > 1 &&
                       ` +${trip.locations.length - 1} more`}
                   </span>
@@ -282,7 +283,7 @@ export default function TripDetailPage() {
             tripBits={tripbits}
             participants={trip.participants}
             existingInviteCode={inviteLink?.code}
-            destination={firstLocation?.name || firstLocation?.city?.name}
+            destination={firstLocation ? getLocationDisplayName(firstLocation) : undefined}
             startDate={trip.start_date}
             endDate={trip.end_date}
             onAddTripBit={handleAddTripBit}

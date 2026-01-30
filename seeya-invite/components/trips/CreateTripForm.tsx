@@ -79,7 +79,7 @@ export function CreateTripForm() {
       if (locations.length > 0) {
         const locationInserts = locations.map((loc, index) => ({
           trip_id: trip.id,
-          name: loc.name,
+          custom_location: loc.name,  // Use custom_location to match iOS
           city_id: loc.cityId || null,
           order_index: index,
           arrival_date: index === 0 ? startDate : null,

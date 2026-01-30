@@ -81,7 +81,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
         setLocations(
           locationsData.map((loc) => ({
             id: loc.id,
-            name: loc.name,
+            name: loc.custom_location || loc.name || loc.city?.name || '',
             cityId: loc.city_id || undefined,
             country: loc.city?.country,
           }))
@@ -133,7 +133,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       if (locations.length > 0) {
         const locationInserts = locations.map((loc, index) => ({
           trip_id: tripId,
-          name: loc.name,
+          custom_location: loc.name,  // Use custom_location to match iOS
           city_id: loc.cityId || null,
           order_index: index,
           arrival_date: index === 0 ? startDate : null,
