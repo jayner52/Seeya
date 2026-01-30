@@ -35,7 +35,6 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
       start_date,
       end_date,
       user_id,
-      visibility,
       trip_locations (
         name,
         order_index,
@@ -98,7 +97,7 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
         name: trip.name,
         start_date: trip.start_date,
         end_date: trip.end_date,
-        visibility: (trip.visibility as VisibilityLevel) || 'full_details',
+        visibility: 'full_details' as VisibilityLevel,
         owner: {
           id: userId,
           full_name: userProfile?.full_name || 'You',
@@ -224,7 +223,6 @@ export async function fetchPalTrips(
       start_date,
       end_date,
       user_id,
-      visibility,
       owner:profiles!trips_user_id_fkey (
         id,
         full_name,
@@ -261,9 +259,8 @@ export async function fetchPalTrips(
   for (const trip of trips) {
     if (!trip.start_date || !trip.end_date) continue;
 
-    // Respect visibility settings
-    const visibility = (trip.visibility as VisibilityLevel) || 'full_details';
-    if (visibility === 'only_me') continue;
+    // Default to full_details visibility (visibility column doesn't exist in DB yet)
+    const visibility: VisibilityLevel = 'full_details';
 
     const owner = Array.isArray(trip.owner) ? trip.owner[0] : trip.owner;
     const locations = trip.trip_locations || [];
@@ -273,7 +270,7 @@ export async function fetchPalTrips(
 
     calendarTrips.push({
       id: trip.id,
-      name: visibility === 'busy_only' ? 'Busy' : trip.name,
+      name: trip.name,
       start_date: trip.start_date,
       end_date: trip.end_date,
       visibility,
@@ -284,7 +281,7 @@ export async function fetchPalTrips(
       },
       role: 'viewing',
       color: palColorMap.get(trip.user_id) || LEGEND_COLORS.viewing,
-      destination: visibility === 'dates_only' ? undefined : destination,
+      destination,
     });
   }
 

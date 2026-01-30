@@ -38,7 +38,7 @@ async function getInviteAndUserData(code: string) {
   // Get trip details
   const { data: trip } = await supabase
     .from('trips')
-    .select('id, name, description, start_date, end_date, user_id, created_at, updated_at, visibility')
+    .select('id, name, description, start_date, end_date, user_id, created_at, updated_at')
     .eq('id', invite.trip_id)
     .single();
 

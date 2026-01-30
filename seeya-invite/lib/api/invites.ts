@@ -47,8 +47,7 @@ export async function validateInviteCode(
         end_date,
         user_id,
         created_at,
-        updated_at,
-        visibility
+        updated_at
       `
       )
       .eq('id', invite.trip_id)

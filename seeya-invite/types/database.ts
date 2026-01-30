@@ -17,7 +17,7 @@ export interface Trip {
   user_id: string;
   created_at: string;
   updated_at: string;
-  visibility: string | null;
+  visibility?: string | null;
 }
 
 export interface TripLocation {
