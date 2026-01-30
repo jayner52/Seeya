@@ -75,7 +75,7 @@ export function AddTripBitSheet({
     try {
       const supabase = createClient();
 
-      const { error: insertError } = await supabase.from('tripbits').insert({
+      const { error: insertError } = await supabase.from('trip_bits').insert({
         trip_id: tripId,
         created_by: user.id,
         category,

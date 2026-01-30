@@ -13,6 +13,8 @@ export default function DebugPage() {
     ownedTrips: unknown[];
     participantTrips: unknown[];
     profiles: unknown[];
+    tripLocations: unknown[];
+    tripBits: unknown[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,12 +52,27 @@ export default function DebugPage() {
         .select('id, full_name')
         .limit(10);
 
+      // Get trip_locations for first trip
+      const firstTripId = allTrips?.[0]?.id;
+      const { data: tripLocations } = await supabase
+        .from('trip_locations')
+        .select('*')
+        .eq('trip_id', firstTripId || '');
+
+      // Get trip_bits for first trip
+      const { data: tripBits } = await supabase
+        .from('trip_bits')
+        .select('*')
+        .eq('trip_id', firstTripId || '');
+
       setData({
         userId: user.id,
         allTrips: allTrips || [],
         ownedTrips: ownedTrips || [],
         participantTrips: participantTrips || [],
         profiles: profiles || [],
+        tripLocations: tripLocations || [],
+        tripBits: tripBits || [],
       });
       setLoading(false);
     }
@@ -117,6 +134,20 @@ export default function DebugPage() {
         <h2 className="font-semibold mb-2">Profiles in Database</h2>
         <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-64">
           {JSON.stringify(data?.profiles, null, 2)}
+        </pre>
+      </Card>
+
+      <Card variant="elevated" padding="lg">
+        <h2 className="font-semibold mb-2">Trip Locations (first trip)</h2>
+        <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-64">
+          {JSON.stringify(data?.tripLocations, null, 2)}
+        </pre>
+      </Card>
+
+      <Card variant="elevated" padding="lg">
+        <h2 className="font-semibold mb-2">Trip Bits (first trip)</h2>
+        <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-64">
+          {JSON.stringify(data?.tripBits, null, 2)}
         </pre>
       </Card>
     </div>

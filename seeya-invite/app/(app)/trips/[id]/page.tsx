@@ -80,7 +80,7 @@ export default function TripDetailPage() {
 
     // Get tripbits
     const { data: bits } = await supabase
-      .from('tripbits')
+      .from('trip_bits')
       .select('*')
       .eq('trip_id', tripId)
       .order('date', { ascending: true });
