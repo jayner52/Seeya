@@ -52,18 +52,17 @@ export default function DebugPage() {
         .select('id, full_name')
         .limit(10);
 
-      // Get trip_locations for first trip
-      const firstTripId = allTrips?.[0]?.id;
+      // Get ALL trip_locations
       const { data: tripLocations } = await supabase
         .from('trip_locations')
         .select('*')
-        .eq('trip_id', firstTripId || '');
+        .limit(50);
 
-      // Get trip_bits for first trip
+      // Get ALL trip_bits
       const { data: tripBits } = await supabase
         .from('trip_bits')
         .select('*')
-        .eq('trip_id', firstTripId || '');
+        .limit(50);
 
       setData({
         userId: user.id,
@@ -138,15 +137,15 @@ export default function DebugPage() {
       </Card>
 
       <Card variant="elevated" padding="lg">
-        <h2 className="font-semibold mb-2">Trip Locations (first trip)</h2>
-        <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-64">
+        <h2 className="font-semibold mb-2">All Trip Locations ({data?.tripLocations.length})</h2>
+        <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-96">
           {JSON.stringify(data?.tripLocations, null, 2)}
         </pre>
       </Card>
 
       <Card variant="elevated" padding="lg">
-        <h2 className="font-semibold mb-2">Trip Bits (first trip)</h2>
-        <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-64">
+        <h2 className="font-semibold mb-2">All Trip Bits ({data?.tripBits.length})</h2>
+        <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-96">
           {JSON.stringify(data?.tripBits, null, 2)}
         </pre>
       </Card>
