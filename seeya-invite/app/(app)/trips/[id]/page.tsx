@@ -84,7 +84,7 @@ export default function TripDetailPage() {
       .from('trip_bits')
       .select('*')
       .eq('trip_id', tripId)
-      .order('date', { ascending: true });
+      .order('created_at', { ascending: true });
 
     // Get existing invite link
     const { data: invite } = await supabase
