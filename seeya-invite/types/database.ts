@@ -36,7 +36,8 @@ export interface TripLocation {
 
 // Helper to get location display name (works with both iOS and web data)
 export function getLocationDisplayName(location: TripLocation): string {
-  return location.name || location.custom_location || location.city?.name || 'Unknown location';
+  // iOS uses custom_location, web might use name or city reference
+  return location.custom_location || location.name || location.city?.name || 'Unknown location';
 }
 
 export interface City {

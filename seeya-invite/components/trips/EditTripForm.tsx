@@ -58,18 +58,13 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
         return;
       }
 
-      const { data: locationsData, error: locError } = await supabase
+      const { data: locationsData } = await supabase
         .from('trip_locations')
         .select('*')
         .eq('trip_id', tripId)
         .order('order_index');
 
-      console.log('EditTripForm - locations query error:', locError);
-      console.log('EditTripForm - tripId:', tripId);
-
       setTrip({ ...tripData, locations: locationsData || [], participants: [] });
-
-      console.log('EditTripForm - locationsData:', locationsData);
 
       // Populate form state
       setName(tripData.name);
@@ -80,16 +75,13 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       setVisibility(tripData.visibility || 'full_details');
 
       if (locationsData && locationsData.length > 0) {
-        console.log('EditTripForm - mapping locations:', locationsData);
-        const mappedLocations = locationsData.map((loc: Record<string, unknown>) => ({
-          id: loc.id as string,
-          name: (loc.custom_location as string) || (loc.name as string) || '',
-          cityId: (loc.city_id as string) || undefined,
-        }));
-        console.log('EditTripForm - mappedLocations:', mappedLocations);
-        setLocations(mappedLocations);
-      } else {
-        console.log('EditTripForm - no locations found for trip');
+        setLocations(
+          locationsData.map((loc: Record<string, unknown>) => ({
+            id: loc.id as string,
+            name: (loc.custom_location as string) || (loc.name as string) || '',
+            cityId: (loc.city_id as string) || undefined,
+          }))
+        );
       }
 
       setIsLoading(false);

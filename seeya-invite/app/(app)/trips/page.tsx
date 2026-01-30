@@ -10,6 +10,12 @@ import { Plus, MapPin, Calendar, ChevronRight } from 'lucide-react';
 import type { TripParticipant } from '@/types';
 import { transformParticipant } from '@/types/database';
 
+interface TripLocation {
+  id: string;
+  custom_location: string | null;
+  order_index: number;
+}
+
 interface TripWithParticipants {
   id: string;
   name: string;
@@ -17,6 +23,7 @@ interface TripWithParticipants {
   start_date: string | null;
   end_date: string | null;
   participants: TripParticipant[];
+  locations: TripLocation[];
 }
 
 export default function TripsPage() {
@@ -95,11 +102,20 @@ export default function TripsPage() {
         .in('trip_id', allTripIds)
         .eq('status', 'accepted');
 
+      // Get locations for all trips
+      const { data: allLocations } = await supabase
+        .from('trip_locations')
+        .select('id, trip_id, custom_location, order_index')
+        .in('trip_id', allTripIds)
+        .order('order_index');
+
       // Combine data
       const tripsWithParticipants = tripsData.map((trip) => ({
         ...trip,
         participants:
           (allParticipants?.filter((p) => p.trip_id === trip.id) || []).map(transformParticipant),
+        locations:
+          allLocations?.filter((l) => l.trip_id === trip.id) || [],
       }));
 
       setTrips(tripsWithParticipants);
@@ -168,6 +184,15 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
   const daysUntil = getDaysUntil(trip.start_date);
 
+  // Get location display string
+  const firstLocation = trip.locations[0]?.custom_location;
+  const locationCount = trip.locations.length;
+  const locationDisplay = firstLocation
+    ? locationCount > 1
+      ? `${firstLocation} +${locationCount - 1} more`
+      : firstLocation
+    : null;
+
   return (
     <Link href={`/trips/${trip.id}`}>
       <Card
@@ -194,6 +219,15 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
             {trip.name}
           </h3>
 
+          {/* Location */}
+          {locationDisplay && (
+            <div className="flex items-center gap-1.5 text-sm text-seeya-text-secondary mb-1">
+              <MapPin size={14} />
+              <span className="truncate">{locationDisplay}</span>
+            </div>
+          )}
+
+          {/* Dates */}
           {dateRange && (
             <div className="flex items-center gap-1.5 text-sm text-seeya-text-secondary mb-4">
               <Calendar size={14} />
