@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { MapPin, X, Plus, GripVertical, Search } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 
 interface Location {
   id: string;
@@ -20,11 +19,11 @@ interface LocationPickerProps {
   className?: string;
 }
 
-interface CityResult {
-  id: string;
-  name: string;
-  country: string;
-  country_code: string;
+interface PlacePrediction {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  description: string;
 }
 
 export function LocationPicker({
@@ -33,7 +32,7 @@ export function LocationPicker({
   className,
 }: LocationPickerProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<CityResult[]>([]);
+  const [searchResults, setSearchResults] = useState<PlacePrediction[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +45,7 @@ export function LocationPicker({
   }, [showSearch]);
 
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
       setSearchResults([]);
       return;
     }
@@ -58,17 +57,18 @@ export function LocationPicker({
 
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
-      const supabase = createClient();
 
-      const { data, error } = await supabase
-        .from('cities')
-        .select('id, name, country, country_code')
-        .ilike('name', `${searchQuery}%`)
-        .limit(10);
+      try {
+        const response = await fetch(`/api/places/autocomplete?query=${encodeURIComponent(searchQuery)}`);
+        const data = await response.json();
 
-      if (!error && data) {
-        setSearchResults(data);
+        if (data.predictions) {
+          setSearchResults(data.predictions);
+        }
+      } catch (error) {
+        console.error('Error searching places:', error);
       }
+
       setIsSearching(false);
     }, 300);
 
@@ -79,12 +79,11 @@ export function LocationPicker({
     };
   }, [searchQuery]);
 
-  const addLocation = (city: CityResult) => {
+  const addLocation = (place: PlacePrediction) => {
     const newLocation: Location = {
       id: `temp-${Date.now()}`,
-      name: city.name,
-      cityId: city.id,
-      country: city.country,
+      name: place.mainText,
+      country: place.secondaryText,
     };
     onChange([...locations, newLocation]);
     setSearchQuery('');
@@ -107,13 +106,6 @@ export function LocationPicker({
 
   const removeLocation = (id: string) => {
     onChange(locations.filter((loc) => loc.id !== id));
-  };
-
-  const moveLocation = (fromIndex: number, toIndex: number) => {
-    const newLocations = [...locations];
-    const [movedItem] = newLocations.splice(fromIndex, 1);
-    newLocations.splice(toIndex, 0, movedItem);
-    onChange(newLocations);
   };
 
   return (
@@ -191,24 +183,24 @@ export function LocationPicker({
           </div>
 
           {/* Search Results */}
-          {(searchResults.length > 0 || (searchQuery && !isSearching)) && (
+          {(searchResults.length > 0 || (searchQuery.length >= 2 && !isSearching)) && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
-              {searchResults.map((city) => (
+              {searchResults.map((place) => (
                 <button
-                  key={city.id}
+                  key={place.placeId}
                   type="button"
-                  onClick={() => addLocation(city)}
+                  onClick={() => addLocation(place)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0"
                 >
-                  <MapPin size={18} className="text-seeya-purple" />
-                  <div>
-                    <p className="font-medium text-seeya-text">{city.name}</p>
-                    <p className="text-sm text-seeya-text-secondary">{city.country}</p>
+                  <MapPin size={18} className="text-seeya-purple shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-seeya-text">{place.mainText}</p>
+                    <p className="text-sm text-seeya-text-secondary truncate">{place.secondaryText}</p>
                   </div>
                 </button>
               ))}
 
-              {searchQuery && !isSearching && (
+              {searchQuery.length >= 2 && !isSearching && (
                 <button
                   type="button"
                   onClick={addCustomLocation}
