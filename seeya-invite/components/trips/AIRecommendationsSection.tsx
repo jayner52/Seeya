@@ -17,14 +17,17 @@ import {
   RefreshCw,
   DollarSign,
   Clock,
+  ChevronDown,
 } from 'lucide-react';
 import type { AIRecommendation, AIRecommendationsResponse, RecommendationCategory } from '@/types';
+import type { TripLocation } from '@/types/database';
+import { getLocationDisplayName } from '@/types/database';
 
 type FilterCategory = 'all' | RecommendationCategory;
 
 interface AIRecommendationsSectionProps {
   tripId: string;
-  destination: string;
+  locations: TripLocation[];
   startDate?: string | null;
   endDate?: string | null;
   onTripBitAdded?: () => void;
@@ -125,7 +128,7 @@ function RecommendationCard({
 
 export function AIRecommendationsSection({
   tripId,
-  destination,
+  locations,
   startDate,
   endDate,
   onTripBitAdded,
@@ -137,6 +140,17 @@ export function AIRecommendationsSection({
   const [filter, setFilter] = useState<FilterCategory>('all');
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [addingId, setAddingId] = useState<string | null>(null);
+
+  // Multi-city support
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    locations.length > 0 ? locations[0].id : null
+  );
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+
+  // Derived values
+  const selectedLocation = locations.find(l => l.id === selectedLocationId);
+  const destination = selectedLocation ? getLocationDisplayName(selectedLocation) : '';
+  const hasMultipleLocations = locations.length > 1;
 
   const handleGenerate = async () => {
     if (!destination) {
@@ -210,21 +224,86 @@ export function AIRecommendationsSection({
 
   const filteredRecommendations = getAllRecommendations();
 
+  // Location dropdown component
+  const LocationDropdown = () => {
+    if (!hasMultipleLocations) return null;
+
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setShowLocationDropdown(!showLocationDropdown)}
+          className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:border-gray-300 transition-colors"
+        >
+          <span className="truncate max-w-[200px]">{destination}</span>
+          <ChevronDown size={16} className={cn('transition-transform', showLocationDropdown && 'rotate-180')} />
+        </button>
+        {showLocationDropdown && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setShowLocationDropdown(false)}
+            />
+            <div className="absolute top-full mt-1 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[200px] py-1">
+              {locations.map(loc => (
+                <button
+                  key={loc.id}
+                  onClick={() => {
+                    setSelectedLocationId(loc.id);
+                    setShowLocationDropdown(false);
+                    // Reset recommendations when location changes
+                    setStatus('idle');
+                    setRecommendations(null);
+                    setAddedIds(new Set());
+                  }}
+                  className={cn(
+                    'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors',
+                    loc.id === selectedLocationId && 'bg-purple-50 text-seeya-purple font-medium'
+                  )}
+                >
+                  {getLocationDisplayName(loc)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   // Idle state - show generate button
   if (status === 'idle') {
     return (
-      <Card variant="elevated" padding="lg" className="text-center">
+      <Card variant="elevated" padding="lg">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-seeya-purple/20 to-purple-200 flex items-center justify-center">
-            <Sparkles className="w-8 h-8 text-seeya-purple" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-seeya-text mb-1">
-              AI Recommendations
-            </h3>
+          {/* Header with location dropdown for multi-city */}
+          {hasMultipleLocations && (
+            <div className="w-full flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-seeya-purple" />
+                <h3 className="text-lg font-semibold text-seeya-text">
+                  AI Recommendations
+                </h3>
+              </div>
+              <LocationDropdown />
+            </div>
+          )}
+
+          {/* Icon - only show for single location */}
+          {!hasMultipleLocations && (
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-seeya-purple/20 to-purple-200 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-seeya-purple" />
+            </div>
+          )}
+
+          <div className="text-center">
+            {!hasMultipleLocations && (
+              <h3 className="text-lg font-semibold text-seeya-text mb-1">
+                AI Recommendations
+              </h3>
+            )}
             <p className="text-sm text-seeya-text-secondary max-w-sm">
-              Get personalized suggestions for restaurants, activities, stays, and tips for your trip
-              {destination && ` to ${destination}`}.
+              Get personalized suggestions for restaurants, activities, stays, and tips
+              {destination && ` for ${destination}`}.
             </p>
           </div>
           <Button
@@ -236,7 +315,7 @@ export function AIRecommendationsSection({
             <Sparkles size={18} />
             Get AI Suggestions
           </Button>
-          {!destination && (
+          {!destination && locations.length === 0 && (
             <p className="text-xs text-seeya-text-secondary">
               Add a destination to your trip to get recommendations
             </p>
@@ -298,22 +377,25 @@ export function AIRecommendationsSection({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-seeya-purple" />
           <h3 className="text-lg font-semibold text-seeya-text">
-            AI Recommendations for {destination}
+            Recommendations{!hasMultipleLocations && destination && ` for ${destination}`}
           </h3>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleGenerate}
-          className="gap-1 text-seeya-text-secondary"
-        >
-          <RefreshCw size={14} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {hasMultipleLocations && <LocationDropdown />}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGenerate}
+            className="gap-1 text-seeya-text-secondary"
+          >
+            <RefreshCw size={14} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Category filter */}

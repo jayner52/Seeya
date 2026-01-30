@@ -4,14 +4,14 @@ import { TripPackSection } from './TripPackSection';
 import { ParticipantsSection } from './ParticipantsSection';
 import { InviteSection } from './InviteSection';
 import { AIRecommendationsSection } from './AIRecommendationsSection';
-import type { TripBit, TripParticipant, TripBitCategory } from '@/types/database';
+import type { TripBit, TripParticipant, TripBitCategory, TripLocation } from '@/types/database';
 
 interface PlanningTabProps {
   tripId: string;
   tripBits: TripBit[];
   participants: TripParticipant[];
   existingInviteCode?: string | null;
-  destination?: string | null;
+  locations: TripLocation[];
   startDate?: string | null;
   endDate?: string | null;
   onAddTripBit: (category?: TripBitCategory) => void;
@@ -25,7 +25,7 @@ export function PlanningTab({
   tripBits,
   participants,
   existingInviteCode,
-  destination,
+  locations,
   startDate,
   endDate,
   onAddTripBit,
@@ -38,7 +38,7 @@ export function PlanningTab({
       {/* AI Recommendations */}
       <AIRecommendationsSection
         tripId={tripId}
-        destination={destination || ''}
+        locations={locations}
         startDate={startDate}
         endDate={endDate}
         onTripBitAdded={onTripBitAdded}

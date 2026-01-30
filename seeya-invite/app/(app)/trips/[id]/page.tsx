@@ -60,24 +60,61 @@ export default function TripDetailPage() {
       return;
     }
 
-    // Get locations
-    const { data: locations } = await supabase
+    // Get locations - query without city join first, then try to get city data
+    // This handles cases where iOS set city_id but the city might not exist in web's cities table
+    const { data: locationsRaw } = await supabase
       .from('trip_locations')
-      .select(`
-        *,
-        city:cities (id, name, country, country_code, continent)
-      `)
+      .select('*')
       .eq('trip_id', tripId)
       .order('order_index');
 
-    // Get participants (all statuses)
-    const { data: participants } = await supabase
+    // Try to get city data for locations that have city_id
+    let locations = locationsRaw || [];
+    if (locations.length > 0) {
+      const cityIds = locations
+        .filter(l => l.city_id)
+        .map(l => l.city_id);
+
+      if (cityIds.length > 0) {
+        const { data: cities } = await supabase
+          .from('cities')
+          .select('id, name, country, country_code, continent')
+          .in('id', cityIds);
+
+        // Attach city data to locations
+        if (cities) {
+          const cityMap = new Map(cities.map(c => [c.id, c]));
+          locations = locations.map(l => ({
+            ...l,
+            city: l.city_id ? cityMap.get(l.city_id) : undefined
+          }));
+        }
+      }
+    }
+
+    // Get participants (all statuses) - query without join first, then get profile data
+    const { data: participantsRaw } = await supabase
       .from('trip_participants')
-      .select(`
-        *,
-        user:profiles (id, full_name, avatar_url)
-      `)
+      .select('*')
       .eq('trip_id', tripId);
+
+    // Get profile data for participants
+    let participants = participantsRaw || [];
+    if (participants.length > 0) {
+      const userIds = participants.map(p => p.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      if (profiles) {
+        const profileMap = new Map(profiles.map(p => [p.id, p]));
+        participants = participants.map(p => ({
+          ...p,
+          user: profileMap.get(p.user_id)
+        }));
+      }
+    }
 
     // Get tripbits
     const { data: bits } = await supabase
@@ -158,6 +195,8 @@ export default function TripDetailPage() {
   const acceptedParticipants = trip.participants.filter(
     (p) => p.status === 'accepted'
   );
+  // Total travelers = owner (1) + accepted participants (matching iOS behavior)
+  const totalTravelers = 1 + acceptedParticipants.length;
   const firstLocation = trip.locations[0];
 
   return (
@@ -259,8 +298,8 @@ export default function TripDetailPage() {
               size="md"
             />
             <span className="text-white/80 text-sm">
-              {acceptedParticipants.length}{' '}
-              {acceptedParticipants.length === 1 ? 'traveler' : 'travelers'}
+              {totalTravelers}{' '}
+              {totalTravelers === 1 ? 'traveler' : 'travelers'}
             </span>
           </div>
         </div>
@@ -283,7 +322,7 @@ export default function TripDetailPage() {
             tripBits={tripbits}
             participants={trip.participants}
             existingInviteCode={inviteLink?.code}
-            destination={firstLocation ? getLocationDisplayName(firstLocation) : undefined}
+            locations={trip.locations}
             startDate={trip.start_date}
             endDate={trip.end_date}
             onAddTripBit={handleAddTripBit}
