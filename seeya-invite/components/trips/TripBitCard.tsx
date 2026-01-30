@@ -19,7 +19,7 @@ import {
   AlertCircle,
   ChevronRight,
 } from 'lucide-react';
-import type { TripBit, TripBitCategory } from '@/types/database';
+import type { TripBit } from '@/types/database';
 
 interface TripBitCardProps {
   tripBit: TripBit;
@@ -27,15 +27,43 @@ interface TripBitCardProps {
   className?: string;
 }
 
-const categoryConfig: Record<TripBitCategory, { icon: typeof Plane; color: string; bgColor: string }> = {
+const categoryConfig: Record<string, { icon: typeof Plane; color: string; bgColor: string }> = {
   flight: { icon: Plane, color: 'text-blue-600', bgColor: 'bg-blue-50' },
   hotel: { icon: Hotel, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+  stay: { icon: Hotel, color: 'text-purple-600', bgColor: 'bg-purple-50' },
   restaurant: { icon: Utensils, color: 'text-orange-600', bgColor: 'bg-orange-50' },
   activity: { icon: Ticket, color: 'text-green-600', bgColor: 'bg-green-50' },
   transport: { icon: Car, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+  car: { icon: Car, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
   note: { icon: FileText, color: 'text-gray-600', bgColor: 'bg-gray-50' },
   other: { icon: MoreHorizontal, color: 'text-gray-500', bgColor: 'bg-gray-50' },
 };
+
+// Helper to check if trip bit is confirmed/booked
+function isConfirmed(tripBit: TripBit): boolean {
+  if (tripBit.is_booked !== undefined) return tripBit.is_booked;
+  if (tripBit.status) {
+    return ['booked', 'confirmed', 'completed'].includes(tripBit.status);
+  }
+  return false;
+}
+
+// Helper to get display date from either format
+function getDisplayDate(tripBit: TripBit): string | null {
+  if (tripBit.date) return tripBit.date;
+  if (tripBit.start_datetime) return tripBit.start_datetime.split('T')[0];
+  return null;
+}
+
+// Helper to get display time from either format
+function getDisplayTime(tripBit: TripBit): string | null {
+  if (tripBit.time) return tripBit.time;
+  if (tripBit.start_datetime) {
+    const timePart = tripBit.start_datetime.split('T')[1];
+    if (timePart) return timePart.substring(0, 5); // HH:MM
+  }
+  return null;
+}
 
 export function TripBitCard({ tripBit, onClick, className }: TripBitCardProps) {
   const config = categoryConfig[tripBit.category] || categoryConfig.other;
@@ -68,7 +96,7 @@ export function TripBitCard({ tripBit, onClick, className }: TripBitCardProps) {
                 <h4 className="font-medium text-seeya-text truncate">
                   {tripBit.title}
                 </h4>
-                {tripBit.is_booked ? (
+                {isConfirmed(tripBit) ? (
                   <CheckCircle2 size={16} className="text-seeya-success flex-shrink-0" />
                 ) : (
                   <AlertCircle size={16} className="text-seeya-warning flex-shrink-0" />
@@ -76,13 +104,13 @@ export function TripBitCard({ tripBit, onClick, className }: TripBitCardProps) {
               </div>
 
               {/* Date/Time */}
-              {(tripBit.date || tripBit.time) && (
+              {(getDisplayDate(tripBit) || getDisplayTime(tripBit)) && (
                 <div className="flex items-center gap-3 mt-1 text-sm text-seeya-text-secondary">
-                  {tripBit.date && (
+                  {getDisplayDate(tripBit) && (
                     <span className="flex items-center gap-1">
                       <Clock size={12} />
-                      {formatDate(tripBit.date, 'EEE, MMM d')}
-                      {tripBit.time && ` at ${tripBit.time}`}
+                      {formatDate(getDisplayDate(tripBit)!, 'EEE, MMM d')}
+                      {getDisplayTime(tripBit) && ` at ${getDisplayTime(tripBit)}`}
                     </span>
                   )}
                 </div>
@@ -130,10 +158,10 @@ export function TripBitCardCompact({ tripBit, onClick, className }: TripBitCardP
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-seeya-text truncate text-sm">{tripBit.title}</p>
-        {tripBit.date && (
+        {getDisplayDate(tripBit) && (
           <p className="text-xs text-seeya-text-secondary">
-            {formatDate(tripBit.date, 'MMM d')}
-            {tripBit.time && ` at ${tripBit.time}`}
+            {formatDate(getDisplayDate(tripBit)!, 'MMM d')}
+            {getDisplayTime(tripBit) && ` at ${getDisplayTime(tripBit)}`}
           </p>
         )}
       </div>

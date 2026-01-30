@@ -74,31 +74,40 @@ export interface TripInviteLink {
 export interface TripBit {
   id: string;
   trip_id: string;
-  location_id: string | null;
+  location_id?: string | null;
   category: TripBitCategory;
   title: string;
-  notes: string | null;
-  date: string | null;
-  time: string | null;
-  duration_minutes: number | null;
-  confirmation_number: string | null;
-  url: string | null;
-  address: string | null;
-  is_booked: boolean;
-  cost: number | null;
-  currency: string | null;
+  status?: TripBitStatus | null;
+  start_datetime?: string | null;
+  end_datetime?: string | null;
+  notes?: string | null;
+  order_index?: number | null;
   created_by: string;
   created_at: string;
-  updated_at: string;
-  metadata: Record<string, unknown> | null;
+  updated_at?: string;
+  // Legacy web fields (for backwards compatibility)
+  date?: string | null;
+  time?: string | null;
+  duration_minutes?: number | null;
+  confirmation_number?: string | null;
+  url?: string | null;
+  address?: string | null;
+  is_booked?: boolean;
+  cost?: number | null;
+  currency?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
+
+export type TripBitStatus = 'idea' | 'planned' | 'booked' | 'confirmed' | 'completed' | 'cancelled';
 
 export type TripBitCategory =
   | 'flight'
   | 'hotel'
+  | 'stay'
   | 'restaurant'
   | 'activity'
   | 'transport'
+  | 'car'
   | 'note'
   | 'other';
 
