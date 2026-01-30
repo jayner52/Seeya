@@ -27,12 +27,12 @@ interface TripPackSectionProps {
   className?: string;
 }
 
-const categories: { id: TripBitCategory; label: string; icon: typeof Plane }[] = [
+const categories: { id: TripBitCategory; label: string; icon: typeof Plane; aliases?: string[] }[] = [
   { id: 'flight', label: 'Flights', icon: Plane },
-  { id: 'hotel', label: 'Stays', icon: Hotel },
-  { id: 'transport', label: 'Transport', icon: Car },
+  { id: 'hotel', label: 'Stays', icon: Hotel, aliases: ['stay'] },
+  { id: 'transport', label: 'Transport', icon: Car, aliases: ['car'] },
   { id: 'activity', label: 'Activities', icon: Ticket },
-  { id: 'restaurant', label: 'Dining', icon: Utensils },
+  { id: 'restaurant', label: 'Dining', icon: Utensils, aliases: ['reservation'] },
   { id: 'note', label: 'Notes', icon: FileText },
   { id: 'other', label: 'Other', icon: MoreHorizontal },
 ];
@@ -98,9 +98,13 @@ export function TripPackSection({
   onTripBitClick,
   className,
 }: TripPackSectionProps) {
-  // Group trip bits by category
+  // Group trip bits by category (including iOS category aliases)
   const groupedBits = categories.reduce((acc, category) => {
-    acc[category.id] = tripBits.filter((bit) => bit.category === category.id);
+    acc[category.id] = tripBits.filter((bit) => {
+      if (bit.category === category.id) return true;
+      if (category.aliases?.includes(bit.category)) return true;
+      return false;
+    });
     return acc;
   }, {} as Record<TripBitCategory, TripBit[]>);
 
