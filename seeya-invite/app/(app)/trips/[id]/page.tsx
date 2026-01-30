@@ -282,9 +282,13 @@ export default function TripDetailPage() {
             tripBits={tripbits}
             participants={trip.participants}
             existingInviteCode={inviteLink?.code}
+            destination={firstLocation?.name || firstLocation?.city?.name}
+            startDate={trip.start_date}
+            endDate={trip.end_date}
             onAddTripBit={handleAddTripBit}
             onTripBitClick={handleTripBitClick}
             onInviteClick={handleInviteClick}
+            onTripBitAdded={fetchTrip}
           />
         ) : (
           <ItineraryTab

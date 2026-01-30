@@ -1,5 +1,6 @@
 export * from './database';
 export * from './calendar';
+export * from './recommendations';
 
 // Auth types
 export interface AuthUser {

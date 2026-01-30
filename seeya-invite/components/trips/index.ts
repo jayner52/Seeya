@@ -12,3 +12,4 @@ export { ParticipantsSection } from './ParticipantsSection';
 export { InviteSection } from './InviteSection';
 export { PlanningTab } from './PlanningTab';
 export { ItineraryTab } from './ItineraryTab';
+export { AIRecommendationsSection } from './AIRecommendationsSection';
