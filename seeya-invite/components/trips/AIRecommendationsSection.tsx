@@ -445,10 +445,7 @@ export function AIRecommendationsSection({
 
   const handleTabChange = (category: RecommendationCategory) => {
     setActiveCategory(category);
-    // Auto-generate if no cached results
-    if (!cache[category]?.length && !errors[category]) {
-      handleGenerate(category);
-    }
+    // Don't auto-generate - user must click "Get Suggestions" button
   };
 
   const handleRefresh = () => {

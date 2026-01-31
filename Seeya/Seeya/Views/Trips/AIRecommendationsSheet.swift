@@ -510,13 +510,7 @@ struct AIRecommendationsSheet: View {
     private func selectCategory(_ category: AIService.RecommendationCategory) {
         selectedCategory = category
         showFilters = false
-
-        // Auto-generate if no cached results
-        if cache[category] == nil && errors[category] == nil {
-            Task {
-                await generateRecommendations(for: category)
-            }
-        }
+        // Don't auto-generate - user must click "Get Suggestions" button
     }
 
     private func generateRecommendations(for category: AIService.RecommendationCategory, forceRefresh: Bool = false) async {

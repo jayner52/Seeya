@@ -584,13 +584,7 @@ struct ExploreAISection: View {
     private func selectCategory(_ category: AIService.RecommendationCategory) {
         selectedCategory = category
         showFilters = false
-
-        // Auto-generate if no cached results
-        if cache[category] == nil && errors[category] == nil && hasSearched {
-            Task {
-                await generateRecommendations(for: category)
-            }
-        }
+        // Don't auto-generate - user must click "Generate" button
     }
 
     private func generateRecommendations(for category: AIService.RecommendationCategory, forceRefresh: Bool = false) async {
