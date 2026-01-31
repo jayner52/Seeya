@@ -13,3 +13,5 @@ export { InviteSection } from './InviteSection';
 export { PlanningTab } from './PlanningTab';
 export { ItineraryTab } from './ItineraryTab';
 export { AIRecommendationsSection } from './AIRecommendationsSection';
+export { CreateTripWizard } from './CreateTripWizard';
+export { AIQuickAddSheet } from './AIQuickAddSheet';

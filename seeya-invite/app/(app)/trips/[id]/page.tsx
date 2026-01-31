@@ -17,6 +17,7 @@ import {
   PlanningTab,
   ItineraryTab,
   AddTripBitSheet,
+  AIQuickAddSheet,
 } from '@/components/trips';
 import type { TripTab } from '@/components/trips';
 import { formatDateRange, getDaysUntil } from '@/lib/utils/date';
@@ -26,6 +27,7 @@ import {
   Settings,
   ArrowLeft,
   MoreHorizontal,
+  Sparkles,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
 import { getLocationDisplayName } from '@/types/database';
@@ -44,6 +46,7 @@ export default function TripDetailPage() {
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [addSheetCategory, setAddSheetCategory] = useState<TripBitCategory | undefined>();
   const [showMenu, setShowMenu] = useState(false);
+  const [showAISheet, setShowAISheet] = useState(false);
 
   const fetchTrip = useCallback(async () => {
     const supabase = createClient();
@@ -229,6 +232,16 @@ export default function TripDetailPage() {
                       onClick={() => setShowMenu(false)}
                     />
                     <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20">
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowAISheet(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
+                      >
+                        <Sparkles size={16} className="text-seeya-purple" />
+                        <span>AI Quick Add</span>
+                      </button>
                       <Link
                         href={`/trips/${tripId}/edit`}
                         className="flex items-center gap-2 px-4 py-2 text-seeya-text hover:bg-gray-50"
@@ -354,6 +367,18 @@ export default function TripDetailPage() {
         onSuccess={() => {
           setShowAddSheet(false);
           setAddSheetCategory(undefined);
+          fetchTrip(); // Refresh data
+        }}
+      />
+
+      {/* AI Quick Add Sheet */}
+      <AIQuickAddSheet
+        tripId={tripId}
+        participants={trip.participants}
+        isOpen={showAISheet}
+        onClose={() => setShowAISheet(false)}
+        onSuccess={() => {
+          setShowAISheet(false);
           fetchTrip(); // Refresh data
         }}
       />

@@ -21,6 +21,9 @@ import {
   Calendar,
   Users,
   Check,
+  Paperclip,
+  Upload,
+  Trash2,
 } from 'lucide-react';
 import type { TripBitCategory, TripParticipant } from '@/types/database';
 import {
@@ -83,6 +86,8 @@ export function AddTripBitSheet({
   const [details, setDetails] = useState<Record<string, string | number>>({});
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [everyoneSelected, setEveryoneSelected] = useState(true);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Reset category when initialCategory changes
   useEffect(() => {
@@ -104,7 +109,85 @@ export function AddTripBitSheet({
     setDetails({});
     setSelectedParticipants([]);
     setEveryoneSelected(true);
+    setSelectedFiles([]);
     setError(null);
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newFiles = Array.from(files);
+      setSelectedFiles(prev => [...prev, ...newFiles]);
+    }
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
+
+  // Remove a selected file
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Upload files to Supabase Storage
+  const uploadFiles = async (tripBitId: string): Promise<void> => {
+    if (selectedFiles.length === 0) return;
+
+    const supabase = createClient();
+
+    for (const file of selectedFiles) {
+      // Create unique file path: trip_id/tripbit_id/timestamp_filename
+      const timestamp = Date.now();
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `${tripId}/${tripBitId}/${timestamp}_${sanitizedName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('trip-documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        continue;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('trip-documents')
+        .getPublicUrl(filePath);
+
+      // Insert attachment record
+      const { error: attachmentError } = await supabase
+        .from('trip_bit_attachments')
+        .insert({
+          trip_bit_id: tripBitId,
+          file_url: urlData.publicUrl,
+          file_name: file.name,
+          file_type: file.type,
+        });
+
+      if (attachmentError) {
+        console.error('Error saving attachment record:', attachmentError);
+      }
+    }
+  };
+
+  // Get file preview icon/thumbnail
+  const getFilePreview = (file: File) => {
+    if (file.type.startsWith('image/')) {
+      return URL.createObjectURL(file);
+    }
+    return null;
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const handleClose = () => {
@@ -175,7 +258,14 @@ export function AddTripBitSheet({
         }
       }
 
-      // 3. TODO Phase 2: Insert trip_bit_travelers for participant assignment
+      // 3. Upload attachments if any
+      if (selectedFiles.length > 0) {
+        setIsUploading(true);
+        await uploadFiles(tripBit.id);
+        setIsUploading(false);
+      }
+
+      // 4. TODO: Insert trip_bit_travelers for participant assignment
 
       resetForm();
       onSuccess();
@@ -434,9 +524,74 @@ export function AddTripBitSheet({
             </div>
           )}
 
-          {/* 8. Attachments Placeholder (Phase 2) */}
-          <div className="border border-dashed border-gray-300 rounded-lg p-4 text-center text-seeya-text-secondary text-sm">
-            <p>Attachments coming soon</p>
+          {/* 8. Attachments */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-seeya-text flex items-center gap-2">
+              <Paperclip size={16} />
+              Attachments (optional)
+            </label>
+
+            {/* File upload area */}
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-seeya-purple hover:bg-purple-50/30 transition-colors">
+              <Upload size={24} className="text-seeya-text-secondary mb-2" />
+              <span className="text-sm text-seeya-text-secondary">Click to upload files</span>
+              <span className="text-xs text-gray-400 mt-1">PDFs, images, documents</span>
+              <input
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                accept="image/*,.pdf,.doc,.docx,.txt"
+              />
+            </label>
+
+            {/* Selected files list */}
+            {selectedFiles.length > 0 && (
+              <div className="space-y-2">
+                {selectedFiles.map((file, index) => {
+                  const imagePreview = getFilePreview(file);
+                  return (
+                    <div
+                      key={`${file.name}-${index}`}
+                      className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
+                    >
+                      {/* Thumbnail or icon */}
+                      <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {imagePreview ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={imagePreview}
+                            alt={file.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <FileText size={20} className="text-gray-500" />
+                        )}
+                      </div>
+
+                      {/* File info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-seeya-text truncate">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-seeya-text-secondary">
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
+
+                      {/* Remove button */}
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={16} className="text-seeya-text-secondary" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* 9. Notes */}
@@ -468,10 +623,10 @@ export function AddTripBitSheet({
               type="submit"
               variant="purple"
               disabled={!title.trim()}
-              isLoading={isSubmitting}
+              isLoading={isSubmitting || isUploading}
               className="flex-1"
             >
-              Add
+              {isUploading ? 'Uploading...' : 'Add'}
             </Button>
           </div>
         </form>

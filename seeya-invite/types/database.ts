@@ -145,6 +145,53 @@ export const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF'
 export const RESERVATION_VENUE_TYPES = ['Restaurant', 'Spa', 'Tour', 'Class', 'Event', 'Show', 'Other'];
 export const DOCUMENT_TYPES = ['Passport', 'Visa', 'ID Card', "Driver's License", 'Insurance', 'Vaccination Record', 'Travel Insurance', 'Other'];
 
+// Re-export VisibilityLevel from calendar for use here
+import type { VisibilityLevel } from './calendar';
+export type { VisibilityLevel } from './calendar';
+
+export const VISIBILITY_OPTIONS: { value: VisibilityLevel; label: string; description: string; icon: string }[] = [
+  { value: 'only_me', label: 'Only me', description: 'Private - only you can see this trip', icon: 'Lock' },
+  { value: 'busy_only', label: "Show I'm busy", description: "Friends see you're traveling", icon: 'EyeOff' },
+  { value: 'dates_only', label: 'Show dates', description: "Friends see when you're traveling", icon: 'Calendar' },
+  { value: 'location_only', label: 'Show destination', description: "Friends see where you're going", icon: 'MapPin' },
+  { value: 'full_details', label: 'Full details', description: 'Friends see all trip details', icon: 'Globe' },
+];
+
+// User settings
+export interface UserSettings {
+  id: string;
+  user_id: string;
+  default_trip_visibility: VisibilityLevel;
+  delayed_trip_visibility: boolean;
+  calendar_sharing: boolean;
+  notify_travel_pal_requests: boolean;
+  notify_trip_invitations: boolean;
+  notify_trip_messages: boolean;
+  notify_added_to_tripbit: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const DEFAULT_USER_SETTINGS: Omit<UserSettings, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
+  default_trip_visibility: 'busy_only',
+  delayed_trip_visibility: false,
+  calendar_sharing: true,
+  notify_travel_pal_requests: true,
+  notify_trip_invitations: true,
+  notify_trip_messages: true,
+  notify_added_to_tripbit: true,
+};
+
+// Trip bit attachment
+export interface TripBitAttachment {
+  id: string;
+  trip_bit_id: string;
+  file_url: string;
+  file_name: string | null;
+  file_type: string | null;
+  created_at: string;
+}
+
 export type FriendshipStatus = 'pending' | 'accepted' | 'declined';
 
 export interface Friendship {

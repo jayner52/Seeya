@@ -13,7 +13,7 @@ import {
   AddToWanderlistModal,
 } from '@/components/profile';
 import { TravelPalCardCompact } from '@/components/circle';
-import { Edit2, Users, ChevronRight } from 'lucide-react';
+import { Edit2, Users, ChevronRight, Settings } from 'lucide-react';
 import Link from 'next/link';
 import type { Trip, Profile } from '@/types/database';
 import { getPalColor } from '@/types/calendar';
@@ -228,14 +228,21 @@ export default function ProfilePage() {
                   </h1>
                   <p className="text-seeya-text-secondary">{user?.email}</p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Edit2 size={16} />}
-                  onClick={() => setShowEditModal(true)}
-                >
-                  Edit
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<Edit2 size={16} />}
+                    onClick={() => setShowEditModal(true)}
+                  >
+                    Edit
+                  </Button>
+                  <Link href="/settings">
+                    <Button variant="ghost" size="sm">
+                      <Settings size={18} />
+                    </Button>
+                  </Link>
+                </div>
               </div>
               {profile?.bio && (
                 <p className="mt-4 text-seeya-text">{profile.bio}</p>
