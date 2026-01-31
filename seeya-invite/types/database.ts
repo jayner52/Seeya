@@ -101,16 +101,49 @@ export interface TripBit {
 
 export type TripBitStatus = 'idea' | 'planned' | 'booked' | 'confirmed' | 'completed' | 'cancelled';
 
+// Updated TripBitCategory to match iOS (10 categories)
 export type TripBitCategory =
   | 'flight'
-  | 'hotel'
   | 'stay'
-  | 'restaurant'
+  | 'car'
   | 'activity'
   | 'transport'
-  | 'car'
-  | 'note'
-  | 'other';
+  | 'money'
+  | 'reservation'
+  | 'document'
+  | 'photos'
+  | 'other'
+  // Legacy categories (for backwards compatibility)
+  | 'hotel'
+  | 'restaurant'
+  | 'note';
+
+// Trip bit details (category-specific fields stored as JSON)
+export interface TripBitDetails {
+  id: string;
+  trip_bit_id: string;
+  details: Record<string, string | number | boolean>;
+  created_at: string;
+}
+
+// Trip bit status mapping (web uses different terms than display)
+export const STATUS_DISPLAY_MAP = {
+  booked: 'Confirmed',
+  confirmed: 'Confirmed',
+  planned: 'Pending',
+  idea: 'Pending',
+  cancelled: 'Cancelled',
+  completed: 'Completed',
+} as const;
+
+// Category picker options
+export const STAY_PROPERTY_TYPES = ['Hotel', 'Airbnb', 'Hostel', 'Resort', 'Villa', 'Apartment', 'Other'];
+export const CAR_VEHICLE_TYPES = ['Economy', 'Compact', 'Mid-size', 'Full-size', 'SUV', 'Minivan', 'Luxury', 'Convertible', 'Other'];
+export const TRANSPORT_TYPES = ['Train', 'Bus', 'Ferry', 'Shuttle', 'Taxi', 'Uber/Lyft', 'Metro', 'Other'];
+export const MONEY_TYPES = ['Budget', 'Expense', 'Exchange', 'Payment', 'Refund'];
+export const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'MXN', 'Other'];
+export const RESERVATION_VENUE_TYPES = ['Restaurant', 'Spa', 'Tour', 'Class', 'Event', 'Show', 'Other'];
+export const DOCUMENT_TYPES = ['Passport', 'Visa', 'ID Card', "Driver's License", 'Insurance', 'Vaccination Record', 'Travel Insurance', 'Other'];
 
 export type FriendshipStatus = 'pending' | 'accepted' | 'declined';
 

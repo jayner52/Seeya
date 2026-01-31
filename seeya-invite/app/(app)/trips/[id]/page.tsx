@@ -344,6 +344,7 @@ export default function TripDetailPage() {
       {/* Add Trip Bit Sheet */}
       <AddTripBitSheet
         tripId={tripId}
+        participants={trip.participants}
         initialCategory={addSheetCategory}
         isOpen={showAddSheet}
         onClose={() => {
