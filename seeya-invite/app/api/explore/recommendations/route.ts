@@ -1,37 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { AIRecommendation, RecommendationCategory } from '@/types';
+import type {
+  RestaurantFilters,
+  ActivityFilters,
+  StayFilters,
+  TipFilters,
+  CategoryFilters,
+} from '@/types';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
-// Filter types for each category
-export interface RestaurantFilters {
-  cuisine?: string;
-  neighborhood?: string;
-  priceRange?: '$' | '$$' | '$$$' | '$$$$';
-  mealType?: 'breakfast' | 'brunch' | 'lunch' | 'dinner' | 'late-night';
-  vibe?: 'romantic' | 'casual' | 'family' | 'trendy' | 'traditional';
-}
-
-export interface ActivityFilters {
-  type?: 'outdoor' | 'cultural' | 'nightlife' | 'tours' | 'shopping' | 'wellness';
-  duration?: 'quick' | 'half-day' | 'full-day';
-  difficulty?: 'easy' | 'moderate' | 'challenging';
-  kidFriendly?: boolean;
-}
-
-export interface StayFilters {
-  neighborhood?: string;
-  propertyType?: 'hotel' | 'boutique' | 'airbnb' | 'hostel' | 'resort';
-  priceRange?: '$' | '$$' | '$$$' | '$$$$';
-  amenities?: string[];
-}
-
-export interface TipFilters {
-  topic?: 'transport' | 'safety' | 'culture' | 'money' | 'packing' | 'local-customs' | 'food' | 'language';
-}
-
-export type CategoryFilters = RestaurantFilters | ActivityFilters | StayFilters | TipFilters;
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
@@ -41,17 +19,8 @@ function buildCategoryPrompt(
   category: RecommendationCategory,
   destination: string,
   count: number,
-  filters?: CategoryFilters,
-  startDate?: string,
-  endDate?: string
+  filters?: CategoryFilters
 ): string {
-  let dateContext = '';
-  if (startDate && endDate) {
-    dateContext = ` The trip is from ${startDate} to ${endDate}.`;
-  } else if (startDate) {
-    dateContext = ` The trip starts on ${startDate}.`;
-  }
-
   // Build filter context based on category
   let filterContext = '';
   if (filters && Object.keys(filters).length > 0) {
@@ -88,7 +57,7 @@ function buildCategoryPrompt(
 
   // Category-specific prompts
   const categoryPrompts: Record<RecommendationCategory, string> = {
-    restaurant: `You are a local food expert helping plan dining experiences in ${destination}.${dateContext}${filterContext}
+    restaurant: `You are a local food expert helping plan dining experiences in ${destination}.${filterContext}
 
 Generate ${count} authentic restaurant recommendations. Focus on places locals love, not tourist traps. Include hidden gems and neighborhood favorites.
 
@@ -106,7 +75,7 @@ Return a JSON array (no markdown, just raw JSON):
 
 Be specific with real places. Include a mix of price points unless filtered.`,
 
-    activity: `You are a local guide helping plan activities in ${destination}.${dateContext}${filterContext}
+    activity: `You are a local guide helping plan activities in ${destination}.${filterContext}
 
 Generate ${count} unique activity recommendations. Focus on authentic experiences that go beyond typical tourist activities. Include local favorites and hidden gems.
 
@@ -124,7 +93,7 @@ Return a JSON array (no markdown, just raw JSON):
 
 Be specific with real activities and locations.`,
 
-    stay: `You are a local accommodation expert helping find places to stay in ${destination}.${dateContext}${filterContext}
+    stay: `You are a local accommodation expert helping find places to stay in ${destination}.${filterContext}
 
 Generate ${count} accommodation recommendations. Focus on well-located options with good value and local character. Include different neighborhood options.
 
@@ -142,7 +111,7 @@ Return a JSON array (no markdown, just raw JSON):
 
 Be specific with real properties. Include neighborhood context.`,
 
-    tip: `You are a seasoned traveler sharing essential tips for visiting ${destination}.${dateContext}${filterContext}
+    tip: `You are a seasoned traveler sharing essential tips for visiting ${destination}.${filterContext}
 
 Generate ${count} practical travel tips. Focus on advice that saves time, money, or enhances the experience. Share local knowledge that isn't in guidebooks.
 
@@ -163,7 +132,6 @@ Be specific and actionable. Avoid generic advice.`,
 }
 
 function parseRecommendations(content: string): AIRecommendation[] {
-  // Try to extract JSON from the response
   let jsonStr = content;
 
   // Handle markdown code blocks
@@ -173,23 +141,16 @@ function parseRecommendations(content: string): AIRecommendation[] {
   }
 
   const parsed = JSON.parse(jsonStr.trim());
-
-  // Handle both array and object responses
   const items = Array.isArray(parsed) ? parsed : (parsed.recommendations || []);
 
-  // Add IDs to each recommendation
   return items.map((item: Omit<AIRecommendation, 'id'>) => ({
     ...item,
     id: generateId(),
   }));
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: Request) {
   try {
-    const { id: tripId } = await params;
     const supabase = await createClient();
 
     // Check authentication
@@ -208,8 +169,6 @@ export async function POST(
       category,
       count = 4,
       filters,
-      startDate,
-      endDate
     } = body;
 
     // Validate required fields
@@ -228,32 +187,7 @@ export async function POST(
     }
 
     // Validate count
-    const recommendationCount = Math.min(Math.max(1, count), 10); // 1-10 items
-
-    // Verify user has access to this trip
-    const { data: participant } = await supabase
-      .from('trip_participants')
-      .select('id')
-      .eq('trip_id', tripId)
-      .eq('user_id', user.id)
-      .eq('status', 'accepted')
-      .single();
-
-    const { data: trip } = await supabase
-      .from('trips')
-      .select('user_id')
-      .eq('id', tripId)
-      .single();
-
-    const isOwner = trip?.user_id === user.id;
-    const isParticipant = !!participant;
-
-    if (!isOwner && !isParticipant) {
-      return NextResponse.json(
-        { error: 'Access denied to this trip' },
-        { status: 403 }
-      );
-    }
+    const recommendationCount = Math.min(Math.max(1, count), 10);
 
     // Check for OpenRouter API key
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -269,12 +203,10 @@ export async function POST(
       category as RecommendationCategory,
       destination,
       recommendationCount,
-      filters,
-      startDate,
-      endDate
+      filters
     );
 
-    // Call OpenRouter API with reduced tokens for single category
+    // Call OpenRouter API
     const openRouterResponse = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
@@ -291,7 +223,7 @@ export async function POST(
             content: prompt,
           },
         ],
-        max_tokens: 800, // Reduced from 2000 - only generating one category
+        max_tokens: 800,
         temperature: 0.7,
       }),
     });
@@ -318,7 +250,6 @@ export async function POST(
     // Parse the AI response
     const recommendations = parseRecommendations(content);
 
-    // Return with category info
     return NextResponse.json({
       category,
       destination,
@@ -327,7 +258,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Recommendations API error:', error);
+    console.error('Explore recommendations API error:', error);
 
     if (error instanceof SyntaxError) {
       return NextResponse.json(

@@ -6,25 +6,32 @@ struct AIRecommendationsSheet: View {
     let trip: Trip
     let onAddRecommendation: (String, String?, RecommendationCategory) async -> Bool
 
+    @State private var selectedCategory: AIService.RecommendationCategory = .restaurant
     @State private var isLoading = false
-    @State private var recommendations: AIService.AIRecommendationsResponse?
-    @State private var errorMessage: String?
-    @State private var selectedCategory: RecommendationCategory? = nil
+    @State private var cache: [AIService.RecommendationCategory: [AIService.AIRecommendation]] = [:]
+    @State private var errors: [AIService.RecommendationCategory: String] = [:]
     @State private var addedIds: Set<UUID> = []
+
+    // Filters per category
+    @State private var restaurantFilters = AIService.RestaurantFilters()
+    @State private var activityFilters = AIService.ActivityFilters()
+    @State private var stayFilters = AIService.StayFilters()
+    @State private var tipFilters = AIService.TipFilters()
+    @State private var showFilters = false
 
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading {
-                    loadingView
-                } else if let recs = recommendations {
-                    recommendationsView(recs)
-                } else if let error = errorMessage {
-                    errorView(error)
-                } else {
-                    loadingView
-                }
+            VStack(spacing: 0) {
+                // Category Tabs
+                categoryTabs
+
+                // Filters Toggle
+                filtersSection
+
+                // Content
+                contentArea
             }
+            .background(Color.seeyaBackground)
             .navigationTitle("AI Recommendations")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -34,25 +41,332 @@ struct AIRecommendationsSheet: View {
                     }
                 }
 
-                if recommendations != nil {
+                if let recs = cache[selectedCategory], !recs.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            generateRecommendations()
+                            refreshCurrentCategory()
                         } label: {
                             Image(systemName: "arrow.clockwise")
                         }
+                        .disabled(isLoading)
                     }
                 }
             }
             .task {
-                if recommendations == nil {
-                    generateRecommendations()
+                // Auto-generate first category on open
+                if cache[selectedCategory] == nil {
+                    await generateRecommendations(for: selectedCategory)
                 }
             }
         }
     }
 
-    // MARK: - Loading View
+    // MARK: - Category Tabs
+
+    private var categoryTabs: some View {
+        HStack(spacing: SeeyaSpacing.xxs) {
+            ForEach(AIService.RecommendationCategory.allCases, id: \.self) { category in
+                categoryTab(for: category)
+            }
+        }
+        .padding(.horizontal, SeeyaSpacing.md)
+        .padding(.vertical, SeeyaSpacing.sm)
+        .background(Color.seeyaSurface)
+    }
+
+    private func categoryTab(for category: AIService.RecommendationCategory) -> some View {
+        let isSelected = selectedCategory == category
+        let hasResults = (cache[category]?.count ?? 0) > 0
+
+        return Button {
+            selectCategory(category)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: category.icon)
+                    .font(.caption)
+                Text(category.displayName)
+                    .font(SeeyaTypography.labelSmall)
+                if hasResults {
+                    Text("\(cache[category]?.count ?? 0)")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(isSelected ? Color.white.opacity(0.2) : Color.seeyaPurple.opacity(0.1))
+                        .clipShape(Capsule())
+                }
+            }
+            .foregroundStyle(isSelected ? .white : Color.seeyaTextSecondary)
+            .padding(.horizontal, SeeyaSpacing.sm)
+            .padding(.vertical, SeeyaSpacing.xs)
+            .background(isSelected ? Color.seeyaPurple : Color.seeyaBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    // MARK: - Filters Section
+
+    private var filtersSection: some View {
+        VStack(spacing: SeeyaSpacing.sm) {
+            // Filter toggle button
+            HStack {
+                Button {
+                    withAnimation(.spring(response: 0.3)) {
+                        showFilters.toggle()
+                    }
+                } label: {
+                    HStack(spacing: SeeyaSpacing.xxs) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.caption)
+                        Text("Filters")
+                            .font(SeeyaTypography.labelSmall)
+                        if hasActiveFilters {
+                            Circle()
+                                .fill(Color.seeyaPurple)
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    .foregroundStyle(showFilters || hasActiveFilters ? Color.seeyaPurple : Color.seeyaTextSecondary)
+                    .padding(.horizontal, SeeyaSpacing.sm)
+                    .padding(.vertical, SeeyaSpacing.xs)
+                    .background(showFilters || hasActiveFilters ? Color.seeyaPurple.opacity(0.1) : Color.seeyaBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+
+                if hasActiveFilters {
+                    Button {
+                        clearFilters()
+                    } label: {
+                        HStack(spacing: 2) {
+                            Image(systemName: "xmark")
+                                .font(.caption2)
+                            Text("Clear")
+                                .font(SeeyaTypography.caption)
+                        }
+                        .foregroundStyle(Color.seeyaTextSecondary)
+                    }
+                }
+
+                Spacer()
+
+                // Destination
+                HStack(spacing: 4) {
+                    if let flag = trip.locations?.first?.flagEmoji {
+                        Text(flag)
+                    }
+                    Text(trip.destination)
+                        .font(SeeyaTypography.labelSmall)
+                        .foregroundStyle(Color.seeyaTextSecondary)
+                }
+            }
+            .padding(.horizontal, SeeyaSpacing.md)
+            .padding(.top, SeeyaSpacing.xs)
+
+            // Filter panel
+            if showFilters {
+                filterPanel
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private var filterPanel: some View {
+        VStack(spacing: SeeyaSpacing.sm) {
+            Group {
+                switch selectedCategory {
+                case .restaurant:
+                    restaurantFilterPanel
+                case .activity:
+                    activityFilterPanel
+                case .stay:
+                    stayFilterPanel
+                case .tip:
+                    tipFilterPanel
+                }
+            }
+
+            HStack {
+                Spacer()
+                Button("Apply Filters") {
+                    applyFilters()
+                }
+                .font(SeeyaTypography.labelSmall)
+                .foregroundStyle(.white)
+                .padding(.horizontal, SeeyaSpacing.md)
+                .padding(.vertical, SeeyaSpacing.xs)
+                .background(Color.seeyaPurple)
+                .clipShape(Capsule())
+            }
+        }
+        .padding(SeeyaSpacing.md)
+        .background(Color.seeyaCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, SeeyaSpacing.md)
+    }
+
+    private var restaurantFilterPanel: some View {
+        VStack(spacing: SeeyaSpacing.sm) {
+            HStack {
+                filterPicker(
+                    title: "Cuisine",
+                    selection: Binding(
+                        get: { restaurantFilters.cuisine ?? "" },
+                        set: { restaurantFilters.cuisine = $0.isEmpty ? nil : $0 }
+                    ),
+                    options: ["", "Italian", "Japanese", "Mexican", "Thai", "Indian", "French", "Chinese", "Mediterranean", "American", "Korean", "Vietnamese", "Local"]
+                )
+
+                filterPicker(
+                    title: "Meal",
+                    selection: Binding(
+                        get: { restaurantFilters.mealType ?? "" },
+                        set: { restaurantFilters.mealType = $0.isEmpty ? nil : $0 }
+                    ),
+                    options: ["", "breakfast", "brunch", "lunch", "dinner", "late-night"]
+                )
+            }
+
+            HStack {
+                filterPicker(
+                    title: "Price",
+                    selection: Binding(
+                        get: { restaurantFilters.priceRange ?? "" },
+                        set: { restaurantFilters.priceRange = $0.isEmpty ? nil : $0 }
+                    ),
+                    options: ["", "$", "$$", "$$$", "$$$$"]
+                )
+
+                filterPicker(
+                    title: "Vibe",
+                    selection: Binding(
+                        get: { restaurantFilters.vibe ?? "" },
+                        set: { restaurantFilters.vibe = $0.isEmpty ? nil : $0 }
+                    ),
+                    options: ["", "romantic", "casual", "family", "trendy", "traditional"]
+                )
+            }
+
+            TextField("Neighborhood", text: Binding(
+                get: { restaurantFilters.neighborhood ?? "" },
+                set: { restaurantFilters.neighborhood = $0.isEmpty ? nil : $0 }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .font(SeeyaTypography.bodySmall)
+        }
+    }
+
+    private var activityFilterPanel: some View {
+        VStack(spacing: SeeyaSpacing.sm) {
+            HStack {
+                filterPicker(
+                    title: "Type",
+                    selection: Binding(
+                        get: { activityFilters.type ?? "" },
+                        set: { activityFilters.type = $0.isEmpty ? nil : $0 }
+                    ),
+                    options: ["", "outdoor", "cultural", "nightlife", "tours", "shopping", "wellness"]
+                )
+
+                filterPicker(
+                    title: "Duration",
+                    selection: Binding(
+                        get: { activityFilters.duration ?? "" },
+                        set: { activityFilters.duration = $0.isEmpty ? nil : $0 }
+                    ),
+                    options: ["", "quick", "half-day", "full-day"]
+                )
+            }
+
+            Toggle("Kid-friendly", isOn: Binding(
+                get: { activityFilters.kidFriendly ?? false },
+                set: { activityFilters.kidFriendly = $0 ? true : nil }
+            ))
+            .font(SeeyaTypography.bodySmall)
+        }
+    }
+
+    private var stayFilterPanel: some View {
+        VStack(spacing: SeeyaSpacing.sm) {
+            HStack {
+                filterPicker(
+                    title: "Type",
+                    selection: Binding(
+                        get: { stayFilters.propertyType ?? "" },
+                        set: { stayFilters.propertyType = $0.isEmpty ? nil : $0 }
+                    ),
+                    options: ["", "hotel", "boutique", "airbnb", "hostel", "resort"]
+                )
+
+                filterPicker(
+                    title: "Price",
+                    selection: Binding(
+                        get: { stayFilters.priceRange ?? "" },
+                        set: { stayFilters.priceRange = $0.isEmpty ? nil : $0 }
+                    ),
+                    options: ["", "$", "$$", "$$$", "$$$$"]
+                )
+            }
+
+            TextField("Neighborhood", text: Binding(
+                get: { stayFilters.neighborhood ?? "" },
+                set: { stayFilters.neighborhood = $0.isEmpty ? nil : $0 }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .font(SeeyaTypography.bodySmall)
+        }
+    }
+
+    private var tipFilterPanel: some View {
+        filterPicker(
+            title: "Topic",
+            selection: Binding(
+                get: { tipFilters.topic ?? "" },
+                set: { tipFilters.topic = $0.isEmpty ? nil : $0 }
+            ),
+            options: ["", "transport", "safety", "culture", "money", "packing", "local-customs", "food", "language"]
+        )
+    }
+
+    private func filterPicker(title: String, selection: Binding<String>, options: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(SeeyaTypography.caption)
+                .foregroundStyle(Color.seeyaTextSecondary)
+            Picker(title, selection: selection) {
+                ForEach(options, id: \.self) { option in
+                    Text(option.isEmpty ? "Any" : option.capitalized)
+                        .tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(Color.seeyaPurple)
+        }
+    }
+
+    private var hasActiveFilters: Bool {
+        switch selectedCategory {
+        case .restaurant: return !restaurantFilters.isEmpty
+        case .activity: return !activityFilters.isEmpty
+        case .stay: return !stayFilters.isEmpty
+        case .tip: return !tipFilters.isEmpty
+        }
+    }
+
+    // MARK: - Content Area
+
+    private var contentArea: some View {
+        Group {
+            if isLoading {
+                loadingView
+            } else if let error = errors[selectedCategory] {
+                errorView(error)
+            } else if let recs = cache[selectedCategory], !recs.isEmpty {
+                recommendationsList(recs)
+            } else {
+                emptyStateView
+            }
+        }
+    }
 
     private var loadingView: some View {
         VStack(spacing: SeeyaSpacing.lg) {
@@ -64,30 +378,24 @@ struct AIRecommendationsSheet: View {
                     .foregroundStyle(Color.seeyaPurple)
                     .symbolEffect(.pulse)
 
-                Text("Getting recommendations for")
-                    .font(SeeyaTypography.bodyMedium)
-                    .foregroundStyle(Color.seeyaTextSecondary)
-
-                Text(trip.destination)
-                    .font(SeeyaTypography.headlineMedium)
+                Text("Finding \(selectedCategory.displayName.lowercased())...")
+                    .font(SeeyaTypography.headlineSmall)
                     .foregroundStyle(Color.seeyaTextPrimary)
+
+                Text("AI is searching for the best options in \(trip.destination)")
+                    .font(SeeyaTypography.bodySmall)
+                    .foregroundStyle(Color.seeyaTextSecondary)
+                    .multilineTextAlignment(.center)
 
                 ProgressView()
                     .padding(.top, SeeyaSpacing.sm)
             }
+            .padding(.horizontal, SeeyaSpacing.xl)
 
             Spacer()
-
-            Text("AI is finding the best local spots...")
-                .font(SeeyaTypography.caption)
-                .foregroundStyle(Color.seeyaTextTertiary)
-                .padding(.bottom, SeeyaSpacing.xl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.seeyaBackground)
     }
-
-    // MARK: - Error View
 
     private func errorView(_ error: String) -> some View {
         VStack(spacing: SeeyaSpacing.lg) {
@@ -98,7 +406,7 @@ struct AIRecommendationsSheet: View {
                     .font(.system(size: 48))
                     .foregroundStyle(.orange)
 
-                Text("Couldn't generate recommendations")
+                Text("Couldn't get recommendations")
                     .font(SeeyaTypography.headlineSmall)
                     .foregroundStyle(Color.seeyaTextPrimary)
 
@@ -109,7 +417,9 @@ struct AIRecommendationsSheet: View {
                     .padding(.horizontal)
 
                 Button {
-                    generateRecommendations()
+                    Task {
+                        await generateRecommendations(for: selectedCategory, forceRefresh: true)
+                    }
                 } label: {
                     Label("Try Again", systemImage: "arrow.clockwise")
                 }
@@ -120,126 +430,65 @@ struct AIRecommendationsSheet: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.seeyaBackground)
     }
 
-    // MARK: - Recommendations View
+    private var emptyStateView: some View {
+        VStack(spacing: SeeyaSpacing.lg) {
+            Spacer()
 
-    private func recommendationsView(_ recs: AIService.AIRecommendationsResponse) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: SeeyaSpacing.lg) {
-                // Header
-                VStack(alignment: .leading, spacing: SeeyaSpacing.xs) {
-                    HStack {
-                        if let flag = trip.locations?.first?.flagEmoji {
-                            Text(flag)
-                                .font(.title2)
-                        }
-                        Text(trip.destination)
-                            .font(SeeyaTypography.headlineMedium)
-                    }
+            VStack(spacing: SeeyaSpacing.md) {
+                Image(systemName: selectedCategory.icon)
+                    .font(.system(size: 48))
+                    .foregroundStyle(categoryColor(for: selectedCategory))
 
-                    Text("AI-curated recommendations just for your trip")
-                        .font(SeeyaTypography.bodySmall)
-                        .foregroundStyle(Color.seeyaTextSecondary)
-                }
-                .padding(.horizontal)
+                Text("Get \(selectedCategory.displayName) Recommendations")
+                    .font(SeeyaTypography.headlineSmall)
+                    .foregroundStyle(Color.seeyaTextPrimary)
 
-                // Category Filter
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: SeeyaSpacing.xs) {
-                        FilterChip(
-                            title: "All",
-                            isSelected: selectedCategory == nil,
-                            onTap: { selectedCategory = nil }
-                        )
-
-                        FilterChip(
-                            title: "Restaurants",
-                            icon: "fork.knife",
-                            color: .orange,
-                            isSelected: selectedCategory == .restaurant,
-                            onTap: { selectedCategory = .restaurant }
-                        )
-
-                        FilterChip(
-                            title: "Activities",
-                            icon: "figure.hiking",
-                            color: .green,
-                            isSelected: selectedCategory == .activity,
-                            onTap: { selectedCategory = .activity }
-                        )
-
-                        FilterChip(
-                            title: "Stays",
-                            icon: "bed.double",
-                            color: .blue,
-                            isSelected: selectedCategory == .stay,
-                            onTap: { selectedCategory = .stay }
-                        )
-
-                        FilterChip(
-                            title: "Tips",
-                            icon: "lightbulb",
-                            color: Color(red: 0.85, green: 0.65, blue: 0.0),
-                            isSelected: selectedCategory == .tip,
-                            onTap: { selectedCategory = .tip }
-                        )
-                    }
+                Text(categoryDescription)
+                    .font(SeeyaTypography.bodySmall)
+                    .foregroundStyle(Color.seeyaTextSecondary)
+                    .multilineTextAlignment(.center)
                     .padding(.horizontal)
+
+                Button {
+                    Task {
+                        await generateRecommendations(for: selectedCategory)
+                    }
+                } label: {
+                    Label("Get Suggestions", systemImage: "sparkles")
                 }
+                .buttonStyle(SeeyaPrimaryButtonStyle())
+                .padding(.top, SeeyaSpacing.md)
+            }
 
-                // Recommendations by category
-                VStack(spacing: SeeyaSpacing.lg) {
-                    if selectedCategory == nil || selectedCategory == .restaurant {
-                        if !recs.restaurants.isEmpty {
-                            categorySection(
-                                title: "Where to Eat",
-                                icon: "fork.knife",
-                                color: .orange,
-                                items: recs.restaurants,
-                                category: .restaurant
-                            )
-                        }
-                    }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
-                    if selectedCategory == nil || selectedCategory == .activity {
-                        if !recs.activities.isEmpty {
-                            categorySection(
-                                title: "Things to Do",
-                                icon: "figure.hiking",
-                                color: .green,
-                                items: recs.activities,
-                                category: .activity
-                            )
-                        }
-                    }
+    private var categoryDescription: String {
+        switch selectedCategory {
+        case .restaurant: return "Discover the best restaurants and local dining spots."
+        case .activity: return "Find unique activities and experiences."
+        case .stay: return "Get accommodation suggestions for your trip."
+        case .tip: return "Get practical travel tips and local insights."
+        }
+    }
 
-                    if selectedCategory == nil || selectedCategory == .stay {
-                        if !recs.stays.isEmpty {
-                            categorySection(
-                                title: "Where to Stay",
-                                icon: "bed.double",
-                                color: .blue,
-                                items: recs.stays,
-                                category: .stay
-                            )
+    private func recommendationsList(_ recommendations: [AIService.AIRecommendation]) -> some View {
+        ScrollView {
+            LazyVStack(spacing: SeeyaSpacing.sm) {
+                ForEach(recommendations) { recommendation in
+                    AIRecommendationCard(
+                        recommendation: recommendation,
+                        color: categoryColor(for: selectedCategory),
+                        isAdded: addedIds.contains(recommendation.id),
+                        onAdd: {
+                            addRecommendation(recommendation)
                         }
-                    }
-
-                    if selectedCategory == nil || selectedCategory == .tip {
-                        if !recs.tips.isEmpty {
-                            categorySection(
-                                title: "Local Tips",
-                                icon: "lightbulb",
-                                color: Color(red: 0.85, green: 0.65, blue: 0.0),
-                                items: recs.tips,
-                                category: .tip
-                            )
-                        }
-                    }
+                    )
                 }
-                .padding(.horizontal)
 
                 // Footer
                 HStack {
@@ -249,71 +498,110 @@ struct AIRecommendationsSheet: View {
                         .font(SeeyaTypography.caption)
                 }
                 .foregroundStyle(Color.seeyaTextTertiary)
-                .frame(maxWidth: .infinity)
                 .padding(.vertical, SeeyaSpacing.lg)
             }
-            .padding(.vertical)
-        }
-        .background(Color.seeyaBackground)
-    }
-
-    // MARK: - Category Section
-
-    private func categorySection(
-        title: String,
-        icon: String,
-        color: Color,
-        items: [AIService.AIRecommendation],
-        category: RecommendationCategory
-    ) -> some View {
-        VStack(alignment: .leading, spacing: SeeyaSpacing.sm) {
-            HStack(spacing: SeeyaSpacing.xs) {
-                Image(systemName: icon)
-                    .foregroundStyle(color)
-                Text(title)
-                    .font(SeeyaTypography.headlineSmall)
-            }
-
-            VStack(spacing: SeeyaSpacing.sm) {
-                ForEach(items) { item in
-                    AIRecommendationCard(
-                        recommendation: item,
-                        color: color,
-                        isAdded: addedIds.contains(item.id),
-                        onAdd: {
-                            addRecommendation(item, category: category)
-                        }
-                    )
-                }
-            }
+            .padding(.horizontal, SeeyaSpacing.md)
+            .padding(.vertical, SeeyaSpacing.sm)
         }
     }
 
     // MARK: - Actions
 
-    private func generateRecommendations() {
-        isLoading = true
-        errorMessage = nil
+    private func selectCategory(_ category: AIService.RecommendationCategory) {
+        selectedCategory = category
+        showFilters = false
 
-        Task {
-            do {
-                let recs = try await AIService.shared.generateDestinationRecommendations(
-                    destination: trip.destination,
-                    tripDates: (trip.startDate, trip.endDate)
-                )
-                recommendations = recs
-            } catch {
-                errorMessage = error.localizedDescription
+        // Auto-generate if no cached results
+        if cache[category] == nil && errors[category] == nil {
+            Task {
+                await generateRecommendations(for: category)
             }
-            isLoading = false
         }
     }
 
-    private func addRecommendation(_ item: AIService.AIRecommendation, category: RecommendationCategory) {
+    private func generateRecommendations(for category: AIService.RecommendationCategory, forceRefresh: Bool = false) async {
+        guard !isLoading else { return }
+
+        // Don't regenerate if we have cached results (unless forced)
+        if !forceRefresh && cache[category] != nil {
+            return
+        }
+
+        isLoading = true
+        errors[category] = nil
+
+        do {
+            let filters = currentFilters(for: category)
+            let response = try await AIService.shared.generateCategoryRecommendations(
+                destination: trip.destination,
+                category: category,
+                count: 4,
+                filters: filters,
+                tripDates: (trip.startDate, trip.endDate)
+            )
+            cache[category] = response.recommendations
+        } catch {
+            errors[category] = error.localizedDescription
+        }
+
+        isLoading = false
+    }
+
+    private func refreshCurrentCategory() {
+        cache[selectedCategory] = nil
+        Task {
+            await generateRecommendations(for: selectedCategory, forceRefresh: true)
+        }
+    }
+
+    private func currentFilters(for category: AIService.RecommendationCategory) -> AIService.CategoryFilters? {
+        switch category {
+        case .restaurant:
+            return restaurantFilters.isEmpty ? nil : .restaurant(restaurantFilters)
+        case .activity:
+            return activityFilters.isEmpty ? nil : .activity(activityFilters)
+        case .stay:
+            return stayFilters.isEmpty ? nil : .stay(stayFilters)
+        case .tip:
+            return tipFilters.isEmpty ? nil : .tip(tipFilters)
+        }
+    }
+
+    private func applyFilters() {
+        showFilters = false
+        cache[selectedCategory] = nil
+        Task {
+            await generateRecommendations(for: selectedCategory, forceRefresh: true)
+        }
+    }
+
+    private func clearFilters() {
+        switch selectedCategory {
+        case .restaurant: restaurantFilters = AIService.RestaurantFilters()
+        case .activity: activityFilters = AIService.ActivityFilters()
+        case .stay: stayFilters = AIService.StayFilters()
+        case .tip: tipFilters = AIService.TipFilters()
+        }
+        cache[selectedCategory] = nil
+        Task {
+            await generateRecommendations(for: selectedCategory, forceRefresh: true)
+        }
+    }
+
+    private func addRecommendation(_ item: AIService.AIRecommendation) {
         Task {
             let description = item.tips != nil
                 ? "\(item.description)\n\nTip: \(item.tips!)"
                 : item.description
+
+            let category: RecommendationCategory = {
+                switch selectedCategory {
+                case .restaurant: return .restaurant
+                case .activity: return .activity
+                case .stay: return .stay
+                case .tip: return .tip
+                }
+            }()
 
             let success = await onAddRecommendation(item.title, description, category)
             if success {
@@ -321,32 +609,13 @@ struct AIRecommendationsSheet: View {
             }
         }
     }
-}
 
-// MARK: - Filter Chip
-
-private struct FilterChip: View {
-    let title: String
-    var icon: String? = nil
-    var color: Color = Color.seeyaPurple
-    let isSelected: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 4) {
-                if let icon = icon {
-                    Image(systemName: icon)
-                        .font(.caption)
-                }
-                Text(title)
-                    .font(SeeyaTypography.labelSmall)
-            }
-            .foregroundStyle(isSelected ? .white : color)
-            .padding(.horizontal, SeeyaSpacing.sm)
-            .padding(.vertical, SeeyaSpacing.xs)
-            .background(isSelected ? color : color.opacity(0.1))
-            .clipShape(Capsule())
+    private func categoryColor(for category: AIService.RecommendationCategory) -> Color {
+        switch category {
+        case .restaurant: return .orange
+        case .activity: return .green
+        case .stay: return .blue
+        case .tip: return Color(red: 0.85, green: 0.65, blue: 0.0)
         }
     }
 }
@@ -392,7 +661,7 @@ private struct AIRecommendationCard: View {
                 .disabled(isAdded)
             }
 
-            // Tips and meta info
+            // Cost and time info
             HStack(spacing: SeeyaSpacing.md) {
                 if let cost = recommendation.estimatedCost {
                     HStack(spacing: 2) {

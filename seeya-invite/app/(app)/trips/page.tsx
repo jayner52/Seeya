@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
-import { Card, Button, Badge, StackedAvatars, Spinner } from '@/components/ui';
-import { formatDateRange, getDaysUntil } from '@/lib/utils/date';
-import { Plus, MapPin, Calendar, ChevronRight } from 'lucide-react';
+import { Card, Button, Spinner } from '@/components/ui';
+import { formatDateRange } from '@/lib/utils/date';
+import { Plus, MapPin, Calendar, Briefcase, Clock } from 'lucide-react';
 import type { TripParticipant } from '@/types';
 import { transformParticipant } from '@/types/database';
 
@@ -170,10 +170,63 @@ export default function TripsPage() {
           </Link>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {trips.map((trip) => (
-            <TripCard key={trip.id} trip={trip} />
-          ))}
+        <TripsListByStatus trips={trips} />
+      )}
+    </div>
+  );
+}
+
+function TripsListByStatus({ trips }: { trips: TripWithParticipants[] }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const upcomingTrips = trips.filter((trip) => {
+    if (!trip.start_date) return true; // No date = treat as upcoming
+    const startDate = new Date(trip.start_date);
+    return startDate >= today;
+  });
+
+  const pastTrips = trips.filter((trip) => {
+    if (!trip.start_date) return false;
+    const startDate = new Date(trip.start_date);
+    return startDate < today;
+  });
+
+  return (
+    <div className="space-y-8">
+      {/* Upcoming Trips */}
+      {upcomingTrips.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Briefcase size={20} className="text-seeya-purple" />
+            <h2 className="text-lg font-semibold text-seeya-text">
+              Upcoming Trips
+            </h2>
+            <span className="text-seeya-text-secondary">({upcomingTrips.length})</span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+            {upcomingTrips.map((trip) => (
+              <TripCard key={trip.id} trip={trip} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Past Trips */}
+      {pastTrips.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Clock size={20} className="text-seeya-text-secondary" />
+            <h2 className="text-lg font-semibold text-seeya-text">
+              Past Trips
+            </h2>
+            <span className="text-seeya-text-secondary">({pastTrips.length})</span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+            {pastTrips.map((trip) => (
+              <TripCard key={trip.id} trip={trip} />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -182,7 +235,6 @@ export default function TripsPage() {
 
 function TripCard({ trip }: { trip: TripWithParticipants }) {
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
-  const daysUntil = getDaysUntil(trip.start_date);
 
   // Get location display string
   const firstLocation = trip.locations[0]?.custom_location;
@@ -194,51 +246,37 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
     : null;
 
   return (
-    <Link href={`/trips/${trip.id}`}>
+    <Link href={`/trips/${trip.id}`} className="h-full">
       <Card
         variant="elevated"
         padding="none"
-        className="overflow-hidden hover:shadow-seeya-lg transition-shadow cursor-pointer"
+        className="overflow-hidden hover:shadow-seeya-lg transition-shadow cursor-pointer h-full flex flex-col"
       >
-        {/* Header with gradient */}
-        <div className="h-24 bg-gradient-to-br from-seeya-purple to-purple-600 relative">
-          {daysUntil !== null && daysUntil > 0 && (
-            <Badge
-              variant="default"
-              size="sm"
-              className="absolute top-3 right-3 bg-white/90 text-seeya-purple"
-            >
-              In {daysUntil} days
-            </Badge>
-          )}
-        </div>
-
         {/* Content */}
-        <div className="p-4">
-          <h3 className="font-semibold text-lg text-seeya-text mb-1">
+        <div className="p-4 flex flex-col flex-1">
+          {/* Title - fixed 2 lines height */}
+          <h3 className="font-semibold text-seeya-text mb-2 line-clamp-2 min-h-[2.75rem]">
             {trip.name}
           </h3>
 
-          {/* Location */}
-          {locationDisplay && (
-            <div className="flex items-center gap-1.5 text-sm text-seeya-text-secondary mb-1">
-              <MapPin size={14} />
-              <span className="truncate">{locationDisplay}</span>
-            </div>
-          )}
+          {/* Location - always show row even if empty */}
+          <div className="flex items-center gap-1.5 text-sm text-seeya-text-secondary mb-1 h-5">
+            {locationDisplay && (
+              <>
+                <MapPin size={14} className="flex-shrink-0" />
+                <span className="truncate">{locationDisplay}</span>
+              </>
+            )}
+          </div>
 
-          {/* Dates */}
-          {dateRange && (
-            <div className="flex items-center gap-1.5 text-sm text-seeya-text-secondary mb-4">
-              <Calendar size={14} />
-              <span>{dateRange}</span>
-            </div>
-          )}
-
-          {/* Participants */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            <StackedAvatars participants={trip.participants} maxVisible={4} />
-            <ChevronRight size={20} className="text-seeya-text-secondary" />
+          {/* Dates - always show row even if empty */}
+          <div className="flex items-center gap-1.5 text-sm text-seeya-text-secondary h-5">
+            {dateRange && (
+              <>
+                <Calendar size={14} className="flex-shrink-0" />
+                <span>{dateRange}</span>
+              </>
+            )}
           </div>
         </div>
       </Card>

@@ -286,6 +286,318 @@ actor AIService {
         let tips: [AIRecommendation]
     }
 
+    // MARK: - Category-Based Recommendations
+
+    enum RecommendationCategory: String, Codable, CaseIterable, Sendable {
+        case restaurant
+        case activity
+        case stay
+        case tip
+
+        var displayName: String {
+            switch self {
+            case .restaurant: return "Food"
+            case .activity: return "Activities"
+            case .stay: return "Stays"
+            case .tip: return "Tips"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .restaurant: return "fork.knife"
+            case .activity: return "figure.hiking"
+            case .stay: return "bed.double"
+            case .tip: return "lightbulb"
+            }
+        }
+
+        var color: String {
+            switch self {
+            case .restaurant: return "orange"
+            case .activity: return "green"
+            case .stay: return "blue"
+            case .tip: return "yellow"
+            }
+        }
+    }
+
+    // Category-specific filter types
+    struct RestaurantFilters: Codable, Sendable {
+        var cuisine: String?
+        var neighborhood: String?
+        var priceRange: String? // $, $$, $$$, $$$$
+        var mealType: String? // breakfast, brunch, lunch, dinner, late-night
+        var vibe: String? // romantic, casual, family, trendy, traditional
+
+        var isEmpty: Bool {
+            cuisine == nil && neighborhood == nil && priceRange == nil && mealType == nil && vibe == nil
+        }
+    }
+
+    struct ActivityFilters: Codable, Sendable {
+        var type: String? // outdoor, cultural, nightlife, tours, shopping, wellness
+        var duration: String? // quick, half-day, full-day
+        var difficulty: String? // easy, moderate, challenging
+        var kidFriendly: Bool?
+
+        var isEmpty: Bool {
+            type == nil && duration == nil && difficulty == nil && kidFriendly == nil
+        }
+    }
+
+    struct StayFilters: Codable, Sendable {
+        var neighborhood: String?
+        var propertyType: String? // hotel, boutique, airbnb, hostel, resort
+        var priceRange: String? // $, $$, $$$, $$$$
+        var amenities: [String]?
+
+        var isEmpty: Bool {
+            neighborhood == nil && propertyType == nil && priceRange == nil && (amenities == nil || amenities!.isEmpty)
+        }
+    }
+
+    struct TipFilters: Codable, Sendable {
+        var topic: String? // transport, safety, culture, money, packing, local-customs, food, language
+
+        var isEmpty: Bool {
+            topic == nil
+        }
+    }
+
+    enum CategoryFilters: Sendable {
+        case restaurant(RestaurantFilters)
+        case activity(ActivityFilters)
+        case stay(StayFilters)
+        case tip(TipFilters)
+    }
+
+    struct CategoryRecommendationsResponse: Sendable {
+        let category: RecommendationCategory
+        let destination: String
+        let recommendations: [AIRecommendation]
+    }
+
+    /// Generate recommendations for a single category with optional filters
+    func generateCategoryRecommendations(
+        destination: String,
+        category: RecommendationCategory,
+        count: Int = 4,
+        filters: CategoryFilters? = nil,
+        tripDates: (start: Date?, end: Date?)? = nil
+    ) async throws -> CategoryRecommendationsResponse {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMMM yyyy"
+
+        var dateContext = ""
+        if let dates = tripDates, let start = dates.start {
+            if let end = dates.end {
+                let endFormatter = DateFormatter()
+                endFormatter.dateFormat = "MMMM d"
+                let startFormatter = DateFormatter()
+                startFormatter.dateFormat = "MMMM d"
+                dateContext = " The trip is from \(startFormatter.string(from: start)) to \(endFormatter.string(from: end))."
+            } else {
+                dateContext = " The trip starts in \(dateFormatter.string(from: start))."
+            }
+        }
+
+        // Build filter context
+        var filterContext = ""
+        if let filters = filters {
+            var filterParts: [String] = []
+
+            switch filters {
+            case .restaurant(let f):
+                if let cuisine = f.cuisine { filterParts.append("cuisine: \(cuisine)") }
+                if let neighborhood = f.neighborhood { filterParts.append("in \(neighborhood) area") }
+                if let priceRange = f.priceRange { filterParts.append("price range: \(priceRange)") }
+                if let mealType = f.mealType { filterParts.append("for \(mealType)") }
+                if let vibe = f.vibe { filterParts.append("\(vibe) atmosphere") }
+
+            case .activity(let f):
+                if let type = f.type { filterParts.append("type: \(type)") }
+                if let duration = f.duration { filterParts.append("duration: \(duration)") }
+                if let difficulty = f.difficulty { filterParts.append("difficulty: \(difficulty)") }
+                if f.kidFriendly == true { filterParts.append("kid-friendly") }
+
+            case .stay(let f):
+                if let neighborhood = f.neighborhood { filterParts.append("in \(neighborhood) area") }
+                if let propertyType = f.propertyType { filterParts.append("type: \(propertyType)") }
+                if let priceRange = f.priceRange { filterParts.append("price range: \(priceRange)") }
+                if let amenities = f.amenities, !amenities.isEmpty { filterParts.append("with: \(amenities.joined(separator: ", "))") }
+
+            case .tip(let f):
+                if let topic = f.topic { filterParts.append("about: \(topic)") }
+            }
+
+            if !filterParts.isEmpty {
+                filterContext = "\n\nUser preferences: \(filterParts.joined(separator: ", "))."
+            }
+        }
+
+        let prompt = buildCategoryPrompt(category: category, destination: destination, count: count, dateContext: dateContext, filterContext: filterContext)
+        let response = try await callOpenRouter(prompt: prompt, maxTokens: 800, temperature: 0.7)
+        let recommendations = try parseCategoryRecommendationsJSON(response, category: category)
+
+        return CategoryRecommendationsResponse(
+            category: category,
+            destination: destination,
+            recommendations: recommendations
+        )
+    }
+
+    private func buildCategoryPrompt(
+        category: RecommendationCategory,
+        destination: String,
+        count: Int,
+        dateContext: String,
+        filterContext: String
+    ) -> String {
+        switch category {
+        case .restaurant:
+            return """
+            You are a local food expert helping plan dining experiences in \(destination).\(dateContext)\(filterContext)
+
+            Generate \(count) authentic restaurant recommendations. Focus on places locals love, not tourist traps. Include hidden gems and neighborhood favorites.
+
+            Return a JSON array (no markdown, just raw JSON):
+            [
+              {
+                "title": "Restaurant name",
+                "description": "Brief description of cuisine, specialty dishes, and atmosphere (2-3 sentences)",
+                "category": "restaurant",
+                "tips": "Insider tip (best dish to order, reservation advice, best seats, etc.)",
+                "estimatedCost": "$XX-XX per person",
+                "bestTimeToVisit": "Best time/day to visit"
+              }
+            ]
+
+            Be specific with real places. Include a mix of price points unless filtered.
+            """
+
+        case .activity:
+            return """
+            You are a local guide helping plan activities in \(destination).\(dateContext)\(filterContext)
+
+            Generate \(count) unique activity recommendations. Focus on authentic experiences that go beyond typical tourist activities. Include local favorites and hidden gems.
+
+            Return a JSON array (no markdown, just raw JSON):
+            [
+              {
+                "title": "Activity name",
+                "description": "What you'll do and why it's special (2-3 sentences)",
+                "category": "activity",
+                "tips": "Insider tip (best time, what to bring, how to avoid crowds, etc.)",
+                "estimatedCost": "$XX-XX or Free",
+                "bestTimeToVisit": "Best time/season"
+              }
+            ]
+
+            Be specific with real activities and locations.
+            """
+
+        case .stay:
+            return """
+            You are a local accommodation expert helping find places to stay in \(destination).\(dateContext)\(filterContext)
+
+            Generate \(count) accommodation recommendations. Focus on well-located options with good value and local character. Include different neighborhood options.
+
+            Return a JSON array (no markdown, just raw JSON):
+            [
+              {
+                "title": "Property or Hotel name",
+                "description": "What makes this place special, location benefits (2-3 sentences)",
+                "category": "stay",
+                "tips": "Insider tip (best room type, booking advice, nearby highlights)",
+                "estimatedCost": "$XX-XX per night",
+                "bestTimeToVisit": "Best time to book or visit"
+              }
+            ]
+
+            Be specific with real properties. Include neighborhood context.
+            """
+
+        case .tip:
+            return """
+            You are a seasoned traveler sharing essential tips for visiting \(destination).\(dateContext)\(filterContext)
+
+            Generate \(count) practical travel tips. Focus on advice that saves time, money, or enhances the experience. Share local knowledge that isn't in guidebooks.
+
+            Return a JSON array (no markdown, just raw JSON):
+            [
+              {
+                "title": "Tip title (short and actionable)",
+                "description": "Detailed explanation of the tip (2-3 sentences)",
+                "category": "tip",
+                "tips": "Additional context or related advice"
+              }
+            ]
+
+            Be specific and actionable. Avoid generic advice.
+            """
+        }
+    }
+
+    private func parseCategoryRecommendationsJSON(_ jsonString: String, category: RecommendationCategory) throws -> [AIRecommendation] {
+        let cleanedJSON = jsonString
+            .replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let jsonData = cleanedJSON.data(using: .utf8) else {
+            throw AIServiceError.parsingError
+        }
+
+        struct RawRecommendation: Decodable {
+            let title: String
+            let description: String
+            let category: String
+            let tips: String?
+            let estimatedCost: String?
+            let bestTimeToVisit: String?
+        }
+
+        let decoder = JSONDecoder()
+
+        // Try to decode as array first
+        if let items = try? decoder.decode([RawRecommendation].self, from: jsonData) {
+            return items.map { item in
+                AIRecommendation(
+                    title: item.title,
+                    description: item.description,
+                    category: item.category,
+                    tips: item.tips,
+                    estimatedCost: item.estimatedCost,
+                    bestTimeToVisit: item.bestTimeToVisit
+                )
+            }
+        }
+
+        // Try object with recommendations array
+        struct RawResponse: Decodable {
+            let recommendations: [RawRecommendation]?
+        }
+
+        if let response = try? decoder.decode(RawResponse.self, from: jsonData),
+           let items = response.recommendations {
+            return items.map { item in
+                AIRecommendation(
+                    title: item.title,
+                    description: item.description,
+                    category: item.category,
+                    tips: item.tips,
+                    estimatedCost: item.estimatedCost,
+                    bestTimeToVisit: item.bestTimeToVisit
+                )
+            }
+        }
+
+        throw AIServiceError.parsingError
+    }
+
+    // MARK: - Legacy All-Category Generation
+
     func generateDestinationRecommendations(
         destination: String,
         tripDates: (start: Date?, end: Date?)? = nil,

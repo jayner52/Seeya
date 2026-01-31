@@ -30,6 +30,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
+import type { TripBitAttachment } from '@/types/database';
 import { getLocationDisplayName } from '@/types/database';
 
 export default function TripDetailPage() {
@@ -45,6 +46,8 @@ export default function TripDetailPage() {
   const [activeTab, setActiveTab] = useState<TripTab>('planning');
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [addSheetCategory, setAddSheetCategory] = useState<TripBitCategory | undefined>();
+  const [editingTripBit, setEditingTripBit] = useState<TripBit | null>(null);
+  const [editingAttachments, setEditingAttachments] = useState<TripBitAttachment[]>([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showAISheet, setShowAISheet] = useState(false);
 
@@ -154,9 +157,18 @@ export default function TripDetailPage() {
     setShowAddSheet(true);
   };
 
-  const handleTripBitClick = (tripBit: TripBit) => {
-    // TODO: Open trip bit detail modal
-    console.log('View trip bit:', tripBit);
+  const handleTripBitClick = async (tripBit: TripBit) => {
+    // Fetch attachments for this trip bit
+    const supabase = createClient();
+    const { data: attachments } = await supabase
+      .from('trip_bit_attachments')
+      .select('*')
+      .eq('trip_bit_id', tripBit.id);
+
+    setEditingTripBit(tripBit);
+    setEditingAttachments(attachments || []);
+    setAddSheetCategory(undefined);
+    setShowAddSheet(true);
   };
 
   const handleInviteClick = () => {
@@ -354,19 +366,31 @@ export default function TripDetailPage() {
         )}
       </div>
 
-      {/* Add Trip Bit Sheet */}
+      {/* Add/Edit Trip Bit Sheet */}
       <AddTripBitSheet
         tripId={tripId}
         participants={trip.participants}
         initialCategory={addSheetCategory}
+        tripBit={editingTripBit}
+        existingAttachments={editingAttachments}
         isOpen={showAddSheet}
         onClose={() => {
           setShowAddSheet(false);
           setAddSheetCategory(undefined);
+          setEditingTripBit(null);
+          setEditingAttachments([]);
         }}
         onSuccess={() => {
           setShowAddSheet(false);
           setAddSheetCategory(undefined);
+          setEditingTripBit(null);
+          setEditingAttachments([]);
+          fetchTrip(); // Refresh data
+        }}
+        onDelete={() => {
+          setShowAddSheet(false);
+          setEditingTripBit(null);
+          setEditingAttachments([]);
           fetchTrip(); // Refresh data
         }}
       />

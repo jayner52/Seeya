@@ -11,7 +11,16 @@ struct ExploreView: View {
                     // Header
                     headerSection
 
-                    // Search Bar
+                    // AI Recommendations Section (New!)
+                    ExploreAISection()
+
+                    Divider()
+                        .padding(.vertical, SeeyaSpacing.sm)
+
+                    // Social Section Header
+                    socialSectionHeader
+
+                    // Search Bar for Social Content
                     ExploreSearchBar(
                         searchQuery: $viewModel.searchQuery,
                         countries: viewModel.quickChipCountries,
@@ -25,22 +34,26 @@ struct ExploreView: View {
                         onCategorySelect: { viewModel.selectCategory($0) }
                     )
 
-                    // Recommendations Section
-                    RecommendationsSection(
-                        recommendations: viewModel.filteredRecommendations,
-                        savedIds: viewModel.savedRecommendationIds,
-                        onToggleSave: { id in
-                            Task {
-                                _ = await viewModel.toggleSaveRecommendation(id)
+                    // Recommendations Section (from friends)
+                    if !viewModel.filteredRecommendations.isEmpty {
+                        RecommendationsSection(
+                            recommendations: viewModel.filteredRecommendations,
+                            savedIds: viewModel.savedRecommendationIds,
+                            onToggleSave: { id in
+                                Task {
+                                    _ = await viewModel.toggleSaveRecommendation(id)
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
 
                     // Map Section
-                    ExploreMapSection(
-                        recommendations: viewModel.recommendationsWithCoordinates,
-                        isExpanded: $showMapView
-                    )
+                    if !viewModel.recommendationsWithCoordinates.isEmpty {
+                        ExploreMapSection(
+                            recommendations: viewModel.recommendationsWithCoordinates,
+                            isExpanded: $showMapView
+                        )
+                    }
 
                     // Traveling Now & Upcoming
                     TravelingNowSection(trips: viewModel.allTravelingTrips)
@@ -80,8 +93,24 @@ struct ExploreView: View {
                 .font(SeeyaTypography.headlineLarge)
                 .foregroundStyle(Color.seeyaTextPrimary)
 
-            Text("Travel inspiration from your circle")
+            Text("AI recommendations & inspiration from your circle")
                 .font(SeeyaTypography.bodyMedium)
+                .foregroundStyle(Color.seeyaTextSecondary)
+        }
+    }
+
+    private var socialSectionHeader: some View {
+        VStack(alignment: .leading, spacing: SeeyaSpacing.xxs) {
+            HStack(spacing: SeeyaSpacing.xs) {
+                Image(systemName: "person.2.fill")
+                    .foregroundStyle(Color.seeyaPurple)
+                Text("From Your Circle")
+                    .font(SeeyaTypography.headlineMedium)
+                    .foregroundStyle(Color.seeyaTextPrimary)
+            }
+
+            Text("See what your travel friends are recommending")
+                .font(SeeyaTypography.bodySmall)
                 .foregroundStyle(Color.seeyaTextSecondary)
         }
     }

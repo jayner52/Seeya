@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, Button, Spinner } from '@/components/ui';
-import { generateRecommendations, saveRecommendationAsTripBit } from '@/lib/api/recommendations';
+import { generateCategoryRecommendations, saveRecommendationAsTripBit } from '@/lib/api/recommendations';
 import {
   Sparkles,
   Utensils,
@@ -18,12 +18,30 @@ import {
   DollarSign,
   Clock,
   ChevronDown,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react';
-import type { AIRecommendation, AIRecommendationsResponse, RecommendationCategory } from '@/types';
+import type {
+  AIRecommendation,
+  RecommendationCategory,
+  CategoryFilters,
+  RestaurantFilters,
+  ActivityFilters,
+  StayFilters,
+  TipFilters,
+} from '@/types';
+import {
+  CUISINE_OPTIONS,
+  MEAL_TYPE_OPTIONS,
+  VIBE_OPTIONS,
+  PRICE_RANGE_OPTIONS,
+  ACTIVITY_TYPE_OPTIONS,
+  ACTIVITY_DURATION_OPTIONS,
+  STAY_PROPERTY_TYPE_OPTIONS,
+  TIP_TOPIC_OPTIONS,
+} from '@/types';
 import type { TripLocation } from '@/types/database';
 import { getLocationDisplayName } from '@/types/database';
-
-type FilterCategory = 'all' | RecommendationCategory;
 
 interface AIRecommendationsSectionProps {
   tripId: string;
@@ -33,12 +51,23 @@ interface AIRecommendationsSectionProps {
   onTripBitAdded?: () => void;
 }
 
-const categoryConfig = {
+// Category configuration
+const categories: { id: RecommendationCategory; label: string; icon: typeof Utensils; color: string }[] = [
+  { id: 'restaurant', label: 'Food', icon: Utensils, color: 'bg-orange-50 text-orange-600' },
+  { id: 'activity', label: 'Activities', icon: Ticket, color: 'bg-green-50 text-green-600' },
+  { id: 'stay', label: 'Stays', icon: Hotel, color: 'bg-purple-50 text-purple-600' },
+  { id: 'tip', label: 'Tips', icon: Lightbulb, color: 'bg-blue-50 text-blue-600' },
+];
+
+const categoryConfig: Record<RecommendationCategory, { icon: typeof Utensils; label: string; color: string }> = {
   restaurant: { icon: Utensils, label: 'Food', color: 'bg-orange-50 text-orange-600' },
   activity: { icon: Ticket, label: 'Activities', color: 'bg-green-50 text-green-600' },
   stay: { icon: Hotel, label: 'Stays', color: 'bg-purple-50 text-purple-600' },
   tip: { icon: Lightbulb, label: 'Tips', color: 'bg-blue-50 text-blue-600' },
 };
+
+// Cache type for storing recommendations per category
+type CategoryCache = Partial<Record<RecommendationCategory, AIRecommendation[]>>;
 
 function RecommendationCard({
   recommendation,
@@ -126,6 +155,192 @@ function RecommendationCard({
   );
 }
 
+// Filter components for each category
+function RestaurantFilterPanel({
+  filters,
+  onChange,
+}: {
+  filters: RestaurantFilters;
+  onChange: (filters: RestaurantFilters) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {/* Cuisine */}
+      <select
+        value={filters.cuisine || ''}
+        onChange={(e) => onChange({ ...filters, cuisine: e.target.value || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any cuisine</option>
+        {CUISINE_OPTIONS.map((c) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
+
+      {/* Meal Type */}
+      <select
+        value={filters.mealType || ''}
+        onChange={(e) => onChange({ ...filters, mealType: e.target.value as RestaurantFilters['mealType'] || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any meal</option>
+        {MEAL_TYPE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {/* Price Range */}
+      <select
+        value={filters.priceRange || ''}
+        onChange={(e) => onChange({ ...filters, priceRange: e.target.value as RestaurantFilters['priceRange'] || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any price</option>
+        {PRICE_RANGE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {/* Vibe */}
+      <select
+        value={filters.vibe || ''}
+        onChange={(e) => onChange({ ...filters, vibe: e.target.value as RestaurantFilters['vibe'] || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any vibe</option>
+        {VIBE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {/* Neighborhood (free text) */}
+      <input
+        type="text"
+        value={filters.neighborhood || ''}
+        onChange={(e) => onChange({ ...filters, neighborhood: e.target.value || undefined })}
+        placeholder="Neighborhood"
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white w-32"
+      />
+    </div>
+  );
+}
+
+function ActivityFilterPanel({
+  filters,
+  onChange,
+}: {
+  filters: ActivityFilters;
+  onChange: (filters: ActivityFilters) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {/* Type */}
+      <select
+        value={filters.type || ''}
+        onChange={(e) => onChange({ ...filters, type: e.target.value as ActivityFilters['type'] || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any type</option>
+        {ACTIVITY_TYPE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {/* Duration */}
+      <select
+        value={filters.duration || ''}
+        onChange={(e) => onChange({ ...filters, duration: e.target.value as ActivityFilters['duration'] || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any duration</option>
+        {ACTIVITY_DURATION_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {/* Kid Friendly */}
+      <label className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white cursor-pointer">
+        <input
+          type="checkbox"
+          checked={filters.kidFriendly || false}
+          onChange={(e) => onChange({ ...filters, kidFriendly: e.target.checked || undefined })}
+          className="rounded border-gray-300"
+        />
+        <span>Kid-friendly</span>
+      </label>
+    </div>
+  );
+}
+
+function StayFilterPanel({
+  filters,
+  onChange,
+}: {
+  filters: StayFilters;
+  onChange: (filters: StayFilters) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {/* Property Type */}
+      <select
+        value={filters.propertyType || ''}
+        onChange={(e) => onChange({ ...filters, propertyType: e.target.value as StayFilters['propertyType'] || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any type</option>
+        {STAY_PROPERTY_TYPE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {/* Price Range */}
+      <select
+        value={filters.priceRange || ''}
+        onChange={(e) => onChange({ ...filters, priceRange: e.target.value as StayFilters['priceRange'] || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any price</option>
+        {PRICE_RANGE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {/* Neighborhood (free text) */}
+      <input
+        type="text"
+        value={filters.neighborhood || ''}
+        onChange={(e) => onChange({ ...filters, neighborhood: e.target.value || undefined })}
+        placeholder="Neighborhood"
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white w-32"
+      />
+    </div>
+  );
+}
+
+function TipFilterPanel({
+  filters,
+  onChange,
+}: {
+  filters: TipFilters;
+  onChange: (filters: TipFilters) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {/* Topic */}
+      <select
+        value={filters.topic || ''}
+        onChange={(e) => onChange({ ...filters, topic: e.target.value as TipFilters['topic'] || undefined })}
+        className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+      >
+        <option value="">Any topic</option>
+        {TIP_TOPIC_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export function AIRecommendationsSection({
   tripId,
   locations,
@@ -134,10 +349,36 @@ export function AIRecommendationsSection({
   onTripBitAdded,
 }: AIRecommendationsSectionProps) {
   const { user } = useAuthStore();
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [recommendations, setRecommendations] = useState<AIRecommendationsResponse | null>(null);
-  const [filter, setFilter] = useState<FilterCategory>('all');
+
+  // Active category tab
+  const [activeCategory, setActiveCategory] = useState<RecommendationCategory>('restaurant');
+
+  // Loading state per category
+  const [loadingCategory, setLoadingCategory] = useState<RecommendationCategory | null>(null);
+
+  // Error state per category
+  const [errors, setErrors] = useState<Partial<Record<RecommendationCategory, string>>>({});
+
+  // Cache recommendations per category
+  const [cache, setCache] = useState<CategoryCache>({});
+
+  // Filters per category
+  const [filters, setFilters] = useState<{
+    restaurant: RestaurantFilters;
+    activity: ActivityFilters;
+    stay: StayFilters;
+    tip: TipFilters;
+  }>({
+    restaurant: {},
+    activity: {},
+    stay: {},
+    tip: {},
+  });
+
+  // Show filters panel
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Added items tracking
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [addingId, setAddingId] = useState<string | null>(null);
 
@@ -152,30 +393,89 @@ export function AIRecommendationsSection({
   const destination = selectedLocation ? getLocationDisplayName(selectedLocation) : '';
   const hasMultipleLocations = locations.length > 1;
 
-  const handleGenerate = async () => {
+  // Get current category's recommendations
+  const currentRecommendations = cache[activeCategory] || [];
+  const isLoading = loadingCategory === activeCategory;
+  const currentError = errors[activeCategory];
+
+  // Check if current filters have any values
+  const hasActiveFilters = useCallback((cat: RecommendationCategory) => {
+    const f = filters[cat];
+    return Object.values(f).some(v => v !== undefined && v !== '' && v !== false);
+  }, [filters]);
+
+  const handleGenerate = async (category: RecommendationCategory, forceRefresh = false) => {
     if (!destination) {
-      setError('This trip needs a destination to get recommendations');
-      setStatus('error');
+      setErrors(prev => ({ ...prev, [category]: 'This trip needs a destination to get recommendations' }));
       return;
     }
 
-    setStatus('loading');
-    setError(null);
+    // Don't regenerate if we have cached results (unless forced)
+    if (!forceRefresh && cache[category]?.length) {
+      return;
+    }
+
+    setLoadingCategory(category);
+    setErrors(prev => ({ ...prev, [category]: undefined }));
 
     try {
-      const result = await generateRecommendations(
+      const result = await generateCategoryRecommendations(
         tripId,
         destination,
-        startDate || undefined,
-        endDate || undefined
+        category,
+        {
+          count: 4,
+          filters: filters[category],
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+        }
       );
-      setRecommendations(result);
-      setStatus('success');
+
+      setCache(prev => ({ ...prev, [category]: result.recommendations }));
     } catch (err) {
-      console.error('Error generating recommendations:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate recommendations');
-      setStatus('error');
+      console.error(`Error generating ${category} recommendations:`, err);
+      setErrors(prev => ({
+        ...prev,
+        [category]: err instanceof Error ? err.message : 'Failed to generate recommendations',
+      }));
+    } finally {
+      setLoadingCategory(null);
     }
+  };
+
+  const handleTabChange = (category: RecommendationCategory) => {
+    setActiveCategory(category);
+    // Auto-generate if no cached results
+    if (!cache[category]?.length && !errors[category]) {
+      handleGenerate(category);
+    }
+  };
+
+  const handleRefresh = () => {
+    // Clear cache for current category and regenerate
+    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
+    handleGenerate(activeCategory, true);
+  };
+
+  const handleFilterChange = (category: RecommendationCategory, newFilters: CategoryFilters) => {
+    setFilters(prev => ({ ...prev, [category]: newFilters }));
+  };
+
+  const handleApplyFilters = () => {
+    // Clear cache and regenerate with new filters
+    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
+    handleGenerate(activeCategory, true);
+    setShowFilters(false);
+  };
+
+  const handleClearFilters = () => {
+    setFilters(prev => ({
+      ...prev,
+      [activeCategory]: {},
+    }));
+    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
+    handleGenerate(activeCategory, true);
+    setShowFilters(false);
   };
 
   const handleAddToTrip = async (recommendation: AIRecommendation) => {
@@ -189,40 +489,20 @@ export function AIRecommendationsSection({
       setAddedIds(prev => new Set([...Array.from(prev), recommendation.id]));
       onTripBitAdded?.();
     } else {
-      // Could show a toast here, but for now we'll just log
       console.error('Failed to add recommendation:', result.error);
     }
 
     setAddingId(null);
   };
 
-  const getAllRecommendations = (): AIRecommendation[] => {
-    if (!recommendations) return [];
-
-    if (filter === 'all') {
-      return [
-        ...recommendations.restaurants,
-        ...recommendations.activities,
-        ...recommendations.stays,
-        ...recommendations.tips,
-      ];
-    }
-
-    switch (filter) {
-      case 'restaurant':
-        return recommendations.restaurants;
-      case 'activity':
-        return recommendations.activities;
-      case 'stay':
-        return recommendations.stays;
-      case 'tip':
-        return recommendations.tips;
-      default:
-        return [];
-    }
+  const handleLocationChange = (locationId: string) => {
+    setSelectedLocationId(locationId);
+    setShowLocationDropdown(false);
+    // Reset everything when location changes
+    setCache({});
+    setErrors({});
+    setAddedIds(new Set());
   };
-
-  const filteredRecommendations = getAllRecommendations();
 
   // Location dropdown component
   const LocationDropdown = () => {
@@ -247,14 +527,7 @@ export function AIRecommendationsSection({
               {locations.map(loc => (
                 <button
                   key={loc.id}
-                  onClick={() => {
-                    setSelectedLocationId(loc.id);
-                    setShowLocationDropdown(false);
-                    // Reset recommendations when location changes
-                    setStatus('idle');
-                    setRecommendations(null);
-                    setAddedIds(new Set());
-                  }}
+                  onClick={() => handleLocationChange(loc.id)}
                   className={cn(
                     'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors',
                     loc.id === selectedLocationId && 'bg-purple-50 text-seeya-purple font-medium'
@@ -270,110 +543,27 @@ export function AIRecommendationsSection({
     );
   };
 
-  // Idle state - show generate button
-  if (status === 'idle') {
+  // No destination state
+  if (!destination && locations.length === 0) {
     return (
       <Card variant="elevated" padding="lg">
         <div className="flex flex-col items-center gap-4">
-          {/* Header with location dropdown for multi-city */}
-          {hasMultipleLocations && (
-            <div className="w-full flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-seeya-purple" />
-                <h3 className="text-lg font-semibold text-seeya-text">
-                  AI Recommendations
-                </h3>
-              </div>
-              <LocationDropdown />
-            </div>
-          )}
-
-          {/* Icon - only show for single location */}
-          {!hasMultipleLocations && (
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-seeya-purple/20 to-purple-200 flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-seeya-purple" />
-            </div>
-          )}
-
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-seeya-purple/20 to-purple-200 flex items-center justify-center">
+            <Sparkles className="w-8 h-8 text-seeya-purple" />
+          </div>
           <div className="text-center">
-            {!hasMultipleLocations && (
-              <h3 className="text-lg font-semibold text-seeya-text mb-1">
-                AI Recommendations
-              </h3>
-            )}
-            <p className="text-sm text-seeya-text-secondary max-w-sm">
-              Get personalized suggestions for restaurants, activities, stays, and tips
-              {destination && ` for ${destination}`}.
-            </p>
-          </div>
-          <Button
-            variant="purple"
-            onClick={handleGenerate}
-            disabled={!destination}
-            className="gap-2"
-          >
-            <Sparkles size={18} />
-            Get AI Suggestions
-          </Button>
-          {!destination && locations.length === 0 && (
-            <p className="text-xs text-seeya-text-secondary">
-              Add a destination to your trip to get recommendations
-            </p>
-          )}
-        </div>
-      </Card>
-    );
-  }
-
-  // Loading state
-  if (status === 'loading') {
-    return (
-      <Card variant="elevated" padding="lg" className="text-center">
-        <div className="flex flex-col items-center gap-4">
-          <Spinner size="lg" />
-          <div>
             <h3 className="text-lg font-semibold text-seeya-text mb-1">
-              Getting recommendations...
-            </h3>
-            <p className="text-sm text-seeya-text-secondary">
-              AI is finding the best spots for {destination}
-            </p>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
-  // Error state
-  if (status === 'error') {
-    return (
-      <Card variant="elevated" padding="lg" className="text-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-seeya-error" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-seeya-text mb-1">
-              Couldn&apos;t get recommendations
+              AI Recommendations
             </h3>
             <p className="text-sm text-seeya-text-secondary max-w-sm">
-              {error || 'Something went wrong. Please try again.'}
+              Add a destination to your trip to get personalized AI recommendations.
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={handleGenerate}
-            className="gap-2"
-          >
-            <RefreshCw size={18} />
-            Try Again
-          </Button>
         </div>
       </Card>
     );
   }
 
-  // Success state - show recommendations
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -381,75 +571,223 @@ export function AIRecommendationsSection({
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-seeya-purple" />
           <h3 className="text-lg font-semibold text-seeya-text">
-            Recommendations{!hasMultipleLocations && destination && ` for ${destination}`}
+            AI Recommendations
           </h3>
         </div>
         <div className="flex items-center gap-2">
           {hasMultipleLocations && <LocationDropdown />}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleGenerate}
-            className="gap-1 text-seeya-text-secondary"
-          >
-            <RefreshCw size={14} />
-            Refresh
-          </Button>
         </div>
       </div>
 
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setFilter('all')}
-          className={cn(
-            'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-            filter === 'all'
-              ? 'bg-seeya-purple text-white'
-              : 'bg-gray-100 text-seeya-text-secondary hover:bg-gray-200'
+      {/* Destination display for single location */}
+      {!hasMultipleLocations && destination && (
+        <p className="text-sm text-seeya-text-secondary">
+          Personalized suggestions for {destination}
+        </p>
+      )}
+
+      {/* Category Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+        {categories.map((cat) => {
+          const Icon = cat.icon;
+          const isActive = activeCategory === cat.id;
+          const hasResults = (cache[cat.id]?.length || 0) > 0;
+
+          return (
+            <button
+              key={cat.id}
+              onClick={() => handleTabChange(cat.id)}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-sm font-medium transition-all',
+                isActive
+                  ? 'bg-white shadow text-seeya-purple'
+                  : 'text-seeya-text-secondary hover:text-seeya-text'
+              )}
+            >
+              <Icon size={16} />
+              <span className="hidden sm:inline">{cat.label}</span>
+              {hasResults && (
+                <span className={cn(
+                  'ml-1 px-1.5 py-0.5 rounded-full text-xs',
+                  isActive ? 'bg-seeya-purple/10 text-seeya-purple' : 'bg-gray-200 text-gray-600'
+                )}>
+                  {cache[cat.id]?.length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filters Toggle & Panel */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+              showFilters || hasActiveFilters(activeCategory)
+                ? 'bg-seeya-purple/10 text-seeya-purple'
+                : 'bg-gray-100 text-seeya-text-secondary hover:bg-gray-200'
+            )}
+          >
+            <SlidersHorizontal size={14} />
+            <span>Filters</span>
+            {hasActiveFilters(activeCategory) && (
+              <span className="w-2 h-2 rounded-full bg-seeya-purple" />
+            )}
+          </button>
+
+          {hasActiveFilters(activeCategory) && (
+            <button
+              onClick={handleClearFilters}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-seeya-text-secondary hover:text-seeya-text"
+            >
+              <X size={12} />
+              Clear
+            </button>
           )}
-        >
-          All
-        </button>
-        {(Object.entries(categoryConfig) as [RecommendationCategory, typeof categoryConfig.restaurant][]).map(
-          ([key, config]) => {
-            const Icon = config.icon;
-            return (
-              <button
-                key={key}
-                onClick={() => setFilter(key)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                  filter === key
-                    ? 'bg-seeya-purple text-white'
-                    : 'bg-gray-100 text-seeya-text-secondary hover:bg-gray-200'
-                )}
-              >
-                <Icon size={14} />
-                {config.label}
-              </button>
-            );
-          }
+
+          <div className="flex-1" />
+
+          {currentRecommendations.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="gap-1 text-seeya-text-secondary"
+            >
+              <RefreshCw size={14} className={cn(isLoading && 'animate-spin')} />
+              Refresh
+            </Button>
+          )}
+        </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <Card variant="outline" padding="sm" className="space-y-3">
+            {activeCategory === 'restaurant' && (
+              <RestaurantFilterPanel
+                filters={filters.restaurant}
+                onChange={(f) => handleFilterChange('restaurant', f)}
+              />
+            )}
+            {activeCategory === 'activity' && (
+              <ActivityFilterPanel
+                filters={filters.activity}
+                onChange={(f) => handleFilterChange('activity', f)}
+              />
+            )}
+            {activeCategory === 'stay' && (
+              <StayFilterPanel
+                filters={filters.stay}
+                onChange={(f) => handleFilterChange('stay', f)}
+              />
+            )}
+            {activeCategory === 'tip' && (
+              <TipFilterPanel
+                filters={filters.tip}
+                onChange={(f) => handleFilterChange('tip', f)}
+              />
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)}>
+                Cancel
+              </Button>
+              <Button variant="purple" size="sm" onClick={handleApplyFilters}>
+                Apply Filters
+              </Button>
+            </div>
+          </Card>
         )}
       </div>
 
-      {/* Recommendations grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredRecommendations.map(recommendation => (
-          <RecommendationCard
-            key={recommendation.id}
-            recommendation={recommendation}
-            isAdded={addedIds.has(recommendation.id)}
-            isAdding={addingId === recommendation.id}
-            onAdd={() => handleAddToTrip(recommendation)}
-          />
-        ))}
-      </div>
-
-      {filteredRecommendations.length === 0 && (
-        <p className="text-center text-seeya-text-secondary py-8">
-          No recommendations in this category
-        </p>
+      {/* Content Area */}
+      {isLoading ? (
+        <Card variant="elevated" padding="lg" className="text-center">
+          <div className="flex flex-col items-center gap-4">
+            <Spinner size="lg" />
+            <div>
+              <h3 className="text-lg font-semibold text-seeya-text mb-1">
+                Finding {categoryConfig[activeCategory].label.toLowerCase()}...
+              </h3>
+              <p className="text-sm text-seeya-text-secondary">
+                AI is searching for the best options in {destination}
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : currentError ? (
+        <Card variant="elevated" padding="lg" className="text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-seeya-error" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-seeya-text mb-1">
+                Couldn&apos;t get recommendations
+              </h3>
+              <p className="text-sm text-seeya-text-secondary max-w-sm">
+                {currentError}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => handleGenerate(activeCategory, true)}
+              className="gap-2"
+            >
+              <RefreshCw size={18} />
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      ) : currentRecommendations.length === 0 ? (
+        <Card variant="elevated" padding="lg" className="text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className={cn(
+              'w-16 h-16 rounded-full flex items-center justify-center',
+              categoryConfig[activeCategory].color
+            )}>
+              {(() => {
+                const Icon = categoryConfig[activeCategory].icon;
+                return <Icon className="w-8 h-8" />;
+              })()}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-seeya-text mb-1">
+                Get {categoryConfig[activeCategory].label} Recommendations
+              </h3>
+              <p className="text-sm text-seeya-text-secondary max-w-sm">
+                {activeCategory === 'restaurant' && 'Discover the best restaurants and local dining spots.'}
+                {activeCategory === 'activity' && 'Find unique activities and experiences.'}
+                {activeCategory === 'stay' && 'Get accommodation suggestions for your trip.'}
+                {activeCategory === 'tip' && 'Get practical travel tips and local insights.'}
+              </p>
+            </div>
+            <Button
+              variant="purple"
+              onClick={() => handleGenerate(activeCategory)}
+              className="gap-2"
+            >
+              <Sparkles size={18} />
+              Get Suggestions
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {currentRecommendations.map(recommendation => (
+            <RecommendationCard
+              key={recommendation.id}
+              recommendation={recommendation}
+              isAdded={addedIds.has(recommendation.id)}
+              isAdding={addingId === recommendation.id}
+              onAdd={() => handleAddToTrip(recommendation)}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

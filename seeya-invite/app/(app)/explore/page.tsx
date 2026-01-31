@@ -5,16 +5,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, Spinner } from '@/components/ui';
 import {
-  SearchBar,
-  CategoryFilter,
-  CountryChips,
-  RecommendationCard,
   TravelingNowSection,
   PopularDestinationsSection,
   TrendingWanderlistSection,
+  ExploreAISection,
+  AddToTripModal,
 } from '@/components/explore';
-import type { RecommendationCategory, Recommendation } from '@/components/explore';
-import { Sparkles, MapPin } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import type { AIRecommendation } from '@/types';
 
 interface TravelingFriend {
   id: string;
@@ -53,17 +51,15 @@ export default function ExplorePage() {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<RecommendationCategory>('all');
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-
   // Data
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [travelingFriends, setTravelingFriends] = useState<TravelingFriend[]>([]);
   const [popularDestinations, setPopularDestinations] = useState<PopularDestination[]>([]);
   const [trendingPlaces, setTrendingPlaces] = useState<TrendingPlace[]>([]);
-  const [countries, setCountries] = useState<string[]>([]);
+
+  // Add to trip modal
+  const [selectedRecommendation, setSelectedRecommendation] = useState<AIRecommendation | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
 
   const fetchExploreData = useCallback(async () => {
     if (!user) return;
@@ -258,11 +254,6 @@ export default function ExplorePage() {
 
         setTrendingPlaces(trending);
       }
-
-      // TODO: Get shared recommendations from friends' trips
-      // For now, using empty array
-      setRecommendations([]);
-      setCountries([]);
     }
 
     setIsLoading(false);
@@ -272,33 +263,18 @@ export default function ExplorePage() {
     fetchExploreData();
   }, [fetchExploreData]);
 
-  // Filter recommendations
-  const filteredRecommendations = useMemo(() => {
-    return recommendations.filter((rec) => {
-      // Category filter
-      if (selectedCategory !== 'all' && rec.category !== selectedCategory) {
-        return false;
-      }
+  const handleAddToTrip = (recommendation: AIRecommendation) => {
+    setSelectedRecommendation(recommendation);
+  };
 
-      // Country filter
-      if (selectedCountry && rec.countryName !== selectedCountry) {
-        return false;
-      }
-
-      // Search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        return (
-          rec.title.toLowerCase().includes(query) ||
-          rec.description?.toLowerCase().includes(query) ||
-          rec.cityName?.toLowerCase().includes(query) ||
-          rec.countryName?.toLowerCase().includes(query)
-        );
-      }
-
-      return true;
-    });
-  }, [recommendations, selectedCategory, selectedCountry, searchQuery]);
+  const handleAddSuccess = (tripId: string, tripName: string) => {
+    if (selectedRecommendation) {
+      setAddedIds(prev => new Set([...Array.from(prev), selectedRecommendation.id]));
+    }
+    setSelectedRecommendation(null);
+    setShowSuccessToast(`Added to ${tripName}`);
+    setTimeout(() => setShowSuccessToast(null), 3000);
+  };
 
   const handleAddToWanderlist = async (placeId: string) => {
     if (!user) return;
@@ -322,20 +298,6 @@ export default function ExplorePage() {
     );
   };
 
-  const handleSaveRecommendation = async (recId: string) => {
-    // TODO: Implement when saved_recommendations table exists
-    setRecommendations((prev) =>
-      prev.map((r) => (r.id === recId ? { ...r, isSaved: true } : r))
-    );
-  };
-
-  const handleUnsaveRecommendation = async (recId: string) => {
-    // TODO: Implement when saved_recommendations table exists
-    setRecommendations((prev) =>
-      prev.map((r) => (r.id === recId ? { ...r, isSaved: false } : r))
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[60vh]">
@@ -353,62 +315,17 @@ export default function ExplorePage() {
           Explore
         </h1>
         <p className="text-seeya-text-secondary mt-1">
-          Discover recommendations from your travel circle
+          Discover AI recommendations and inspiration from your travel circle
         </p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main content */}
+        {/* Main content - AI Recommendations */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Search and filters */}
-          <div className="space-y-4">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search recommendations..."
-            />
-            <CategoryFilter
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-            />
-            {countries.length > 0 && (
-              <CountryChips
-                countries={countries}
-                selectedCountry={selectedCountry}
-                onCountrySelect={setSelectedCountry}
-              />
-            )}
-          </div>
-
-          {/* Recommendations grid */}
-          {filteredRecommendations.length > 0 ? (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {filteredRecommendations.map((rec) => (
-                <RecommendationCard
-                  key={rec.id}
-                  recommendation={rec}
-                  onSave={handleSaveRecommendation}
-                  onUnsave={handleUnsaveRecommendation}
-                />
-              ))}
-            </div>
-          ) : recommendations.length > 0 ? (
-            <Card variant="outline" padding="lg" className="text-center">
-              <p className="text-seeya-text-secondary">
-                No recommendations match your filters
-              </p>
-            </Card>
-          ) : (
-            <Card variant="outline" padding="lg" className="text-center">
-              <div className="text-4xl mb-3">💡</div>
-              <h3 className="font-semibold text-seeya-text mb-1">
-                No recommendations yet
-              </h3>
-              <p className="text-sm text-seeya-text-secondary">
-                Recommendations from your friends&apos; trips will appear here
-              </p>
-            </Card>
-          )}
+          <ExploreAISection
+            onAddToTrip={handleAddToTrip}
+            addedIds={addedIds}
+          />
         </div>
 
         {/* Sidebar */}
@@ -419,7 +336,7 @@ export default function ExplorePage() {
           {/* Popular Destinations */}
           <PopularDestinationsSection
             destinations={popularDestinations}
-            onDestinationClick={(dest) => setSelectedCountry(dest.country)}
+            onDestinationClick={() => {}}
           />
 
           {/* Trending Wanderlist */}
@@ -429,6 +346,26 @@ export default function ExplorePage() {
           />
         </div>
       </div>
+
+      {/* Add to Trip Modal */}
+      {selectedRecommendation && (
+        <AddToTripModal
+          recommendation={selectedRecommendation}
+          isOpen={!!selectedRecommendation}
+          onClose={() => setSelectedRecommendation(null)}
+          onSuccess={handleAddSuccess}
+        />
+      )}
+
+      {/* Success Toast */}
+      {showSuccessToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in">
+          <div className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+            <span>✓</span>
+            <span>{showSuccessToast}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

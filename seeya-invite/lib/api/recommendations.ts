@@ -1,17 +1,24 @@
 import { createClient } from '@/lib/supabase/client';
 import type {
-  AIRecommendationsResponse,
   AIRecommendation,
   RecommendationCategory,
+  CategoryRecommendationsResponse,
+  CategoryFilters,
 } from '@/types';
 import type { TripBitCategory } from '@/types/database';
 
-export async function generateRecommendations(
+// Generate recommendations for a single category with optional filters
+export async function generateCategoryRecommendations(
   tripId: string,
   destination: string,
-  startDate?: string,
-  endDate?: string
-): Promise<AIRecommendationsResponse> {
+  category: RecommendationCategory,
+  options?: {
+    count?: number;
+    filters?: CategoryFilters;
+    startDate?: string;
+    endDate?: string;
+  }
+): Promise<CategoryRecommendationsResponse> {
   const response = await fetch(`/api/trips/${tripId}/recommendations`, {
     method: 'POST',
     headers: {
@@ -19,8 +26,11 @@ export async function generateRecommendations(
     },
     body: JSON.stringify({
       destination,
-      startDate,
-      endDate,
+      category,
+      count: options?.count ?? 4,
+      filters: options?.filters,
+      startDate: options?.startDate,
+      endDate: options?.endDate,
     }),
   });
 

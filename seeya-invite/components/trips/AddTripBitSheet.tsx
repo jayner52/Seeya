@@ -25,7 +25,7 @@ import {
   Upload,
   Trash2,
 } from 'lucide-react';
-import type { TripBitCategory, TripParticipant } from '@/types/database';
+import type { TripBit, TripBitCategory, TripParticipant, TripBitAttachment } from '@/types/database';
 import {
   FlightFields,
   StayFields,
@@ -43,9 +43,12 @@ interface AddTripBitSheetProps {
   tripId: string;
   participants: TripParticipant[];
   initialCategory?: TripBitCategory;
+  tripBit?: TripBit | null; // For edit mode
+  existingAttachments?: TripBitAttachment[]; // Existing attachments when editing
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onDelete?: () => void; // Called after successful deletion
 }
 
 const categories: { id: TripBitCategory; label: string; icon: typeof Plane; color: string }[] = [
@@ -65,13 +68,21 @@ export function AddTripBitSheet({
   tripId,
   participants,
   initialCategory,
+  tripBit,
+  existingAttachments = [],
   isOpen,
   onClose,
   onSuccess,
+  onDelete,
 }: AddTripBitSheetProps) {
   const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Determine if we're in edit mode
+  const isEditMode = !!tripBit;
 
   // Form state
   const [category, setCategory] = useState<TripBitCategory>(initialCategory || 'activity');
@@ -88,13 +99,59 @@ export function AddTripBitSheet({
   const [everyoneSelected, setEveryoneSelected] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [attachmentsToDelete, setAttachmentsToDelete] = useState<string[]>([]);
 
-  // Reset category when initialCategory changes
+  // Helper to convert status from DB to form
+  const getFormStatus = (dbStatus?: string | null): 'confirmed' | 'pending' | 'cancelled' => {
+    if (dbStatus === 'booked' || dbStatus === 'confirmed') return 'confirmed';
+    if (dbStatus === 'cancelled') return 'cancelled';
+    return 'pending';
+  };
+
+  // Populate form when tripBit changes (edit mode)
   useEffect(() => {
-    if (initialCategory) {
+    if (tripBit && isOpen) {
+      setCategory(tripBit.category as TripBitCategory || 'activity');
+      setTitle(tripBit.title || '');
+      setUrl(tripBit.url || '');
+      setStatus(getFormStatus(tripBit.status));
+      setNotes(tripBit.notes || '');
+
+      // Parse start datetime
+      if (tripBit.start_datetime) {
+        const start = new Date(tripBit.start_datetime);
+        setStartDate(start.toISOString().split('T')[0]);
+        setStartTime(start.toTimeString().slice(0, 5));
+      } else {
+        setStartDate('');
+        setStartTime('');
+      }
+
+      // Parse end datetime
+      if (tripBit.end_datetime) {
+        const end = new Date(tripBit.end_datetime);
+        setEndDate(end.toISOString().split('T')[0]);
+        setEndTime(end.toTimeString().slice(0, 5));
+      } else {
+        setEndDate('');
+        setEndTime('');
+      }
+
+      // Load details from metadata or separate fetch
+      if (tripBit.metadata && typeof tripBit.metadata === 'object') {
+        setDetails(tripBit.metadata as Record<string, string | number>);
+      }
+
+      setAttachmentsToDelete([]);
+    }
+  }, [tripBit, isOpen]);
+
+  // Reset category when initialCategory changes (only in add mode)
+  useEffect(() => {
+    if (initialCategory && !tripBit) {
       setCategory(initialCategory);
     }
-  }, [initialCategory]);
+  }, [initialCategory, tripBit]);
 
   const resetForm = () => {
     setCategory(initialCategory || 'activity');
@@ -110,7 +167,59 @@ export function AddTripBitSheet({
     setSelectedParticipants([]);
     setEveryoneSelected(true);
     setSelectedFiles([]);
+    setAttachmentsToDelete([]);
+    setShowDeleteConfirm(false);
     setError(null);
+  };
+
+  // Handle delete
+  const handleDelete = async () => {
+    if (!tripBit) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+
+      // Delete attachments from storage first
+      if (existingAttachments.length > 0) {
+        const filePaths = existingAttachments
+          .map(a => {
+            // Extract path from URL
+            const url = new URL(a.file_url);
+            const pathMatch = url.pathname.match(/\/trip-documents\/(.+)/);
+            return pathMatch ? pathMatch[1] : null;
+          })
+          .filter(Boolean) as string[];
+
+        if (filePaths.length > 0) {
+          await supabase.storage.from('trip-documents').remove(filePaths);
+        }
+      }
+
+      // Delete the trip bit (cascade should handle details and attachments records)
+      const { error: deleteError } = await supabase
+        .from('trip_bits')
+        .delete()
+        .eq('id', tripBit.id);
+
+      if (deleteError) throw deleteError;
+
+      resetForm();
+      onDelete?.();
+    } catch (err) {
+      console.error('Error deleting trip bit:', err);
+      setError('Failed to delete. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  // Handle removing existing attachment
+  const handleRemoveExistingAttachment = (attachmentId: string) => {
+    setAttachmentsToDelete(prev => [...prev, attachmentId]);
   };
 
   // Handle file selection
@@ -224,54 +333,121 @@ export function AddTripBitSheet({
         : status === 'pending' ? 'planned'
         : 'cancelled';
 
-      // 1. Insert main trip_bit record
-      const { data: tripBit, error: insertError } = await supabase
-        .from('trip_bits')
-        .insert({
-          trip_id: tripId,
-          created_by: user.id,
-          category,
-          title: title.trim(),
-          status: tripBitStatus,
-          start_datetime: startDatetime,
-          end_datetime: endDatetime,
-          url: url.trim() || null,
-          notes: notes.trim() || null,
-        })
-        .select()
-        .single();
+      let tripBitId: string;
 
-      if (insertError) throw insertError;
+      if (isEditMode && tripBit) {
+        // UPDATE existing trip bit
+        const { error: updateError } = await supabase
+          .from('trip_bits')
+          .update({
+            category,
+            title: title.trim(),
+            status: tripBitStatus,
+            start_datetime: startDatetime,
+            end_datetime: endDatetime,
+            url: url.trim() || null,
+            notes: notes.trim() || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', tripBit.id);
 
-      // 2. Insert category-specific details if any
-      if (Object.keys(details).length > 0) {
-        const { error: detailsError } = await supabase
-          .from('trip_bit_details')
+        if (updateError) throw updateError;
+        tripBitId = tripBit.id;
+
+        // Delete removed attachments
+        if (attachmentsToDelete.length > 0) {
+          // Get file paths to delete from storage
+          const attachmentsToRemove = existingAttachments.filter(a =>
+            attachmentsToDelete.includes(a.id)
+          );
+
+          const filePaths = attachmentsToRemove
+            .map(a => {
+              const url = new URL(a.file_url);
+              const pathMatch = url.pathname.match(/\/trip-documents\/(.+)/);
+              return pathMatch ? pathMatch[1] : null;
+            })
+            .filter(Boolean) as string[];
+
+          if (filePaths.length > 0) {
+            await supabase.storage.from('trip-documents').remove(filePaths);
+          }
+
+          // Delete attachment records
+          await supabase
+            .from('trip_bit_attachments')
+            .delete()
+            .in('id', attachmentsToDelete);
+        }
+
+        // Update or insert details
+        if (Object.keys(details).length > 0) {
+          // Try to update existing, if not exists insert
+          const { data: existingDetails } = await supabase
+            .from('trip_bit_details')
+            .select('id')
+            .eq('trip_bit_id', tripBit.id)
+            .single();
+
+          if (existingDetails) {
+            await supabase
+              .from('trip_bit_details')
+              .update({ details })
+              .eq('trip_bit_id', tripBit.id);
+          } else {
+            await supabase
+              .from('trip_bit_details')
+              .insert({ trip_bit_id: tripBit.id, details });
+          }
+        }
+      } else {
+        // INSERT new trip bit
+        const { data: newTripBit, error: insertError } = await supabase
+          .from('trip_bits')
           .insert({
-            trip_bit_id: tripBit.id,
-            details: details,
-          });
+            trip_id: tripId,
+            created_by: user.id,
+            category,
+            title: title.trim(),
+            status: tripBitStatus,
+            start_datetime: startDatetime,
+            end_datetime: endDatetime,
+            url: url.trim() || null,
+            notes: notes.trim() || null,
+          })
+          .select()
+          .single();
 
-        if (detailsError) {
-          console.error('Error saving details:', detailsError);
-          // Don't throw - trip bit was created successfully
+        if (insertError) throw insertError;
+        tripBitId = newTripBit.id;
+
+        // Insert category-specific details if any
+        if (Object.keys(details).length > 0) {
+          const { error: detailsError } = await supabase
+            .from('trip_bit_details')
+            .insert({
+              trip_bit_id: tripBitId,
+              details: details,
+            });
+
+          if (detailsError) {
+            console.error('Error saving details:', detailsError);
+          }
         }
       }
 
-      // 3. Upload attachments if any
+      // Upload new attachments if any
       if (selectedFiles.length > 0) {
         setIsUploading(true);
-        await uploadFiles(tripBit.id);
+        await uploadFiles(tripBitId);
         setIsUploading(false);
       }
-
-      // 4. TODO: Insert trip_bit_travelers for participant assignment
 
       resetForm();
       onSuccess();
     } catch (err) {
-      console.error('Error creating trip bit:', err);
-      setError('Failed to add item. Please try again.');
+      console.error('Error saving trip bit:', err);
+      setError(isEditMode ? 'Failed to update item. Please try again.' : 'Failed to add item. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -326,13 +502,27 @@ export function AddTripBitSheet({
       <div className="relative w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-auto animate-slideUp">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-semibold text-seeya-text">Add to Trip Pack</h2>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X size={20} className="text-seeya-text-secondary" />
-          </button>
+          <h2 className="text-lg font-semibold text-seeya-text">
+            {isEditMode ? 'Edit Trip Bit' : 'Add to Trip Pack'}
+          </h2>
+          <div className="flex items-center gap-2">
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-500"
+                title="Delete"
+              >
+                <Trash2 size={20} />
+              </button>
+            )}
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X size={20} className="text-seeya-text-secondary" />
+            </button>
+          </div>
         </div>
 
         {/* Form */}
@@ -531,6 +721,50 @@ export function AddTripBitSheet({
               Attachments (optional)
             </label>
 
+            {/* Existing attachments (edit mode) */}
+            {isEditMode && existingAttachments.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-seeya-text-secondary">Current attachments:</p>
+                {existingAttachments
+                  .filter(a => !attachmentsToDelete.includes(a.id))
+                  .map((attachment) => {
+                    const isImage = attachment.file_type?.startsWith('image/');
+                    return (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {isImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={attachment.file_url}
+                              alt={attachment.file_name || 'Attachment'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <FileText size={20} className="text-blue-500" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-seeya-text truncate">
+                            {attachment.file_name || 'Attachment'}
+                          </p>
+                          <p className="text-xs text-seeya-text-secondary">Saved</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingAttachment(attachment.id)}
+                          className="p-1.5 hover:bg-red-100 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} className="text-red-500" />
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
             {/* File upload area */}
             <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-seeya-purple hover:bg-purple-50/30 transition-colors">
               <Upload size={24} className="text-seeya-text-secondary mb-2" />
@@ -545,9 +779,10 @@ export function AddTripBitSheet({
               />
             </label>
 
-            {/* Selected files list */}
+            {/* New files to upload */}
             {selectedFiles.length > 0 && (
               <div className="space-y-2">
+                <p className="text-xs text-seeya-text-secondary">New files to upload:</p>
                 {selectedFiles.map((file, index) => {
                   const imagePreview = getFilePreview(file);
                   return (
@@ -555,7 +790,6 @@ export function AddTripBitSheet({
                       key={`${file.name}-${index}`}
                       className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
                     >
-                      {/* Thumbnail or icon */}
                       <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {imagePreview ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -568,8 +802,6 @@ export function AddTripBitSheet({
                           <FileText size={20} className="text-gray-500" />
                         )}
                       </div>
-
-                      {/* File info */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-seeya-text truncate">
                           {file.name}
@@ -578,8 +810,6 @@ export function AddTripBitSheet({
                           {formatFileSize(file.size)}
                         </p>
                       </div>
-
-                      {/* Remove button */}
                       <button
                         type="button"
                         onClick={() => removeFile(index)}
@@ -614,7 +844,7 @@ export function AddTripBitSheet({
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isDeleting}
               className="flex-1"
             >
               Cancel
@@ -626,10 +856,44 @@ export function AddTripBitSheet({
               isLoading={isSubmitting || isUploading}
               className="flex-1"
             >
-              {isUploading ? 'Uploading...' : 'Add'}
+              {isUploading ? 'Uploading...' : isEditMode ? 'Save Changes' : 'Add'}
             </Button>
           </div>
         </form>
+
+        {/* Delete Confirmation Dialog */}
+        {showDeleteConfirm && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-20">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+              <h3 className="text-lg font-semibold text-seeya-text mb-2">
+                Delete this item?
+              </h3>
+              <p className="text-seeya-text-secondary text-sm mb-6">
+                This will permanently delete &ldquo;{tripBit?.title}&rdquo; and all its attachments. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleDelete}
+                  isLoading={isDeleting}
+                  className="flex-1 !bg-red-500 hover:!bg-red-600"
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
