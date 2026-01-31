@@ -33,7 +33,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['Georgia', 'serif'],
+        display: ['var(--font-playfair)', 'Playfair Display', 'Georgia', 'serif'],
         sans: [
           '-apple-system',
           'BlinkMacSystemFont',

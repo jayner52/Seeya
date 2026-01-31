@@ -35,13 +35,10 @@ export function PlanningTab({
 }: PlanningTabProps) {
   return (
     <div className="space-y-8">
-      {/* AI Recommendations */}
-      <AIRecommendationsSection
-        tripId={tripId}
-        locations={locations}
-        startDate={startDate}
-        endDate={endDate}
-        onTripBitAdded={onTripBitAdded}
+      {/* Travelers */}
+      <ParticipantsSection
+        participants={participants}
+        onInviteClick={onInviteClick}
       />
 
       {/* Trip Pack */}
@@ -51,10 +48,13 @@ export function PlanningTab({
         onTripBitClick={onTripBitClick}
       />
 
-      {/* Participants */}
-      <ParticipantsSection
-        participants={participants}
-        onInviteClick={onInviteClick}
+      {/* AI Recommendations */}
+      <AIRecommendationsSection
+        tripId={tripId}
+        locations={locations}
+        startDate={startDate}
+        endDate={endDate}
+        onTripBitAdded={onTripBitAdded}
       />
 
       {/* Invite Link */}

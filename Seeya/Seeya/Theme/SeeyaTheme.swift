@@ -73,9 +73,10 @@ extension Color {
 
 // MARK: - Typography System
 struct SeeyaTypography {
-    // Display (Serif - for names)
-    static let displayMedium = Font.custom("Georgia", size: 22).weight(.medium)
-    static let displaySmall = Font.custom("Georgia", size: 18).weight(.medium)
+    // Display (Serif - for trip names, headings with personality)
+    static let displayLarge = Font.custom("Baskerville-SemiBold", size: 28)
+    static let displayMedium = Font.custom("Baskerville-SemiBold", size: 22)
+    static let displaySmall = Font.custom("Baskerville-SemiBold", size: 18)
 
     // Headings (System sans-serif)
     static let headlineLarge = Font.system(size: 20, weight: .semibold)
