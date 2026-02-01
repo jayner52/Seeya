@@ -79,6 +79,8 @@ struct ProfileTripCard: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
 
+            Spacer()
+
             // Location with icon
             HStack(spacing: SeeyaSpacing.xs) {
                 Image(systemName: "mappin")
@@ -100,7 +102,7 @@ struct ProfileTripCard: View {
                     .foregroundStyle(Color.seeyaTextSecondary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)
         .padding(SeeyaSpacing.md)
         .seeyaCard()
     }
