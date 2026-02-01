@@ -70,13 +70,16 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-32">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="animate-slide-up">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-seeya-purple/10 text-seeya-purple text-sm font-medium mb-6">
-                <Sparkles size={16} />
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-seeya-primary/30 text-seeya-text text-sm font-medium mb-6">
+                <Sparkles size={16} className="text-yellow-600" />
                 Plan trips with friends
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-semibold text-seeya-text leading-tight mb-6">
                 Travel planning,{' '}
-                <span className="text-seeya-purple">together</span>
+                <span className="relative inline-block">
+                  <span className="relative z-10">together</span>
+                  <span className="absolute bottom-1 left-0 w-full h-3 bg-seeya-primary/60 -z-0"></span>
+                </span>
               </h1>
               <p className="text-lg text-seeya-text-secondary mb-8 max-w-lg">
                 Seeya makes it easy to plan trips with friends and family.
@@ -165,24 +168,29 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature) => (
-              <Card
-                key={feature.title}
-                variant="outline"
-                padding="lg"
-                className="hover:shadow-seeya-lg transition-shadow"
-              >
-                <div className="w-12 h-12 rounded-xl bg-seeya-purple/10 flex items-center justify-center mb-4">
-                  <feature.icon className="text-seeya-purple" size={24} />
-                </div>
-                <h3 className="text-lg font-semibold text-seeya-text mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-seeya-text-secondary">
-                  {feature.description}
-                </p>
-              </Card>
-            ))}
+            {features.map((feature, index) => {
+              const isYellow = index % 2 === 1; // Alternate: purple, yellow, purple, yellow
+              return (
+                <Card
+                  key={feature.title}
+                  variant="outline"
+                  padding="lg"
+                  className="hover:shadow-seeya-lg transition-shadow"
+                >
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
+                    isYellow ? 'bg-seeya-primary/20' : 'bg-seeya-secondary/30'
+                  }`}>
+                    <feature.icon className={isYellow ? 'text-yellow-600' : 'text-seeya-purple'} size={24} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-seeya-text mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-seeya-text-secondary">
+                    {feature.description}
+                  </p>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -200,35 +208,40 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-4 gap-8">
-            {howItWorks.map((item, index) => (
-              <div key={item.step} className="relative">
-                {index < howItWorks.length - 1 && (
-                  <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-gray-200" />
-                )}
-                <div className="relative text-center">
-                  <div className="w-16 h-16 rounded-full bg-seeya-purple text-white flex items-center justify-center text-2xl font-bold mx-auto mb-4">
-                    {item.step}
+            {howItWorks.map((item, index) => {
+              const isYellow = index % 2 === 1; // Alternate: purple, yellow, purple, yellow
+              return (
+                <div key={item.step} className="relative">
+                  {index < howItWorks.length - 1 && (
+                    <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-gray-200" />
+                  )}
+                  <div className="relative text-center">
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 ${
+                      isYellow ? 'bg-seeya-primary text-seeya-text' : 'bg-seeya-secondary text-seeya-text'
+                    }`}>
+                      {item.step}
+                    </div>
+                    <h3 className="text-lg font-semibold text-seeya-text mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-seeya-text-secondary text-sm">
+                      {item.description}
+                    </p>
                   </div>
-                  <h3 className="text-lg font-semibold text-seeya-text mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-seeya-text-secondary text-sm">
-                    {item.description}
-                  </p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-seeya-purple to-purple-700">
+      <section className="py-20 bg-seeya-primary">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-display font-semibold text-white mb-4">
+          <h2 className="text-3xl md:text-4xl font-display font-semibold text-seeya-text mb-4">
             Ready to plan your next adventure?
           </h2>
-          <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
+          <p className="text-lg text-seeya-text/70 mb-8 max-w-xl mx-auto">
             Join thousands of travelers who use Seeya to plan unforgettable
             trips with friends and family.
           </p>
@@ -237,7 +250,7 @@ export default function HomePage() {
               <Button
                 variant="primary"
                 size="lg"
-                className="bg-white text-seeya-purple hover:bg-gray-100"
+                className="bg-seeya-text text-white hover:bg-seeya-text/90"
               >
                 Get Started Free
               </Button>
@@ -246,7 +259,7 @@ export default function HomePage() {
               <Button
                 variant="outline"
                 size="lg"
-                className="border-white text-white hover:bg-white/10"
+                className="border-seeya-text text-seeya-text hover:bg-seeya-text/10"
               >
                 Download the App
               </Button>

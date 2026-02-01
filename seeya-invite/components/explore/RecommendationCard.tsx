@@ -136,7 +136,7 @@ export function RecommendationCard({
         {/* Rating */}
         {recommendation.rating && (
           <div className="flex items-center gap-1 mb-3">
-            <Star size={14} className="text-yellow-500 fill-yellow-500" />
+            <Star size={14} className="text-seeya-primary fill-seeya-primary" />
             <span className="text-sm font-medium text-seeya-text">
               {recommendation.rating}
             </span>

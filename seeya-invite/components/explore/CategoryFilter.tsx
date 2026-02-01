@@ -36,7 +36,7 @@ export function CategoryFilter({
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
               isSelected
-                ? 'bg-seeya-purple text-white'
+                ? 'bg-seeya-primary text-seeya-text'
                 : 'bg-gray-100 text-seeya-text-secondary hover:bg-gray-200'
             )}
           >

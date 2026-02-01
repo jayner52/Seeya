@@ -79,7 +79,7 @@ function RecommendationCard({ rec, onUnsave }: RecommendationCardProps) {
           {/* Rating */}
           {rec.rating && (
             <div className="flex items-center gap-1 mt-1">
-              <Star size={12} className="text-yellow-500 fill-yellow-500" />
+              <Star size={12} className="text-seeya-primary fill-seeya-primary" />
               <span className="text-sm text-seeya-text">{rec.rating}</span>
             </div>
           )}

@@ -119,7 +119,7 @@ function RecommendationCard({
         {recommendation.tips && (
           <div className="bg-gray-50 rounded-lg p-3 mb-3">
             <p className="text-sm text-seeya-text-secondary">
-              <Lightbulb size={14} className="inline mr-1 text-yellow-500" />
+              <Lightbulb size={14} className="inline mr-1 text-seeya-primary" />
               {recommendation.tips}
             </p>
           </div>
@@ -132,8 +132,8 @@ function RecommendationCard({
           className={cn(
             'w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors',
             isAdded
-              ? 'bg-green-50 text-green-600 cursor-default'
-              : 'bg-seeya-purple/10 text-seeya-purple hover:bg-seeya-purple/20'
+              ? 'bg-seeya-primary/20 text-yellow-700 cursor-default'
+              : 'bg-seeya-primary/10 text-seeya-text hover:bg-seeya-primary/20'
           )}
         >
           {isAdding ? (

@@ -29,7 +29,7 @@ export function TripTabNav({ activeTab, onTabChange, className }: TripTabNavProp
             className={cn(
               'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all',
               isActive
-                ? 'bg-white text-seeya-purple shadow-sm'
+                ? 'bg-seeya-primary text-seeya-text shadow-sm'
                 : 'text-seeya-text-secondary hover:text-seeya-text'
             )}
           >
