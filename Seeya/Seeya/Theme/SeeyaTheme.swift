@@ -2,11 +2,15 @@ import SwiftUI
 
 // MARK: - Brand Colors
 extension Color {
-    static let seeyaBackground = Color(red: 0.98, green: 0.97, blue: 0.95) // Warm cream
-    static let seeyaCardBackground = Color.white
-    static let seeyaSurface = Color(red: 0.96, green: 0.95, blue: 0.93) // Subtle surface for backgrounds
-    static let seeyaPurple = Color(red: 0.5, green: 0.3, blue: 0.7) // Brand purple
-    static let seeyaAccent = Color.black // Primary buttons
+    // Primary design system colors - Updated to match spec
+    static let seeyaPrimary = Color(red: 0.99, green: 0.93, blue: 0.17)     // #FCEE2C Yellow - Primary CTA
+    static let seeyaSecondary = Color(red: 0.85, green: 0.76, blue: 0.96)   // #D8C3F4 Lavender
+    static let seeyaBackground = Color(red: 0.98, green: 0.97, blue: 0.95)  // Warm cream (kept)
+    static let seeyaCardBackground = Color(red: 0.96, green: 0.96, blue: 0.93) // #F6F4EE Beige
+    static let seeyaSurface = Color(red: 0.96, green: 0.95, blue: 0.93)     // Subtle surface for backgrounds
+    static let seeyaPurple = Color(red: 0.5, green: 0.3, blue: 0.7)         // Legacy brand purple
+    static let seeyaAccent = Color.black                                     // Secondary buttons
+    static let seeyaBorder = Color(red: 0.91, green: 0.89, blue: 0.85)      // #E7E2DA Warm gray border
     static let seeyaSecondaryText = Color(red: 0.5, green: 0.5, blue: 0.5)
     static let seeyaSuccess = Color.green
     static let seeyaWarning = Color.orange
@@ -14,8 +18,11 @@ extension Color {
 
     // Text hierarchy
     static let seeyaTextPrimary = Color.primary
-    static let seeyaTextSecondary = Color(red: 0.45, green: 0.45, blue: 0.45)
+    static let seeyaTextSecondary = Color(red: 0.4, green: 0.4, blue: 0.4)  // #666666
     static let seeyaTextTertiary = Color(red: 0.6, green: 0.6, blue: 0.6)
+
+    // Foreground for yellow buttons (dark text)
+    static let seeyaForeground = Color(red: 0.1, green: 0.1, blue: 0.1)     // #1A1A1A
 
     // Continent Colors - 7 unique colors
     static let continentEurope = Color(red: 0.2, green: 0.4, blue: 0.7)       // Blue
@@ -74,16 +81,19 @@ extension Color {
 // MARK: - Typography System
 struct SeeyaTypography {
     // Display (Serif - for trip names, headings with personality)
-    static let displayLarge = Font.custom("Baskerville-SemiBold", size: 28)
-    static let displayMedium = Font.custom("Baskerville-SemiBold", size: 22)
-    static let displaySmall = Font.custom("Baskerville-SemiBold", size: 18)
+    // Using Apple's New York font (system serif) - closest to Playfair Display
+    // To use Playfair Display later, bundle the fonts and change to:
+    // Font.custom("PlayfairDisplay-Bold", size: 24)
+    static let displayLarge = Font.system(size: 24, weight: .bold, design: .serif)
+    static let displayMedium = Font.system(size: 20, weight: .semibold, design: .serif)
+    static let displaySmall = Font.system(size: 18, weight: .medium, design: .serif)
 
-    // Headings (System sans-serif)
+    // Headings (System sans-serif - SF Pro)
     static let headlineLarge = Font.system(size: 20, weight: .semibold)
     static let headlineMedium = Font.system(size: 17, weight: .semibold)
     static let headlineSmall = Font.system(size: 15, weight: .semibold)
 
-    // Body
+    // Body (System sans-serif)
     static let bodyLarge = Font.system(size: 17, weight: .regular)
     static let bodyMedium = Font.system(size: 15, weight: .regular)
     static let bodySmall = Font.system(size: 13, weight: .regular)
@@ -94,6 +104,15 @@ struct SeeyaTypography {
     static let labelSmall = Font.system(size: 11, weight: .medium)
     static let caption = Font.system(size: 12, weight: .regular)
     static let captionSmall = Font.system(size: 10, weight: .regular)
+}
+
+// MARK: - Border Radius
+struct SeeyaRadius {
+    static let base: CGFloat = 16
+    static let button: CGFloat = 14
+    static let input: CGFloat = 12
+    static let card: CGFloat = 16
+    static let pill: CGFloat = 9999
 }
 
 // MARK: - Spacing Scale
@@ -120,8 +139,8 @@ struct SeeyaCardStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(Color.seeyaCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+            .clipShape(RoundedRectangle(cornerRadius: SeeyaRadius.card))
+            .shadow(color: .black.opacity(0.1), radius: 15, x: 0, y: 8)
     }
 }
 
@@ -138,11 +157,11 @@ struct SeeyaPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.seeyaForeground)  // Dark text on yellow
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(isEnabled ? Color.seeyaAccent : Color.gray)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .background(isEnabled ? Color.seeyaPrimary : Color.gray)
+            .clipShape(RoundedRectangle(cornerRadius: SeeyaRadius.button))
             .opacity(configuration.isPressed ? 0.8 : 1.0)
     }
 }
@@ -156,8 +175,8 @@ struct SeeyaSecondaryButtonStyle: ButtonStyle {
             .foregroundStyle(Color.seeyaAccent)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color.seeyaAccent.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .background(Color.seeyaSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: SeeyaRadius.button))
             .opacity(configuration.isPressed ? 0.7 : 1.0)
     }
 }

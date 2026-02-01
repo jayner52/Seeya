@@ -17,7 +17,7 @@ struct OnboardingWelcomeView: View {
 
                     // Title
                     Text("Welcome to Seeya!")
-                        .font(.custom("Georgia", size: 28).weight(.medium))
+                        .font(SeeyaTypography.displayLarge)
                         .foregroundStyle(Color.seeyaTextPrimary)
                         .multilineTextAlignment(.center)
 

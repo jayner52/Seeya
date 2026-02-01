@@ -10,14 +10,17 @@ const config: Config = {
     extend: {
       colors: {
         seeya: {
-          bg: 'rgb(250, 247, 242)',
-          card: '#ffffff',
-          purple: 'rgb(128, 77, 179)',
+          primary: '#FCEE2C',           // Yellow - Primary CTA
+          secondary: '#D8C3F4',         // Lavender - Secondary accent
+          bg: 'rgb(250, 247, 242)',     // Warm cream background
+          card: '#F6F4EE',              // Beige card background
+          purple: 'rgb(128, 77, 179)',  // Legacy purple
           accent: '#000000',
           text: '#1a1a1a',
-          'text-secondary': 'rgb(128, 128, 128)',
+          'text-secondary': '#666666',
           'text-tertiary': 'rgb(153, 153, 153)',
           surface: 'rgb(245, 242, 237)',
+          border: '#E7E2DA',            // Warm gray border
           success: '#22c55e',
           warning: '#f97316',
           error: '#ef4444',
@@ -35,6 +38,8 @@ const config: Config = {
       fontFamily: {
         display: ['var(--font-playfair)', 'Playfair Display', 'Georgia', 'serif'],
         sans: [
+          'var(--font-inter)',
+          'Inter',
           '-apple-system',
           'BlinkMacSystemFont',
           'Segoe UI',
@@ -45,12 +50,15 @@ const config: Config = {
         ],
       },
       borderRadius: {
-        'seeya': '12px',
-        'seeya-lg': '16px',
+        'seeya': '16px',          // Base radius (was 12px)
+        'seeya-lg': '16px',       // Large radius
         'seeya-xl': '24px',
+        'seeya-button': '14px',   // Button radius
+        'seeya-input': '12px',    // Input radius
+        'seeya-card': '16px',     // Card radius
       },
       boxShadow: {
-        'seeya': '0 2px 8px rgba(0, 0, 0, 0.05)',
+        'seeya': '0px 8px 30px -8px rgba(0, 0, 0, 0.1)',  // Updated to spec
         'seeya-lg': '0 4px 16px rgba(0, 0, 0, 0.1)',
         'seeya-xl': '0 20px 60px rgba(0, 0, 0, 0.15)',
       },

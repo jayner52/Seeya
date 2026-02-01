@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Playfair_Display } from 'next/font/google';
+import { Playfair_Display, Inter } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
 
@@ -7,6 +7,13 @@ const playfair = Playfair_Display({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-playfair',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
   display: 'swap',
 });
 
@@ -36,7 +43,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#804db3',
+  themeColor: '#FCEE2C',
 };
 
 export default function RootLayout({
@@ -45,7 +52,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={playfair.variable}>
+    <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>

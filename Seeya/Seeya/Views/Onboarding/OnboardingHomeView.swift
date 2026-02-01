@@ -22,7 +22,7 @@ struct OnboardingHomeView: View {
 
                     // Title
                     Text("Where's home base?")
-                        .font(.custom("Georgia", size: 28).weight(.medium))
+                        .font(SeeyaTypography.displayLarge)
                         .foregroundStyle(Color.seeyaTextPrimary)
                         .multilineTextAlignment(.center)
 

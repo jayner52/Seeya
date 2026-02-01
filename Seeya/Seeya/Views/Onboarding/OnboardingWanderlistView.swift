@@ -23,7 +23,7 @@ struct OnboardingWanderlistView: View {
 
                     // Title
                     Text("Where do you dream of going?")
-                        .font(.custom("Georgia", size: 28).weight(.medium))
+                        .font(SeeyaTypography.displayLarge)
                         .foregroundStyle(Color.seeyaTextPrimary)
                         .multilineTextAlignment(.center)
 

@@ -13,9 +13,9 @@ export function Card({
   ...props
 }: CardProps) {
   const variants = {
-    default: 'bg-white shadow-seeya',
-    elevated: 'bg-white shadow-seeya-lg',
-    outline: 'bg-white border border-gray-200',
+    default: 'bg-seeya-card shadow-seeya',
+    elevated: 'bg-seeya-card shadow-seeya-lg',
+    outline: 'bg-seeya-card border border-seeya-border',
   };
 
   const paddings = {
@@ -28,7 +28,7 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-seeya',
+        'rounded-seeya-card',
         variants[variant],
         paddings[padding],
         className

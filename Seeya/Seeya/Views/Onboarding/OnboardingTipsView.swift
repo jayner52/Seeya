@@ -24,7 +24,7 @@ struct OnboardingTipsView: View {
 
                     // Title
                     Text("Share your recommendations")
-                        .font(.custom("Georgia", size: 28).weight(.medium))
+                        .font(SeeyaTypography.displayLarge)
                         .foregroundStyle(Color.seeyaTextPrimary)
                         .multilineTextAlignment(.center)
 

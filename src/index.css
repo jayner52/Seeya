@@ -127,7 +127,16 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    @apply tracking-tight font-semibold;
+    letter-spacing: -0.6px;
+    @apply font-semibold;
+  }
+
+  h1 {
+    @apply text-2xl font-bold; /* 24px/700 */
+  }
+
+  h2 {
+    @apply text-xl font-semibold; /* 20px/600 */
   }
 }
 
