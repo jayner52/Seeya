@@ -4,8 +4,8 @@ struct OnboardingProgressBar: View {
     let currentStep: OnboardingStep
     let totalSteps: Int
 
-    private let completedColor = Color(red: 0.96, green: 0.84, blue: 0.28) // Yellow #F5D547
-    private let currentColor = Color.seeyaPurple
+    private let completedColor = Color.seeyaPrimary  // Yellow
+    private let currentColor = Color.seeyaPrimary    // Yellow (same as completed)
     private let upcomingColor = Color.gray.opacity(0.3)
 
     var body: some View {

@@ -4,8 +4,8 @@ struct OnboardingBenefitCard: View {
     let icon: String
     let title: String
     let description: String
-    var iconBackground: Color = .seeyaPurple.opacity(0.1)
-    var iconColor: Color = .seeyaPurple
+    var iconBackground: Color = .seeyaPrimary.opacity(0.2)
+    var iconColor: Color = .seeyaPrimary
 
     var body: some View {
         HStack(spacing: SeeyaSpacing.md) {

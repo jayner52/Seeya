@@ -209,10 +209,10 @@ struct CategoryPill: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundStyle(isSelected ? .white : .primary)
+                .foregroundStyle(isSelected ? Color.seeyaForeground : .primary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(isSelected ? Color.seeyaAccent : Color.gray.opacity(0.1))
+                .background(isSelected ? Color.seeyaPrimary : Color.gray.opacity(0.1))
                 .clipShape(Capsule())
         }
     }
@@ -250,9 +250,9 @@ struct AvatarView: View {
     private var initialsView: some View {
         Text(initials)
             .font(.system(size: size * 0.4, weight: .medium))
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.seeyaForeground)
             .frame(width: size, height: size)
-            .background(Color.seeyaPurple)
+            .background(Color.seeyaPrimary)
     }
 
     private var initials: String {
@@ -347,7 +347,7 @@ struct SectionHeader: View {
             if let icon = icon {
                 Image(systemName: icon)
                     .font(.system(size: SeeyaIconSize.medium))
-                    .foregroundStyle(Color.seeyaPurple)
+                    .foregroundStyle(Color.seeyaPrimary)
             }
 
             Text(title)
@@ -365,7 +365,7 @@ struct SectionHeader: View {
                 Button(action: action) {
                     Image(systemName: actionIcon)
                         .font(.system(size: SeeyaIconSize.medium))
-                        .foregroundStyle(Color.seeyaPurple)
+                        .foregroundStyle(Color.seeyaPrimary)
                 }
             }
         }
@@ -376,7 +376,7 @@ struct SectionHeader: View {
 struct SeeyaIcon: View {
     let systemName: String
     var size: CGFloat = SeeyaIconSize.medium
-    var color: Color = .seeyaPurple
+    var color: Color = .seeyaPrimary
 
     var body: some View {
         Image(systemName: systemName)
@@ -413,7 +413,7 @@ struct FilterIconButton: View {
 // MARK: - Count Badge
 struct CountBadge: View {
     let count: Int
-    var color: Color = .seeyaPurple
+    var color: Color = .seeyaPrimary
     var size: CountBadgeSize = .medium
 
     enum CountBadgeSize {

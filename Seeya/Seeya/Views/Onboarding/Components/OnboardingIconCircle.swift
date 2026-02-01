@@ -2,7 +2,7 @@ import SwiftUI
 
 struct OnboardingIconCircle: View {
     let icon: String
-    var backgroundColor: Color = .seeyaPurple
+    var backgroundColor: Color = .seeyaPrimary
     var iconColor: Color = .white
     var size: Size = .large
 
