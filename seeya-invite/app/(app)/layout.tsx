@@ -110,7 +110,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         flex items-center gap-3 px-4 py-3 rounded-xl transition-colors
                         ${
                           isActive
-                            ? 'bg-seeya-purple/10 text-seeya-purple'
+                            ? 'bg-seeya-primary/20 text-seeya-text font-semibold'
                             : 'text-seeya-text-secondary hover:bg-gray-100'
                         }
                       `}

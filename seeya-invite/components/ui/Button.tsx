@@ -34,7 +34,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       secondary:
         'bg-seeya-secondary text-seeya-text hover:opacity-90',
       purple:
-        'bg-seeya-secondary text-seeya-text hover:opacity-90',
+        'bg-seeya-primary text-seeya-text hover:opacity-90',  // Now uses yellow like primary
       ghost: 'text-seeya-text hover:bg-gray-100',
       outline:
         'border border-seeya-border text-seeya-text hover:bg-gray-50 hover:border-gray-300',

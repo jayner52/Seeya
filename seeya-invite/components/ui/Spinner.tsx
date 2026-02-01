@@ -15,7 +15,7 @@ export function Spinner({ size = 'md', className }: SpinnerProps) {
 
   return (
     <Loader2
-      className={cn('animate-spin text-seeya-purple', sizes[size], className)}
+      className={cn('animate-spin text-seeya-primary', sizes[size], className)}
     />
   );
 }

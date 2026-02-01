@@ -146,7 +146,7 @@ export default function TripsPage() {
           </p>
         </div>
         <Link href="/trips/new">
-          <Button variant="purple" leftIcon={<Plus size={20} />}>
+          <Button variant="primary" leftIcon={<Plus size={20} />}>
             New Trip
           </Button>
         </Link>

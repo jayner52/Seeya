@@ -49,7 +49,7 @@ export function Avatar({
         <div
           className={cn(
             'w-full h-full flex items-center justify-center',
-            'bg-seeya-purple text-white font-medium'
+            'bg-seeya-primary text-seeya-text font-medium'
           )}
         >
           {initials}
