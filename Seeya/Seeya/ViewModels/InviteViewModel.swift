@@ -15,6 +15,8 @@ final class InviteViewModel {
     // MARK: - Share Link State
 
     var selectedLocationsForLink: Set<UUID> = []
+    var selectedTripbitsForLink: Set<UUID> = []
+    var expandedLocationsForLink: Set<UUID> = []
     var linkExpirationDate: Date?
     var hasExpiration: Bool = false
     var activeLinks: [TripInviteLink] = []
@@ -118,6 +120,10 @@ final class InviteViewModel {
                 .value
 
             tripBits = bits
+
+            // Select all locations and tripbits by default for share link
+            selectedLocationsForLink = Set(locations.map { $0.id })
+            selectedTripbitsForLink = Set(bits.map { $0.id })
 
             print("✅ [InviteViewModel] Fetched \(locations.count) locations, \(bits.count) tripbits")
         } catch {
@@ -264,8 +270,18 @@ final class InviteViewModel {
     func toggleLocationForLink(_ locationId: UUID) {
         if selectedLocationsForLink.contains(locationId) {
             selectedLocationsForLink.remove(locationId)
+            // Also remove tripbits for this location
+            let tripbitsInLocation = tripBits.filter { $0.locationId == locationId }
+            for tripbit in tripbitsInLocation {
+                selectedTripbitsForLink.remove(tripbit.id)
+            }
         } else {
             selectedLocationsForLink.insert(locationId)
+            // Also add all tripbits for this location
+            let tripbitsInLocation = tripBits.filter { $0.locationId == locationId }
+            for tripbit in tripbitsInLocation {
+                selectedTripbitsForLink.insert(tripbit.id)
+            }
         }
     }
 
@@ -275,10 +291,43 @@ final class InviteViewModel {
 
     func selectAllLocationsForLink() {
         selectedLocationsForLink = Set(tripLocations.map { $0.id })
+        selectedTripbitsForLink = Set(tripBits.map { $0.id })
     }
 
     func deselectAllLocationsForLink() {
         selectedLocationsForLink.removeAll()
+        selectedTripbitsForLink.removeAll()
+    }
+
+    // MARK: - Share Link Tripbit Selection
+
+    func toggleTripbitForLink(_ tripbitId: UUID) {
+        if selectedTripbitsForLink.contains(tripbitId) {
+            selectedTripbitsForLink.remove(tripbitId)
+        } else {
+            selectedTripbitsForLink.insert(tripbitId)
+        }
+    }
+
+    func isTripbitSelectedForLink(_ tripbitId: UUID) -> Bool {
+        selectedTripbitsForLink.contains(tripbitId)
+    }
+
+    func toggleLocationExpandedForLink(_ locationId: UUID) {
+        if expandedLocationsForLink.contains(locationId) {
+            expandedLocationsForLink.remove(locationId)
+        } else {
+            expandedLocationsForLink.insert(locationId)
+        }
+    }
+
+    func isLocationExpandedForLink(_ locationId: UUID) -> Bool {
+        expandedLocationsForLink.contains(locationId)
+    }
+
+    func selectedTripbitCountForLinkLocation(_ locationId: UUID) -> Int {
+        let locationTripbits = tripbitsForLocation(locationId)
+        return locationTripbits.filter { selectedTripbitsForLink.contains($0.id) }.count
     }
 
     // MARK: - Send Invites
@@ -566,6 +615,8 @@ final class InviteViewModel {
         expandedFriendIds.removeAll()
         expandedLocationIds.removeAll()
         selectedLocationsForLink.removeAll()
+        selectedTripbitsForLink.removeAll()
+        expandedLocationsForLink.removeAll()
         linkExpirationDate = nil
         hasExpiration = false
         errorMessage = nil

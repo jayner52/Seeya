@@ -147,10 +147,10 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
   if (!data.valid) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-seeya-purple via-purple-600 to-purple-800 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-seeya-secondary via-seeya-secondary/80 to-seeya-primary/30 flex flex-col">
         <header className="p-6">
           <Link href="/">
-            <Logo size="md" className="text-white [&_span]:text-white" />
+            <Logo size="md" className="text-seeya-text [&_span]:text-seeya-text" />
           </Link>
         </header>
 
@@ -180,17 +180,17 @@ export default async function InvitePage({ params }: InvitePageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-seeya-purple via-purple-600 to-purple-800 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-seeya-secondary via-seeya-secondary/80 to-seeya-primary/30 flex flex-col">
       <header className="p-6">
         <Link href="/">
-          <Logo size="md" className="text-white [&_span]:text-white" />
+          <Logo size="md" className="text-seeya-text [&_span]:text-seeya-text" />
         </Link>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-6">
         <div className="max-w-lg w-full space-y-6">
           {/* Invitation Header */}
-          <div className="text-center text-white mb-2">
+          <div className="text-center text-seeya-text mb-2">
             <p className="text-lg opacity-90">You&apos;re invited to join</p>
           </div>
 
@@ -208,7 +208,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
       </main>
 
       <footer className="p-6 text-center">
-        <p className="text-white/60 text-sm">
+        <p className="text-seeya-text/60 text-sm">
           &copy; {new Date().getFullYear()} Seeya. All rights reserved.
         </p>
       </footer>

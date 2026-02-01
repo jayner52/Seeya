@@ -74,17 +74,49 @@ struct ShareLinkTab: View {
                 } label: {
                     Text(viewModel.selectedLocationsForLink.count == viewModel.tripLocations.count ? "Deselect all" : "Select all")
                         .font(SeeyaTypography.caption)
-                        .foregroundStyle(Color.seeyaPurple)
+                        .foregroundStyle(Color.seeyaPrimary)
                 }
             }
 
             VStack(spacing: 0) {
                 ForEach(viewModel.tripLocations) { location in
-                    ShareLinkLocationRow(
-                        location: location,
-                        isSelected: viewModel.isLocationSelectedForLink(location.id)
-                    ) {
-                        viewModel.toggleLocationForLink(location.id)
+                    VStack(spacing: 0) {
+                        ShareLinkLocationRow(
+                            location: location,
+                            isSelected: viewModel.isLocationSelectedForLink(location.id),
+                            isExpanded: viewModel.isLocationExpandedForLink(location.id),
+                            tripbitCount: viewModel.tripbitCountForLocation(location.id),
+                            selectedTripbitCount: viewModel.selectedTripbitCountForLinkLocation(location.id),
+                            onToggle: {
+                                viewModel.toggleLocationForLink(location.id)
+                            },
+                            onExpand: {
+                                viewModel.toggleLocationExpandedForLink(location.id)
+                            }
+                        )
+
+                        // Tripbits for this location
+                        if viewModel.isLocationExpandedForLink(location.id) {
+                            let tripbits = viewModel.tripbitsForLocation(location.id)
+                            if !tripbits.isEmpty {
+                                VStack(spacing: 0) {
+                                    ForEach(tripbits) { tripbit in
+                                        ShareLinkTripbitRow(
+                                            tripbit: tripbit,
+                                            isSelected: viewModel.isTripbitSelectedForLink(tripbit.id)
+                                        ) {
+                                            viewModel.toggleTripbitForLink(tripbit.id)
+                                        }
+
+                                        if tripbit.id != tripbits.last?.id {
+                                            Divider()
+                                                .padding(.leading, 72)
+                                        }
+                                    }
+                                }
+                                .background(Color(.systemGray5))
+                            }
+                        }
                     }
 
                     if location.id != viewModel.tripLocations.last?.id {
@@ -106,7 +138,7 @@ struct ShareLinkTab: View {
                 Text("Set Expiration")
                     .font(SeeyaTypography.labelLarge)
             }
-            .tint(Color.seeyaPurple)
+            .tint(Color.seeyaPrimary)
 
             if viewModel.hasExpiration {
                 DatePicker(
@@ -233,15 +265,32 @@ struct ShareLinkTab: View {
 struct ShareLinkLocationRow: View {
     let location: TripLocation
     let isSelected: Bool
+    var isExpanded: Bool = false
+    var tripbitCount: Int = 0
+    var selectedTripbitCount: Int = 0
     let onToggle: () -> Void
+    var onExpand: (() -> Void)? = nil
 
     var body: some View {
-        Button(action: onToggle) {
-            HStack(spacing: 12) {
-                Image(systemName: "mappin.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color(red: 0.95, green: 0.85, blue: 0.4))
+        HStack(spacing: 12) {
+            // Expand button (if has tripbits)
+            if tripbitCount > 0 {
+                Button(action: { onExpand?() }) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Color.clear.frame(width: 20)
+            }
 
+            Image(systemName: "mappin.circle.fill")
+                .font(.title3)
+                .foregroundStyle(Color.seeyaPrimary)
+
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     if let flag = location.flagEmoji {
                         Text(flag)
@@ -251,15 +300,69 @@ struct ShareLinkLocationRow: View {
                         .foregroundStyle(.primary)
                 }
 
-                Spacer()
+                if tripbitCount > 0 {
+                    Text("\(selectedTripbitCount)/\(tripbitCount) items")
+                        .font(SeeyaTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
+            Spacer()
+
+            Button(action: onToggle) {
                 Image(systemName: isSelected ? "checkmark.square.fill" : "square")
                     .font(.title3)
-                    .foregroundStyle(isSelected ? Color(red: 0.95, green: 0.85, blue: 0.4) : Color.gray.opacity(0.4))
+                    .foregroundStyle(isSelected ? Color.seeyaPrimary : Color.gray.opacity(0.4))
+            }
+            .buttonStyle(.plain)
+        }
+        .contentShape(Rectangle())
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+}
+
+// MARK: - Share Link Tripbit Row
+
+struct ShareLinkTripbitRow: View {
+    let tripbit: TripBit
+    let isSelected: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 12) {
+                // Indent spacer
+                Color.clear.frame(width: 20)
+
+                Image(systemName: tripbit.category.icon)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.seeyaPrimary)
+                    .frame(width: 24, height: 24)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tripbit.title)
+                        .font(SeeyaTypography.bodySmall)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    if let subtitle = tripbit.subtitle {
+                        Text(subtitle)
+                            .font(SeeyaTypography.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(isSelected ? Color.seeyaPrimary : Color.gray.opacity(0.4))
             }
             .contentShape(Rectangle())
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
         }
         .buttonStyle(.plain)
     }
