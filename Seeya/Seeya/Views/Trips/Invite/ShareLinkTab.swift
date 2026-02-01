@@ -346,8 +346,8 @@ struct ShareLinkTripbitRow: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
-                    if let subtitle = tripbit.subtitle {
-                        Text(subtitle)
+                    if tripbit.startDatetime != nil {
+                        Text(tripbit.formattedDateTime)
                             .font(SeeyaTypography.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
