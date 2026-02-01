@@ -14,7 +14,8 @@ export const config = {
      * - favicon.ico (favicon file)
      * - .well-known (universal links)
      * - api (API routes - handled separately)
+     * - invite (public invite pages)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.well-known|api).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.well-known|api|invite).*)',
   ],
 };
