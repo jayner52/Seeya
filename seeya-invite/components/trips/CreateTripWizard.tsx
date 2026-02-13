@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import { createClient } from '@/lib/supabase/client';
@@ -86,9 +86,17 @@ const vibeIcons: Record<string, any> = {
   backpacking: Backpack,
 };
 
+interface PlacePrediction {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  description: string;
+}
+
 interface Destination {
   id: string;
   name: string;
+  placeId?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -108,6 +116,10 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
   // Step 1: Where & When
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [newDestination, setNewDestination] = useState('');
+  const [placePredictions, setPlacePredictions] = useState<PlacePrediction[]>([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [showPredictions, setShowPredictions] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const [dateMode, setDateMode] = useState<DateMode>('exact');
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
@@ -191,13 +203,46 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
     }
   }, [currentStep, updateNameSuggestions]);
 
-  // Add destination
-  const handleAddDestination = () => {
-    if (!newDestination.trim()) return;
+  // Places search effect
+  useEffect(() => {
+    if (!newDestination.trim() || newDestination.length < 2) {
+      setPlacePredictions([]);
+      setShowPredictions(false);
+      return;
+    }
 
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearchingPlaces(true);
+      try {
+        const response = await fetch(`/api/places/autocomplete?query=${encodeURIComponent(newDestination)}`);
+        const data = await response.json();
+        if (data.predictions) {
+          setPlacePredictions(data.predictions);
+          setShowPredictions(true);
+        }
+      } catch (err) {
+        console.error('Places search error:', err);
+      }
+      setIsSearchingPlaces(false);
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [newDestination]);
+
+  // Add destination helper
+  const addDestination = (name: string, placeId?: string) => {
     const dest: Destination = {
       id: Date.now().toString(),
-      name: newDestination.trim(),
+      name,
+      placeId,
     };
 
     if (dateMode === 'exact') {
@@ -211,6 +256,19 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
 
     setDestinations([...destinations, dest]);
     setNewDestination('');
+    setPlacePredictions([]);
+    setShowPredictions(false);
+  };
+
+  // Add destination from text input
+  const handleAddDestination = () => {
+    if (!newDestination.trim()) return;
+    addDestination(newDestination.trim());
+  };
+
+  // Add destination from Places prediction
+  const handleSelectPrediction = (prediction: PlacePrediction) => {
+    addDestination(prediction.description, prediction.placeId);
   };
 
   const handleRemoveDestination = (id: string) => {
@@ -470,18 +528,56 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           </div>
         ))}
 
-        {/* Add destination */}
-        <div className="flex gap-2">
-          <Input
-            placeholder={destinations.length === 0 ? 'Search for a city...' : 'Add another stop...'}
-            value={newDestination}
-            onChange={(e) => setNewDestination(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddDestination()}
-            className="flex-1"
-          />
-          <Button type="button" variant="outline" onClick={handleAddDestination} disabled={!newDestination.trim()}>
-            Add
-          </Button>
+        {/* Add destination with Places autocomplete */}
+        <div className="relative">
+          <div className="relative">
+            <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder={destinations.length === 0 ? 'Search for a city...' : 'Add another stop...'}
+              value={newDestination}
+              onChange={(e) => setNewDestination(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddDestination()}
+              onFocus={() => newDestination.length >= 2 && setShowPredictions(true)}
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none transition-all"
+            />
+            {isSearchingPlaces && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Spinner size="sm" />
+              </div>
+            )}
+          </div>
+
+          {/* Autocomplete dropdown */}
+          {showPredictions && (placePredictions.length > 0 || newDestination.length >= 2) && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
+              {placePredictions.map((prediction) => (
+                <button
+                  key={prediction.placeId}
+                  type="button"
+                  onClick={() => handleSelectPrediction(prediction)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0"
+                >
+                  <MapPin size={18} className="text-seeya-purple shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-seeya-text">{prediction.mainText}</p>
+                    <p className="text-sm text-seeya-text-secondary truncate">{prediction.secondaryText}</p>
+                  </div>
+                </button>
+              ))}
+
+              {newDestination.length >= 2 && !isSearchingPlaces && (
+                <button
+                  type="button"
+                  onClick={handleAddDestination}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-seeya-purple"
+                >
+                  <Sparkles size={18} />
+                  <span>Use &quot;{newDestination}&quot; as custom location</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
