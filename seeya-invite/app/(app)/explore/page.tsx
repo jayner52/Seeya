@@ -11,7 +11,7 @@ import {
   ExploreAISection,
   AddToTripModal,
 } from '@/components/explore';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Check } from 'lucide-react';
 import type { AIRecommendation } from '@/types';
 
 interface TravelingFriend {
@@ -375,7 +375,7 @@ export default function ExplorePage() {
       {showSuccessToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in">
           <div className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-            <span>✓</span>
+            <Check size={16} />
             <span>{showSuccessToast}</span>
           </div>
         </div>

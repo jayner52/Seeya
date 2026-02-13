@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MapPin } from 'lucide-react';
+import { MapPin, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui';
 import { formatDate } from '@/lib/utils/date';
 import type { UpcomingTrip } from '@/types/calendar';
@@ -20,9 +20,8 @@ export function UpcomingTripCard({ trip }: UpcomingTripCardProps) {
   return (
     <Link href={`/trips/${trip.id}`}>
       <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-        {/* Emoji placeholder */}
-        <div className="w-10 h-10 rounded-lg bg-seeya-purple/10 flex items-center justify-center text-lg flex-shrink-0">
-          ✈️
+        <div className="w-10 h-10 rounded-lg bg-seeya-purple/10 flex items-center justify-center flex-shrink-0">
+          <Plane size={20} className="text-seeya-purple" />
         </div>
 
         {/* Content */}

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, Button } from '@/components/ui';
 import { StepIndicator } from '@/components/onboarding';
-import { Plane, MapPin, Users, Sparkles } from 'lucide-react';
+import { Plane, MapPin, Users, Sparkles, Hand } from 'lucide-react';
 
 export default function OnboardingWelcomePage() {
   const router = useRouter();
@@ -18,7 +18,11 @@ export default function OnboardingWelcomePage() {
         <StepIndicator totalSteps={5} currentStep={1} className="mb-8" />
 
         <Card variant="elevated" padding="lg" className="text-center">
-          <div className="text-6xl mb-6">👋</div>
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-seeya-purple/10 flex items-center justify-center">
+              <Hand size={32} className="text-seeya-purple" />
+            </div>
+          </div>
           <h1 className="text-2xl font-display font-semibold text-seeya-text mb-2">
             Welcome, {firstName}!
           </h1>

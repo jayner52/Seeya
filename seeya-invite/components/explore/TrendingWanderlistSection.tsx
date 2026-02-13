@@ -37,7 +37,7 @@ export function TrendingWanderlistSection({
 
       {places.length === 0 ? (
         <Card variant="outline" padding="md" className="text-center">
-          <div className="text-3xl mb-2">✨</div>
+          <Sparkles size={28} className="text-seeya-text-secondary mx-auto mb-2" />
           <p className="text-sm text-seeya-text-secondary">
             See dream destinations
           </p>

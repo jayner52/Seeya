@@ -35,7 +35,7 @@ export function TravelingNowSection({ friends, className }: TravelingNowSectionP
 
       {friends.length === 0 ? (
         <Card variant="outline" padding="md" className="text-center">
-          <div className="text-3xl mb-2">✈️</div>
+          <Plane size={28} className="text-seeya-text-secondary mx-auto mb-2" />
           <p className="text-sm text-seeya-text-secondary">
             See where your friends are headed
           </p>

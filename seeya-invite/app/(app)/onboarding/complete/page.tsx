@@ -35,7 +35,11 @@ export default function OnboardingCompletePage() {
         <StepIndicator totalSteps={5} currentStep={5} className="mb-8" />
 
         <Card variant="elevated" padding="lg" className="text-center">
-          <div className="text-6xl mb-6">🎉</div>
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-seeya-purple/10 flex items-center justify-center">
+              <PartyPopper size={32} className="text-seeya-purple" />
+            </div>
+          </div>
           <h1 className="text-2xl font-display font-semibold text-seeya-text mb-2">
             You&apos;re all set!
           </h1>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
 import { Card, Button, Avatar } from '@/components/ui';
-import { Star, MapPin, ExternalLink, Bookmark, ChevronRight } from 'lucide-react';
+import { Star, MapPin, ExternalLink, Bookmark, BookmarkPlus, ChevronRight } from 'lucide-react';
 
 interface SavedRecommendation {
   id: string;
@@ -155,7 +155,7 @@ export function SavedRecommendationsSection({
         </div>
       ) : (
         <Card variant="outline" padding="lg" className="text-center">
-          <div className="text-4xl mb-3">💾</div>
+          <BookmarkPlus size={32} className="text-seeya-text-secondary mx-auto mb-3" />
           <h3 className="font-semibold text-seeya-text mb-1">
             No saved recommendations
           </h3>

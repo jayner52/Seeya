@@ -47,7 +47,7 @@ export function TravelPalsSection({
         </div>
       ) : (
         <Card variant="outline" padding="lg" className="text-center">
-          <div className="text-4xl mb-3">👋</div>
+          <Users size={32} className="text-seeya-text-secondary mx-auto mb-3" />
           <h3 className="font-semibold text-seeya-text mb-1">
             No travel pals yet
           </h3>

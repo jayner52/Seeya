@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { TripPreview } from '@/components/invite';
 import { InviteActions } from './InviteActions';
 import { Logo, Card } from '@/components/ui';
+import { Clock, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { TripWithDetails } from '@/types';
@@ -156,8 +157,12 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
         <main className="flex-1 flex items-center justify-center p-6">
           <Card variant="elevated" padding="lg" className="max-w-md w-full text-center">
-            <div className="text-6xl mb-4">
-              {data.error === 'expired' ? '⏰' : '❌'}
+            <div className="flex justify-center mb-4">
+              {data.error === 'expired' ? (
+                <Clock size={48} className="text-seeya-text-secondary" />
+              ) : (
+                <XCircle size={48} className="text-red-400" />
+              )}
             </div>
             <h1 className="text-2xl font-semibold text-seeya-text mb-2">
               {data.error === 'expired' ? 'Invite Expired' : 'Invalid Invite'}
