@@ -89,9 +89,10 @@ function AIRecommendationCard({
             src={recommendation.photoUrl}
             alt={recommendation.title}
             className="w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
           <div className={cn(
-            'absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1',
+            'absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 bg-white/90',
             config.color
           )}>
             <Icon size={12} />
@@ -133,9 +134,9 @@ function AIRecommendationCard({
                   <div className="flex items-center gap-1">
                     <Star size={13} className="text-yellow-500 fill-yellow-500" />
                     <span className="text-sm font-medium text-seeya-text">{recommendation.rating}</span>
-                    {recommendation.userRatingsTotal && (
+                    {recommendation.userRatingsTotal != null && (
                       <span className="text-xs text-seeya-text-secondary">
-                        ({recommendation.userRatingsTotal.toLocaleString()})
+                        ({Number(recommendation.userRatingsTotal).toLocaleString()})
                       </span>
                     )}
                   </div>

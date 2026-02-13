@@ -12,6 +12,20 @@ import type {
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const GOOGLE_PLACES_TEXTSEARCH_URL = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
 
+// Allow up to 30s for AI + Places enrichment
+export const maxDuration = 30;
+
+async function fetchWithTimeout(url: string, timeoutMs = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function enrichWithGooglePlaces(
   recommendations: AIRecommendation[],
   destination: string,
@@ -23,43 +37,48 @@ async function enrichWithGooglePlaces(
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return recommendations;
 
-  const results = await Promise.allSettled(
-    recommendations.map(async (rec) => {
-      const query = `${rec.title} ${destination}`;
-      const url = new URL(GOOGLE_PLACES_TEXTSEARCH_URL);
-      url.searchParams.set('query', query);
-      url.searchParams.set('key', apiKey);
+  try {
+    const results = await Promise.allSettled(
+      recommendations.map(async (rec) => {
+        const query = `${rec.title} ${destination}`;
+        const url = new URL(GOOGLE_PLACES_TEXTSEARCH_URL);
+        url.searchParams.set('query', query);
+        url.searchParams.set('key', apiKey);
 
-      const response = await fetch(url.toString());
-      const data = await response.json();
+        const response = await fetchWithTimeout(url.toString(), 4000);
+        const data = await response.json();
 
-      if (data.status !== 'OK' || !data.results?.length) {
-        return rec;
-      }
+        if (data.status !== 'OK' || !data.results?.length) {
+          return rec;
+        }
 
-      const place = data.results[0];
-      const photoRef = place.photos?.[0]?.photo_reference;
+        const place = data.results[0];
+        const photoRef = place.photos?.[0]?.photo_reference;
 
-      return {
-        ...rec,
-        googlePlaceId: place.place_id,
-        rating: place.rating,
-        userRatingsTotal: place.user_ratings_total,
-        priceLevel: place.price_level,
-        address: place.formatted_address,
-        photoUrl: photoRef
-          ? `/api/places/photo?ref=${encodeURIComponent(photoRef)}&maxwidth=400`
-          : undefined,
-        googleMapsUrl: place.place_id
-          ? `https://www.google.com/maps/place/?q=place_id:${place.place_id}`
-          : undefined,
-      };
-    })
-  );
+        return {
+          ...rec,
+          googlePlaceId: place.place_id,
+          rating: place.rating,
+          userRatingsTotal: place.user_ratings_total,
+          priceLevel: place.price_level,
+          address: place.formatted_address,
+          photoUrl: photoRef
+            ? `/api/places/photo?ref=${encodeURIComponent(photoRef)}&maxwidth=400`
+            : undefined,
+          googleMapsUrl: place.place_id
+            ? `https://www.google.com/maps/place/?q=place_id:${place.place_id}`
+            : undefined,
+        };
+      })
+    );
 
-  return results.map((result, i) =>
-    result.status === 'fulfilled' ? result.value : recommendations[i]
-  );
+    return results.map((result, i) =>
+      result.status === 'fulfilled' ? result.value : recommendations[i]
+    );
+  } catch (error) {
+    console.error('Places enrichment failed, returning AI-only results:', error);
+    return recommendations;
+  }
 }
 
 function generateId(): string {
