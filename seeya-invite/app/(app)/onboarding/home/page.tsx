@@ -8,24 +8,25 @@ import { Card, Button } from '@/components/ui';
 import { StepIndicator } from '@/components/onboarding';
 import { MapPin, Search, X, ArrowLeft } from 'lucide-react';
 
-interface CityResult {
-  id: string;
-  name: string;
-  country: string;
+interface PlacePrediction {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  description: string;
 }
 
 export default function OnboardingHomePage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [selectedCity, setSelectedCity] = useState<CityResult | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<PlacePrediction | null>(null);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<CityResult[]>([]);
+  const [results, setResults] = useState<PlacePrediction[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() || query.length < 2) {
       setResults([]);
       return;
     }
@@ -36,17 +37,19 @@ export default function OnboardingHomePage() {
 
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
-      const supabase = createClient();
 
-      const { data } = await supabase
-        .from('cities')
-        .select('id, name, country')
-        .ilike('name', `${query}%`)
-        .limit(10);
+      try {
+        const response = await fetch(`/api/places/autocomplete?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
 
-      if (data) {
-        setResults(data);
+        if (data.predictions) {
+          setResults(data.predictions);
+        }
+      } catch (err) {
+        console.error('Home city search error:', err);
+        setResults([]);
       }
+
       setIsSearching(false);
     }, 300);
 
@@ -58,14 +61,18 @@ export default function OnboardingHomePage() {
   }, [query]);
 
   const handleNext = async () => {
-    if (!user || !selectedCity) return;
+    if (!user || !selectedPlace) return;
 
     setIsSaving(true);
     const supabase = createClient();
 
+    // Save the home city and place ID on the profile
     await supabase
       .from('profiles')
-      .update({ home_city_id: selectedCity.id })
+      .update({
+        home_city: selectedPlace.description,
+        home_city_place_id: selectedPlace.placeId,
+      })
       .eq('id', user.id);
 
     router.push('/onboarding/visited');
@@ -98,15 +105,15 @@ export default function OnboardingHomePage() {
           </div>
 
           {/* Selected city display */}
-          {selectedCity ? (
+          {selectedPlace ? (
             <div className="flex items-center gap-3 p-4 bg-seeya-purple/10 rounded-xl mb-4">
               <MapPin size={20} className="text-seeya-purple" />
               <div className="flex-1">
-                <p className="font-medium text-seeya-text">{selectedCity.name}</p>
-                <p className="text-sm text-seeya-text-secondary">{selectedCity.country}</p>
+                <p className="font-medium text-seeya-text">{selectedPlace.mainText}</p>
+                <p className="text-sm text-seeya-text-secondary">{selectedPlace.secondaryText}</p>
               </div>
               <button
-                onClick={() => setSelectedCity(null)}
+                onClick={() => setSelectedPlace(null)}
                 className="p-1 hover:bg-white/50 rounded-full"
               >
                 <X size={16} className="text-seeya-text-secondary" />
@@ -134,11 +141,11 @@ export default function OnboardingHomePage() {
                       Searching...
                     </div>
                   ) : (
-                    results.map((city) => (
+                    results.map((place) => (
                       <button
-                        key={city.id}
+                        key={place.placeId}
                         onClick={() => {
-                          setSelectedCity(city);
+                          setSelectedPlace(place);
                           setQuery('');
                           setResults([]);
                         }}
@@ -146,8 +153,8 @@ export default function OnboardingHomePage() {
                       >
                         <MapPin size={16} className="text-seeya-purple" />
                         <div>
-                          <p className="font-medium text-seeya-text">{city.name}</p>
-                          <p className="text-sm text-seeya-text-secondary">{city.country}</p>
+                          <p className="font-medium text-seeya-text">{place.mainText}</p>
+                          <p className="text-sm text-seeya-text-secondary">{place.secondaryText}</p>
                         </div>
                       </button>
                     ))
@@ -168,7 +175,7 @@ export default function OnboardingHomePage() {
             <Button
               variant="purple"
               className="flex-1"
-              disabled={!selectedCity}
+              disabled={!selectedPlace}
               isLoading={isSaving}
               onClick={handleNext}
             >

@@ -40,26 +40,20 @@ export function CountrySelector({
     async function fetchCountries() {
       const supabase = createClient();
 
-      // Get unique countries from cities table
       const { data, error } = await supabase
-        .from('cities')
-        .select('country, country_code, continent')
-        .order('country');
+        .from('countries')
+        .select('id, name, code, continent')
+        .order('name');
 
       if (!error && data) {
-        // Dedupe countries
-        const countryMap = new Map<string, Country>();
-        data.forEach((city) => {
-          if (!countryMap.has(city.country)) {
-            countryMap.set(city.country, {
-              id: city.country_code,
-              name: city.country,
-              code: city.country_code,
-              continent: city.continent || 'Other',
-            });
-          }
-        });
-        setCountries(Array.from(countryMap.values()));
+        setCountries(
+          data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            code: c.code,
+            continent: c.continent || 'Other',
+          }))
+        );
       }
       setIsLoading(false);
     }

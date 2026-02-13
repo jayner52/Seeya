@@ -84,12 +84,18 @@ export default function TripDetailPage() {
       if (cityIds.length > 0) {
         const { data: cities } = await supabase
           .from('cities')
-          .select('id, name, country, country_code, continent')
+          .select('id, name, country:countries (name, code, continent)')
           .in('id', cityIds);
 
-        // Attach city data to locations
+        // Attach city data to locations with flattened country info
         if (cities) {
-          const cityMap = new Map(cities.map(c => [c.id, c]));
+          const cityMap = new Map(cities.map((c: any) => [c.id, {
+            id: c.id,
+            name: c.name,
+            country: c.country?.name,
+            country_code: c.country?.code,
+            continent: c.country?.continent,
+          }]));
           locations = locations.map(l => ({
             ...l,
             city: l.city_id ? cityMap.get(l.city_id) : undefined

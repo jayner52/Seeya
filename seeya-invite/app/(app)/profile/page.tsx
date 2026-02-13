@@ -122,7 +122,7 @@ export default function ProfilePage() {
           .order('start_date', { ascending: true }),
         supabase
           .from('trip_locations')
-          .select('city:cities (country, name)')
+          .select('city:cities (name, country:countries (name))')
           .in('trip_id', allTripIds),
       ]);
 
@@ -137,7 +137,7 @@ export default function ProfilePage() {
         const countries = new Set<string>();
         const cities = new Set<string>();
         locations?.forEach((loc: any) => {
-          if (loc.city?.country) countries.add(loc.city.country);
+          if (loc.city?.country?.name) countries.add(loc.city.country.name);
           if (loc.city?.name) cities.add(loc.city.name);
         });
 
