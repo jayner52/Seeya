@@ -152,22 +152,10 @@ export function WanderlistSection({
           ))}
         </Card>
       ) : (
-        <Card variant="outline" padding="lg" className="text-center">
-          <div className="text-4xl mb-3">🌍</div>
-          <h3 className="font-semibold text-seeya-text mb-1">
-            Start your wanderlist
-          </h3>
-          <p className="text-sm text-seeya-text-secondary mb-4">
-            Add places you dream of visiting
-          </p>
-          <Button
-            variant="purple"
-            size="sm"
-            leftIcon={<Plus size={16} />}
-            onClick={onAddClick}
-          >
-            Add First Destination
-          </Button>
+        <Card variant="outline" padding="md" className="text-center py-8">
+          <Globe size={36} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-seeya-text-secondary">No places yet</p>
+          <p className="text-xs text-gray-400 mt-1">Add countries or cities you want to visit</p>
         </Card>
       )}
     </div>

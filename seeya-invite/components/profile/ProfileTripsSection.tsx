@@ -101,13 +101,10 @@ export function ProfileTripsSection({
           )}
         </Card>
       ) : (
-        <Card variant="outline" padding="lg" className="text-center">
-          <p className="text-seeya-text-secondary mb-3">No trips yet</p>
-          <Link href="/trips/new">
-            <Button variant="purple" size="sm">
-              Create Your First Trip
-            </Button>
-          </Link>
+        <Card variant="outline" padding="md" className="text-center py-8">
+          <Plane size={36} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-seeya-text-secondary">No upcoming trips</p>
+          <p className="text-xs text-gray-400 mt-1">Start planning your next adventure!</p>
         </Card>
       )}
     </div>

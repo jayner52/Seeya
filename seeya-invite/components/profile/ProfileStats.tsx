@@ -1,33 +1,35 @@
 'use client';
 
 import { Card } from '@/components/ui';
-import { Plane, Globe, MapPin, Star, Users } from 'lucide-react';
+import { Plane, Star, Flag, Building2 } from 'lucide-react';
 
 interface ProfileStatsProps {
   tripCount: number;
   countriesVisited: number;
   citiesVisited: number;
   recommendationsCount: number;
-  travelPalsCount: number;
+  travelPalsCount?: number;
   className?: string;
 }
 
-interface StatCardProps {
+interface StatItemProps {
   value: number;
   label: string;
   icon: typeof Plane;
 }
 
-function StatCard({ value, label, icon: Icon }: StatCardProps) {
+function StatItem({ value, label, icon: Icon }: StatItemProps) {
   return (
-    <Card variant="outline" padding="md" className="text-center">
-      <div className="flex items-center justify-center mb-2">
-        <Icon size={20} className="text-seeya-purple" />
-      </div>
-      <p className="text-2xl font-bold text-seeya-text">{value}</p>
+    <div className="flex-1 text-center py-3">
+      <Icon size={20} className="text-seeya-purple mx-auto mb-1.5" />
+      <p className="text-xl font-bold text-seeya-text">{value}</p>
       <p className="text-xs text-seeya-text-secondary">{label}</p>
-    </Card>
+    </div>
   );
+}
+
+function Divider() {
+  return <div className="w-px h-8 bg-gray-200 self-center" />;
 }
 
 export function ProfileStats({
@@ -35,18 +37,21 @@ export function ProfileStats({
   countriesVisited,
   citiesVisited,
   recommendationsCount,
-  travelPalsCount,
   className,
 }: ProfileStatsProps) {
   return (
     <div className={className}>
-      <div className="grid grid-cols-5 gap-3">
-        <StatCard value={tripCount} label="Trips" icon={Plane} />
-        <StatCard value={countriesVisited} label="Countries" icon={Globe} />
-        <StatCard value={citiesVisited} label="Cities" icon={MapPin} />
-        <StatCard value={recommendationsCount} label="Recs" icon={Star} />
-        <StatCard value={travelPalsCount} label="Pals" icon={Users} />
-      </div>
+      <Card variant="outline" padding="none">
+        <div className="flex items-center">
+          <StatItem value={tripCount} label="Trips" icon={Plane} />
+          <Divider />
+          <StatItem value={recommendationsCount} label="Recs" icon={Star} />
+          <Divider />
+          <StatItem value={countriesVisited} label="Countries" icon={Flag} />
+          <Divider />
+          <StatItem value={citiesVisited} label="Cities" icon={Building2} />
+        </div>
+      </Card>
     </div>
   );
 }

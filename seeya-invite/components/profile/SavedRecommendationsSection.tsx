@@ -154,19 +154,10 @@ export function SavedRecommendationsSection({
           ))}
         </div>
       ) : (
-        <Card variant="outline" padding="lg" className="text-center">
-          <BookmarkPlus size={32} className="text-seeya-text-secondary mx-auto mb-3" />
-          <h3 className="font-semibold text-seeya-text mb-1">
-            No saved recommendations
-          </h3>
-          <p className="text-sm text-seeya-text-secondary mb-4">
-            Save recommendations from Explore to find them here
-          </p>
-          <Link href="/explore">
-            <Button variant="purple" size="sm">
-              Explore Now
-            </Button>
-          </Link>
+        <Card variant="outline" padding="md" className="text-center py-8">
+          <Bookmark size={36} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-seeya-text-secondary">No saved recommendations</p>
+          <p className="text-xs text-gray-400 mt-1">Save recommendations from trips to find them here</p>
         </Card>
       )}
     </div>

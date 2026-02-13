@@ -259,74 +259,65 @@ export default function ProfilePage() {
           countriesVisited={stats.countriesVisited}
           citiesVisited={stats.citiesVisited}
           recommendationsCount={stats.recommendationsCount}
-          travelPalsCount={stats.travelPalsCount}
           className="mb-6"
         />
 
-        {/* Main content grid */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Left column */}
-          <div className="space-y-6">
-            {/* Trips */}
-            <ProfileTripsSection
-              upcomingTrips={upcomingTrips}
-              pastTrips={pastTrips}
-            />
+        {/* Main content */}
+        <div className="space-y-6">
+          {/* Wanderlist */}
+          <WanderlistSection
+            items={wanderlist}
+            onAddClick={() => setShowWanderlistModal(true)}
+            onRemoveItem={handleRemoveWanderlistItem}
+          />
 
-            {/* Travel Pals */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Users size={20} className="text-seeya-purple" />
-                  <h2 className="text-lg font-semibold text-seeya-text">Travel Pals</h2>
-                </div>
-                <Link href="/circle">
-                  <Button variant="ghost" size="sm" rightIcon={<ChevronRight size={16} />}>
-                    See All
-                  </Button>
-                </Link>
+          {/* Travel Pals */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Users size={20} className="text-seeya-purple" />
+                <h2 className="text-lg font-semibold text-seeya-text">Travel Pals</h2>
+                <span className="text-sm text-seeya-text-secondary">({travelPals.length})</span>
               </div>
-
-              {travelPals.length > 0 ? (
-                <Card variant="outline" padding="sm">
-                  <div className="flex gap-1 overflow-x-auto py-2">
-                    {travelPals.slice(0, 8).map((pal, index) => (
-                      <TravelPalCardCompact
-                        key={pal.id}
-                        profile={pal}
-                        colorDot={getPalColor(index + 1)}
-                      />
-                    ))}
-                  </div>
-                </Card>
-              ) : (
-                <Card variant="outline" padding="md" className="text-center">
-                  <p className="text-seeya-text-secondary mb-2">No travel pals yet</p>
-                  <Link href="/circle">
-                    <Button variant="purple" size="sm">
-                      Find Friends
-                    </Button>
-                  </Link>
-                </Card>
-              )}
+              <Link href="/circle">
+                <Button variant="ghost" size="sm" rightIcon={<ChevronRight size={16} />}>
+                  See All
+                </Button>
+              </Link>
             </div>
+
+            {travelPals.length > 0 ? (
+              <Card variant="outline" padding="sm">
+                <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-1 py-2">
+                  {travelPals.slice(0, 8).map((pal, index) => (
+                    <TravelPalCardCompact
+                      key={pal.id}
+                      profile={pal}
+                      colorDot={getPalColor(index + 1)}
+                    />
+                  ))}
+                </div>
+              </Card>
+            ) : (
+              <Card variant="outline" padding="md" className="text-center py-8">
+                <Users size={36} className="text-gray-300 mx-auto mb-3" />
+                <p className="text-seeya-text-secondary">No travel pals yet</p>
+                <p className="text-xs text-gray-400 mt-1">Connect with friends to plan trips together</p>
+              </Card>
+            )}
           </div>
 
-          {/* Right column */}
-          <div className="space-y-6">
-            {/* Wanderlist */}
-            <WanderlistSection
-              items={wanderlist}
-              onAddClick={() => setShowWanderlistModal(true)}
-              onRemoveItem={handleRemoveWanderlistItem}
-            />
+          {/* Trips */}
+          <ProfileTripsSection
+            upcomingTrips={upcomingTrips}
+            pastTrips={pastTrips}
+          />
 
-            {/* Saved Recommendations */}
-            <SavedRecommendationsSection
-              recommendations={savedRecommendations}
-              onUnsave={handleUnsaveRecommendation}
-            />
-          </div>
+          {/* Saved Recommendations */}
+          <SavedRecommendationsSection
+            recommendations={savedRecommendations}
+            onUnsave={handleUnsaveRecommendation}
+          />
         </div>
       </div>
 
