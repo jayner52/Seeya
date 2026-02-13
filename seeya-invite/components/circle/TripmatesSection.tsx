@@ -2,6 +2,7 @@
 
 import { Card, Button, Avatar } from '@/components/ui';
 import { UserPlus, Plane } from 'lucide-react';
+import { TravelCircleInfoBox } from './TravelCircleInfoBox';
 import type { Profile } from '@/types/database';
 
 interface TripmateWithDetails extends Profile {
@@ -24,14 +25,12 @@ export function TripmatesSection({
       <div className="flex items-center gap-2 mb-4">
         <Plane size={20} className="text-seeya-purple" />
         <h2 className="text-lg font-semibold text-seeya-text">Tripmates</h2>
-        {tripmates.length > 0 && (
-          <span className="text-sm text-seeya-text-secondary">({tripmates.length})</span>
-        )}
+        <span className="text-sm text-seeya-text-secondary">({tripmates.length})</span>
       </div>
 
-      <p className="text-sm text-seeya-text-secondary mb-4">
-        People you&apos;ve traveled with but aren&apos;t friends yet
-      </p>
+      <div className="mb-4">
+        <TravelCircleInfoBox />
+      </div>
 
       {tripmates.length === 0 ? (
         <Card variant="outline" padding="md" className="text-center py-8">

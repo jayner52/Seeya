@@ -2,20 +2,25 @@
 
 import { useState } from 'react';
 import { Card } from '@/components/ui';
-import { ChevronDown, ChevronUp, Users, Plane } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, Users, Plane } from 'lucide-react';
 
 export function TravelCircleInfoBox() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <Card variant="outline" padding="md" className="mb-6">
+    <Card variant="outline" padding="md">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between text-left"
       >
-        <span className="text-sm font-medium text-seeya-text">
-          What&apos;s the difference?
-        </span>
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-100 rounded-full p-1">
+            <Info size={14} className="text-blue-500" />
+          </div>
+          <span className="text-sm font-medium text-seeya-text">
+            What&apos;s the difference?
+          </span>
+        </div>
         {isExpanded ? (
           <ChevronUp size={18} className="text-seeya-text-secondary" />
         ) : (
@@ -32,7 +37,7 @@ export function TravelCircleInfoBox() {
             <div>
               <p className="text-sm font-medium text-seeya-text">Travel Pals</p>
               <p className="text-sm text-seeya-text-secondary">
-                Friends you&apos;ve added to your travel circle
+                Friends you&apos;ve added. They can see your trips, calendar, and recommendations.
               </p>
             </div>
           </div>
@@ -43,7 +48,7 @@ export function TravelCircleInfoBox() {
             <div>
               <p className="text-sm font-medium text-seeya-text">Tripmates</p>
               <p className="text-sm text-seeya-text-secondary">
-                People from your shared trips who aren&apos;t friends yet &mdash; add them to stay connected
+                People from past trips who aren&apos;t friends yet. They can only see shared recommendations from trips you both attended.
               </p>
             </div>
           </div>

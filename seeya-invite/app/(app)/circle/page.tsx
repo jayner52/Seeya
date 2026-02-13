@@ -9,7 +9,6 @@ import {
   TripmatesSection,
   PendingRequestsSection,
   AddPalModal,
-  TravelCircleInfoBox,
 } from '@/components/circle';
 import { UserPlus } from 'lucide-react';
 import type { Profile } from '@/types/database';
@@ -274,9 +273,6 @@ export default function CirclePage() {
           Add Friend
         </Button>
       </div>
-
-      {/* Info Box */}
-      <TravelCircleInfoBox />
 
       <div className="space-y-8">
         {/* Pending Requests (incoming first, then outgoing) */}
