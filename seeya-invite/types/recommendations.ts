@@ -8,6 +8,15 @@ export interface AIRecommendation {
   tips?: string;
   estimatedCost?: string;
   bestTimeToVisit?: string;
+  // Google Places enrichment
+  googlePlaceId?: string;
+  rating?: number;
+  userRatingsTotal?: number;
+  priceLevel?: number;
+  address?: string;
+  photoUrl?: string;
+  websiteUrl?: string;
+  googleMapsUrl?: string;
 }
 
 // Legacy response format (all categories at once)

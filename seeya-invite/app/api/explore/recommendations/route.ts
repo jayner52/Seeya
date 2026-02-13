@@ -10,6 +10,57 @@ import type {
 } from '@/types';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const GOOGLE_PLACES_TEXTSEARCH_URL = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
+
+async function enrichWithGooglePlaces(
+  recommendations: AIRecommendation[],
+  destination: string,
+  category: string
+): Promise<AIRecommendation[]> {
+  // Tips are advice, not places — skip enrichment
+  if (category === 'tip') return recommendations;
+
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) return recommendations;
+
+  const results = await Promise.allSettled(
+    recommendations.map(async (rec) => {
+      const query = `${rec.title} ${destination}`;
+      const url = new URL(GOOGLE_PLACES_TEXTSEARCH_URL);
+      url.searchParams.set('query', query);
+      url.searchParams.set('key', apiKey);
+
+      const response = await fetch(url.toString());
+      const data = await response.json();
+
+      if (data.status !== 'OK' || !data.results?.length) {
+        return rec;
+      }
+
+      const place = data.results[0];
+      const photoRef = place.photos?.[0]?.photo_reference;
+
+      return {
+        ...rec,
+        googlePlaceId: place.place_id,
+        rating: place.rating,
+        userRatingsTotal: place.user_ratings_total,
+        priceLevel: place.price_level,
+        address: place.formatted_address,
+        photoUrl: photoRef
+          ? `/api/places/photo?ref=${encodeURIComponent(photoRef)}&maxwidth=400`
+          : undefined,
+        googleMapsUrl: place.place_id
+          ? `https://www.google.com/maps/place/?q=place_id:${place.place_id}`
+          : undefined,
+      };
+    })
+  );
+
+  return results.map((result, i) =>
+    result.status === 'fulfilled' ? result.value : recommendations[i]
+  );
+}
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
@@ -250,11 +301,18 @@ export async function POST(request: Request) {
     // Parse the AI response
     const recommendations = parseRecommendations(content);
 
+    // Enrich with Google Places data (rating, photo, address)
+    const enrichedRecommendations = await enrichWithGooglePlaces(
+      recommendations,
+      destination,
+      category
+    );
+
     return NextResponse.json({
       category,
       destination,
       filters: filters || {},
-      recommendations,
+      recommendations: enrichedRecommendations,
     });
 
   } catch (error) {

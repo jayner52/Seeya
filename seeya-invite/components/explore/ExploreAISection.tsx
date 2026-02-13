@@ -19,6 +19,8 @@ import {
   Search,
   MapPin,
   SlidersHorizontal,
+  Star,
+  ExternalLink,
   X,
 } from 'lucide-react';
 import type {
@@ -74,18 +76,80 @@ function AIRecommendationCard({
 }) {
   const config = categoryConfig[recommendation.category];
   const Icon = config.icon;
+  const hasPhoto = !!recommendation.photoUrl;
+  const isTip = recommendation.category === 'tip';
 
   return (
     <Card variant="outline" padding="none" className="overflow-hidden">
-      <div className={cn('h-1.5', config.color.split(' ')[0])} />
-      <div className="p-4">
-        <div className="flex items-start gap-3 mb-3">
-          <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', config.color)}>
-            <Icon size={20} />
+      {/* Photo or color bar */}
+      {hasPhoto ? (
+        <div className="relative h-40 bg-gray-100">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={recommendation.photoUrl}
+            alt={recommendation.title}
+            className="w-full h-full object-cover"
+          />
+          <div className={cn(
+            'absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1',
+            config.color
+          )}>
+            <Icon size={12} />
+            {config.label}
           </div>
+        </div>
+      ) : (
+        <div className={cn('h-1.5', config.color.split(' ')[0])} />
+      )}
+
+      <div className="p-4">
+        {/* Title row */}
+        <div className={cn('mb-2', !hasPhoto && 'flex items-start gap-3')}>
+          {!hasPhoto && (
+            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', config.color)}>
+              <Icon size={20} />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-seeya-text">{recommendation.title}</h4>
-            <p className="text-sm text-seeya-text-secondary mt-1 line-clamp-2">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-semibold text-seeya-text">{recommendation.title}</h4>
+              {recommendation.googleMapsUrl && (
+                <a
+                  href={recommendation.googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-seeya-text-secondary hover:text-seeya-purple shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink size={14} />
+                </a>
+              )}
+            </div>
+
+            {/* Rating + address */}
+            {!isTip && (recommendation.rating || recommendation.address) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                {recommendation.rating && (
+                  <div className="flex items-center gap-1">
+                    <Star size={13} className="text-yellow-500 fill-yellow-500" />
+                    <span className="text-sm font-medium text-seeya-text">{recommendation.rating}</span>
+                    {recommendation.userRatingsTotal && (
+                      <span className="text-xs text-seeya-text-secondary">
+                        ({recommendation.userRatingsTotal.toLocaleString()})
+                      </span>
+                    )}
+                  </div>
+                )}
+                {recommendation.address && (
+                  <div className="flex items-center gap-1 text-xs text-seeya-text-secondary min-w-0">
+                    <MapPin size={11} className="shrink-0" />
+                    <span className="truncate">{recommendation.address}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <p className="text-sm text-seeya-text-secondary mt-1.5 line-clamp-2">
               {recommendation.description}
             </p>
           </div>
