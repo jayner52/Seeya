@@ -101,7 +101,7 @@ export default function ProfilePage() {
           id,
           place_name,
           notes,
-          city:cities (name, country, continent)
+          city:cities (name, country:countries (name, continent))
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
@@ -164,8 +164,8 @@ export default function ProfilePage() {
       const items: WanderlistItem[] = wanderlistData.map((item: any) => ({
         id: item.id,
         placeName: item.place_name || item.city?.name || 'Unknown',
-        country: item.city?.country,
-        continent: item.city?.continent,
+        country: item.city?.country?.name,
+        continent: item.city?.country?.continent,
         notes: item.notes,
       }));
       setWanderlist(items);

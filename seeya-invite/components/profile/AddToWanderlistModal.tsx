@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Input, Button } from '@/components/ui';
 import { X, Search, MapPin, Plus } from 'lucide-react';
 
 interface AddToWanderlistModalProps {
@@ -46,14 +45,28 @@ export function AddToWanderlistModal({
       setIsSearching(true);
       const supabase = createClient();
 
+      // Join through countries table to get country name and continent
       const { data, error } = await supabase
         .from('cities')
-        .select('id, name, country, continent')
-        .ilike('name', `${query}%`)
+        .select(`
+          id,
+          name,
+          country:countries (name, continent)
+        `)
+        .ilike('name', `%${query}%`)
         .limit(10);
 
       if (!error && data) {
-        setResults(data);
+        const mapped: CityResult[] = data.map((city: any) => ({
+          id: city.id,
+          name: city.name,
+          country: city.country?.name || '',
+          continent: city.country?.continent || null,
+        }));
+        setResults(mapped);
+      } else {
+        console.error('Wanderlist search error:', error);
+        setResults([]);
       }
       setIsSearching(false);
     }, 300);
@@ -166,7 +179,7 @@ export function AddToWanderlistModal({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search for a destination..."
+              placeholder="Search for a city..."
               autoFocus
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none transition-all"
             />
