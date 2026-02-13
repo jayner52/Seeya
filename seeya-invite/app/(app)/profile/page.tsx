@@ -75,13 +75,17 @@ export default function ProfilePage() {
     const supabase = createClient();
     const today = new Date().toISOString().split('T')[0];
 
-    // Fetch trips, friends, and wanderlist all in parallel
-    const [{ data: participations }, { data: friendships }, { data: wanderlistData }] = await Promise.all([
+    // Fetch participations, owned trips, friends, and wanderlist all in parallel
+    const [{ data: participations }, { data: ownedTrips }, { data: friendships }, { data: wanderlistData }] = await Promise.all([
       supabase
         .from('trip_participants')
         .select('trip_id')
         .eq('user_id', user.id)
         .eq('status', 'accepted'),
+      supabase
+        .from('trips')
+        .select('id')
+        .eq('user_id', user.id),
       supabase
         .from('friendships')
         .select(`
@@ -103,21 +107,23 @@ export default function ProfilePage() {
         .order('created_at', { ascending: false }),
     ]);
 
-    // Process trips
-    if (participations && participations.length > 0) {
-      const tripIds = participations.map((p) => p.trip_id);
+    // Process trips - combine participant and owned trip IDs
+    const participantTripIds = participations?.map((p) => p.trip_id) || [];
+    const ownedTripIds = ownedTrips?.map((t) => t.id) || [];
+    const allTripIds = Array.from(new Set([...participantTripIds, ...ownedTripIds]));
 
+    if (allTripIds.length > 0) {
       // Fetch trip details and locations in parallel
       const [{ data: trips }, { data: locations }] = await Promise.all([
         supabase
           .from('trips')
           .select('*')
-          .in('id', tripIds)
+          .in('id', allTripIds)
           .order('start_date', { ascending: true }),
         supabase
           .from('trip_locations')
           .select('city:cities (country, name)')
-          .in('trip_id', tripIds),
+          .in('trip_id', allTripIds),
       ]);
 
       if (trips) {
