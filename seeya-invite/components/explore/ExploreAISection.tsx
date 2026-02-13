@@ -379,11 +379,10 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
     setShowPredictions(false);
     setPlacePredictions([]);
 
-    // Auto-trigger AI search with the selected place
+    // Set destination but let user pick a category before fetching
     setSearchedDestination(prediction.mainText);
     setCache({});
     setErrors({});
-    generateRecommendations(activeCategory, prediction.mainText, true);
   };
 
   // Category and loading
@@ -418,12 +417,10 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
   const handleSearch = async () => {
     if (!destination.trim()) return;
 
+    // Set destination but let user pick a category before fetching
     setSearchedDestination(destination.trim());
     setCache({});
     setErrors({});
-
-    // Generate first category
-    await generateRecommendations(activeCategory, destination.trim(), true);
   };
 
   const generateRecommendations = async (
@@ -473,8 +470,8 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
 
   const handleTabChange = (category: RecommendationCategory) => {
     setActiveCategory(category);
-    if (searchedDestination && !cache[category]?.length && !errors[category]) {
-      generateRecommendations(category, searchedDestination);
+    if (searchedDestination && !cache[category]?.length) {
+      generateRecommendations(category, searchedDestination, true);
     }
   };
 
