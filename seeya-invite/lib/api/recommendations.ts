@@ -46,13 +46,13 @@ export async function generateCategoryRecommendations(
 function mapCategoryToTripBitCategory(category: RecommendationCategory): TripBitCategory {
   switch (category) {
     case 'restaurant':
-      return 'restaurant';
+      return 'reservation';
     case 'activity':
       return 'activity';
     case 'stay':
-      return 'hotel';
+      return 'stay';
     case 'tip':
-      return 'note';
+      return 'other';
     default:
       return 'other';
   }
@@ -87,6 +87,7 @@ export async function saveRecommendationAsTripBit(
       category: mapCategoryToTripBitCategory(recommendation.category),
       title: recommendation.title,
       notes: notesParts.join('\n\n'),
+      address: recommendation.address || null,
       is_booked: false,
     });
 
