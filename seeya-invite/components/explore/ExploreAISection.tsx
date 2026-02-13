@@ -470,9 +470,11 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
 
   const handleTabChange = (category: RecommendationCategory) => {
     setActiveCategory(category);
-    if (searchedDestination && !cache[category]?.length) {
-      generateRecommendations(category, searchedDestination, true);
-    }
+  };
+
+  const handleGenerate = () => {
+    if (!searchedDestination) return;
+    generateRecommendations(activeCategory, searchedDestination, true);
   };
 
   const handleRefresh = () => {
@@ -486,14 +488,12 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
 
   const handleApplyFilters = () => {
     setCache(prev => ({ ...prev, [activeCategory]: undefined }));
-    generateRecommendations(activeCategory, searchedDestination, true);
     setShowFilters(false);
   };
 
   const handleClearFilters = () => {
     setFilters(prev => ({ ...prev, [activeCategory]: {} }));
     setCache(prev => ({ ...prev, [activeCategory]: undefined }));
-    generateRecommendations(activeCategory, searchedDestination, true);
     setShowFilters(false);
   };
 
@@ -746,38 +746,21 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
               ))}
             </div>
           ) : (
-            <Card variant="elevated" padding="lg" className="text-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className={cn(
-                  'w-16 h-16 rounded-full flex items-center justify-center',
-                  categoryConfig[activeCategory].color
-                )}>
-                  {(() => {
-                    const Icon = categoryConfig[activeCategory].icon;
-                    return <Icon className="w-8 h-8" />;
-                  })()}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-seeya-text mb-1">
-                    Get {categoryConfig[activeCategory].label} Recommendations
-                  </h3>
-                  <p className="text-sm text-seeya-text-secondary max-w-sm">
-                    {activeCategory === 'restaurant' && 'Discover the best restaurants and local dining spots.'}
-                    {activeCategory === 'activity' && 'Find unique activities and experiences.'}
-                    {activeCategory === 'stay' && 'Get accommodation suggestions.'}
-                    {activeCategory === 'tip' && 'Get practical travel tips and local insights.'}
-                  </p>
-                </div>
-                <Button
-                  variant="purple"
-                  onClick={() => generateRecommendations(activeCategory, searchedDestination)}
-                  className="gap-2"
-                >
-                  <Sparkles size={18} />
-                  Get Suggestions
-                </Button>
-              </div>
-            </Card>
+            <div className="flex flex-col items-center gap-4 pt-2">
+              <Button
+                variant="purple"
+                onClick={handleGenerate}
+                className="gap-2 px-8 py-3"
+              >
+                <Sparkles size={18} />
+                Get {categoryConfig[activeCategory].label} Recommendations
+              </Button>
+              <p className="text-sm text-seeya-text-secondary">
+                {hasActiveFilters(activeCategory)
+                  ? 'Filters applied — click to search'
+                  : 'Use filters above to refine your search, or search now'}
+              </p>
+            </div>
           )}
         </div>
       ) : (
