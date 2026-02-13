@@ -8,17 +8,18 @@ import { Card, Button } from '@/components/ui';
 import { StepIndicator } from '@/components/onboarding';
 import { Sparkles, Search, MapPin, Plus, X, ArrowLeft } from 'lucide-react';
 
-interface CityResult {
-  id: string;
-  name: string;
-  country: string;
+interface PlacePrediction {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  description: string;
 }
 
 interface WanderlistItem {
   id: string;
   name: string;
-  country: string;
-  cityId?: string;
+  secondaryText: string;
+  placeId?: string;
 }
 
 export default function OnboardingWanderlistPage() {
@@ -26,13 +27,13 @@ export default function OnboardingWanderlistPage() {
   const { user } = useAuthStore();
   const [wanderlist, setWanderlist] = useState<WanderlistItem[]>([]);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<CityResult[]>([]);
+  const [results, setResults] = useState<PlacePrediction[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() || query.length < 2) {
       setResults([]);
       return;
     }
@@ -43,19 +44,21 @@ export default function OnboardingWanderlistPage() {
 
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
-      const supabase = createClient();
 
-      const { data } = await supabase
-        .from('cities')
-        .select('id, name, country')
-        .ilike('name', `${query}%`)
-        .limit(10);
+      try {
+        const response = await fetch(`/api/places/autocomplete?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
 
-      if (data) {
-        // Filter out already added cities
-        const existingIds = new Set(wanderlist.map((w) => w.cityId));
-        setResults(data.filter((c) => !existingIds.has(c.id)));
+        if (data.predictions) {
+          // Filter out already added places
+          const existingIds = new Set(wanderlist.map((w) => w.placeId));
+          setResults(data.predictions.filter((p: PlacePrediction) => !existingIds.has(p.placeId)));
+        }
+      } catch (err) {
+        console.error('Wanderlist search error:', err);
+        setResults([]);
       }
+
       setIsSearching(false);
     }, 300);
 
@@ -66,14 +69,14 @@ export default function OnboardingWanderlistPage() {
     };
   }, [query, wanderlist]);
 
-  const addCity = (city: CityResult) => {
+  const addPlace = (place: PlacePrediction) => {
     setWanderlist((prev) => [
       ...prev,
       {
         id: `temp-${Date.now()}`,
-        name: city.name,
-        country: city.country,
-        cityId: city.id,
+        name: place.mainText,
+        secondaryText: place.secondaryText,
+        placeId: place.placeId,
       },
     ]);
     setQuery('');
@@ -87,7 +90,7 @@ export default function OnboardingWanderlistPage() {
       {
         id: `temp-${Date.now()}`,
         name: query.trim(),
-        country: '',
+        secondaryText: '',
       },
     ]);
     setQuery('');
@@ -108,8 +111,8 @@ export default function OnboardingWanderlistPage() {
     if (wanderlist.length > 0) {
       const inserts = wanderlist.map((item) => ({
         user_id: user.id,
-        city_id: item.cityId || null,
-        place_name: item.name,
+        place_name: item.placeId ? `${item.name}, ${item.secondaryText}` : item.name,
+        place_id: item.placeId || null,
       }));
 
       await supabase.from('wanderlist_items').insert(inserts);
@@ -157,8 +160,8 @@ export default function OnboardingWanderlistPage() {
                     <p className="font-medium text-seeya-text text-sm truncate">
                       {item.name}
                     </p>
-                    {item.country && (
-                      <p className="text-xs text-seeya-text-secondary">{item.country}</p>
+                    {item.secondaryText && (
+                      <p className="text-xs text-seeya-text-secondary">{item.secondaryText}</p>
                     )}
                   </div>
                   <button
@@ -185,7 +188,7 @@ export default function OnboardingWanderlistPage() {
           </div>
 
           {/* Search results */}
-          {(results.length > 0 || (query && !isSearching)) && (
+          {(results.length > 0 || (query.length >= 2 && !isSearching)) && (
             <div className="border border-gray-200 rounded-xl max-h-48 overflow-auto mb-4">
               {isSearching ? (
                 <div className="p-4 text-center text-seeya-text-secondary">
@@ -193,20 +196,20 @@ export default function OnboardingWanderlistPage() {
                 </div>
               ) : (
                 <>
-                  {results.map((city) => (
+                  {results.map((place) => (
                     <button
-                      key={city.id}
-                      onClick={() => addCity(city)}
+                      key={place.placeId}
+                      onClick={() => addPlace(place)}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0"
                     >
                       <MapPin size={16} className="text-seeya-purple" />
                       <div>
-                        <p className="font-medium text-seeya-text">{city.name}</p>
-                        <p className="text-sm text-seeya-text-secondary">{city.country}</p>
+                        <p className="font-medium text-seeya-text">{place.mainText}</p>
+                        <p className="text-sm text-seeya-text-secondary">{place.secondaryText}</p>
                       </div>
                     </button>
                   ))}
-                  {query && (
+                  {query.length >= 2 && (
                     <button
                       onClick={addCustomPlace}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-seeya-purple border-t border-gray-100"

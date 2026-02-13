@@ -11,11 +11,11 @@ interface AddToWanderlistModalProps {
   onSuccess: () => void;
 }
 
-interface CityResult {
-  id: string;
-  name: string;
-  country: string;
-  continent: string | null;
+interface PlacePrediction {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  description: string;
 }
 
 export function AddToWanderlistModal({
@@ -25,14 +25,14 @@ export function AddToWanderlistModal({
   onSuccess,
 }: AddToWanderlistModalProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<CityResult[]>([]);
+  const [results, setResults] = useState<PlacePrediction[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() || query.length < 2) {
       setResults([]);
       return;
     }
@@ -43,31 +43,21 @@ export function AddToWanderlistModal({
 
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
-      const supabase = createClient();
 
-      // Join through countries table to get country name and continent
-      const { data, error } = await supabase
-        .from('cities')
-        .select(`
-          id,
-          name,
-          country:countries (name, continent)
-        `)
-        .ilike('name', `%${query}%`)
-        .limit(10);
+      try {
+        const response = await fetch(`/api/places/autocomplete?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
 
-      if (!error && data) {
-        const mapped: CityResult[] = data.map((city: any) => ({
-          id: city.id,
-          name: city.name,
-          country: city.country?.name || '',
-          continent: city.country?.continent || null,
-        }));
-        setResults(mapped);
-      } else {
-        console.error('Wanderlist search error:', error);
+        if (data.predictions) {
+          setResults(data.predictions);
+        } else {
+          setResults([]);
+        }
+      } catch (err) {
+        console.error('Wanderlist search error:', err);
         setResults([]);
       }
+
       setIsSearching(false);
     }, 300);
 
@@ -78,7 +68,7 @@ export function AddToWanderlistModal({
     };
   }, [query]);
 
-  const handleAddCity = async (city: CityResult) => {
+  const handleAddPlace = async (place: PlacePrediction) => {
     setIsAdding(true);
     setError(null);
 
@@ -89,8 +79,8 @@ export function AddToWanderlistModal({
         .from('wanderlist_items')
         .insert({
           user_id: userId,
-          city_id: city.id,
-          place_name: city.name,
+          place_name: place.description,
+          place_id: place.placeId,
         });
 
       if (insertError) throw insertError;
@@ -186,28 +176,27 @@ export function AddToWanderlistModal({
           </div>
 
           {/* Results */}
-          {(results.length > 0 || (query && !isSearching)) && (
+          {(results.length > 0 || (query.length >= 2 && !isSearching)) && (
             <div className="mt-4 space-y-2">
-              {results.map((city) => (
+              {results.map((place) => (
                 <button
-                  key={city.id}
-                  onClick={() => handleAddCity(city)}
+                  key={place.placeId}
+                  onClick={() => handleAddPlace(place)}
                   disabled={isAdding}
                   className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-gray-300 bg-white transition-colors text-left"
                 >
                   <MapPin size={18} className="text-seeya-purple flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-seeya-text">{city.name}</p>
-                    <p className="text-sm text-seeya-text-secondary">
-                      {city.country}
-                      {city.continent && ` · ${city.continent}`}
+                    <p className="font-medium text-seeya-text">{place.mainText}</p>
+                    <p className="text-sm text-seeya-text-secondary truncate">
+                      {place.secondaryText}
                     </p>
                   </div>
                   <Plus size={18} className="text-seeya-purple flex-shrink-0" />
                 </button>
               ))}
 
-              {query && !isSearching && (
+              {query.length >= 2 && !isSearching && (
                 <button
                   onClick={handleAddCustomPlace}
                   disabled={isAdding}
