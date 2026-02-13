@@ -9,6 +9,7 @@ import {
   TripmatesSection,
   PendingRequestsSection,
   AddPalModal,
+  TravelCircleInfoBox,
 } from '@/components/circle';
 import { UserPlus } from 'lucide-react';
 import type { Profile } from '@/types/database';
@@ -54,24 +55,40 @@ export default function CirclePage() {
 
     const supabase = createClient();
 
-    // Get all friendships for this user
-    const { data: friendships } = await supabase
-      .from('friendships')
-      .select(`
-        *,
-        requester:profiles!friendships_requester_id_fkey (*),
-        addressee:profiles!friendships_addressee_id_fkey (*)
-      `)
-      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+    // Fetch friendships and user's trip participations in parallel
+    const [{ data: friendships }, { data: myParticipations }, { data: ownedTrips }] = await Promise.all([
+      supabase
+        .from('friendships')
+        .select(`
+          *,
+          requester:profiles!friendships_requester_id_fkey (*),
+          addressee:profiles!friendships_addressee_id_fkey (*)
+        `)
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
+      supabase
+        .from('trip_participants')
+        .select('trip_id')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted'),
+      supabase
+        .from('trips')
+        .select('id')
+        .eq('user_id', user.id),
+    ]);
+
+    // Build set of all friend/pending IDs to exclude from tripmates
+    const excludedIds = new Set<string>([user.id]);
 
     if (friendships) {
       // Process accepted friends (travel pals)
       const accepted = friendships.filter((f) => f.status === 'accepted');
       const pals: TravelPalWithDetails[] = accepted.map((f) => {
         const profile = f.requester_id === user.id ? f.addressee : f.requester;
+        const friendId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
+        excludedIds.add(friendId);
         return {
           ...profile,
-          tripCount: 0, // TODO: Calculate from actual trip data
+          tripCount: 0,
           mutualTrips: 0,
         };
       }).filter(Boolean) as TravelPalWithDetails[];
@@ -80,29 +97,81 @@ export default function CirclePage() {
       // Process incoming requests (where user is addressee, status pending)
       const incoming = friendships
         .filter((f) => f.addressee_id === user.id && f.status === 'pending')
-        .map((f) => ({
-          id: f.id,
-          profile: f.requester as Profile,
-          createdAt: f.created_at,
-        }))
+        .map((f) => {
+          excludedIds.add(f.requester_id);
+          return {
+            id: f.id,
+            profile: f.requester as Profile,
+            createdAt: f.created_at,
+          };
+        })
         .filter((r) => r.profile);
       setIncomingRequests(incoming);
 
       // Process outgoing requests (where user is requester, status pending)
       const outgoing = friendships
         .filter((f) => f.requester_id === user.id && f.status === 'pending')
-        .map((f) => ({
-          id: f.id,
-          profile: f.addressee as Profile,
-          createdAt: f.created_at,
-        }))
+        .map((f) => {
+          excludedIds.add(f.addressee_id);
+          return {
+            id: f.id,
+            profile: f.addressee as Profile,
+            createdAt: f.created_at,
+          };
+        })
         .filter((r) => r.profile);
       setOutgoingRequests(outgoing);
     }
 
-    // TODO: Fetch tripmates (people from shared trips who aren't friends)
-    // This would require an RPC function or complex query
-    setTripmates([]);
+    // Fetch tripmates: people from shared trips who aren't friends
+    const participantTripIds = myParticipations?.map((p) => p.trip_id) || [];
+    const ownedTripIds = ownedTrips?.map((t) => t.id) || [];
+    const allTripIds = Array.from(new Set([...participantTripIds, ...ownedTripIds]));
+
+    if (allTripIds.length > 0) {
+      // Get all participants from the user's trips
+      const { data: allParticipants } = await supabase
+        .from('trip_participants')
+        .select(`
+          user_id,
+          trip_id,
+          user:profiles (*)
+        `)
+        .in('trip_id', allTripIds)
+        .eq('status', 'accepted');
+
+      if (allParticipants) {
+        // Count shared trips per person, excluding friends and self
+        const tripmateMap = new Map<string, { profile: Profile; sharedTrips: number }>();
+
+        for (const p of allParticipants) {
+          if (excludedIds.has(p.user_id) || !p.user) continue;
+
+          const existing = tripmateMap.get(p.user_id);
+          if (existing) {
+            existing.sharedTrips++;
+          } else {
+            tripmateMap.set(p.user_id, {
+              profile: p.user as unknown as Profile,
+              sharedTrips: 1,
+            });
+          }
+        }
+
+        const tripmatesList: TripmateWithDetails[] = Array.from(tripmateMap.values())
+          .map((t) => ({
+            ...t.profile,
+            sharedTrips: t.sharedTrips,
+          }))
+          .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
+        setTripmates(tripmatesList);
+      } else {
+        setTripmates([]);
+      }
+    } else {
+      setTripmates([]);
+    }
 
     setIsLoading(false);
   }, [user]);
@@ -194,7 +263,7 @@ export default function CirclePage() {
             Travel Circle
           </h1>
           <p className="text-seeya-text-secondary mt-1">
-            Your travel companions
+            Connect with travel pals and tripmates
           </p>
         </div>
         <Button
@@ -205,6 +274,9 @@ export default function CirclePage() {
           Add Friend
         </Button>
       </div>
+
+      {/* Info Box */}
+      <TravelCircleInfoBox />
 
       <div className="space-y-8">
         {/* Pending Requests (incoming first, then outgoing) */}

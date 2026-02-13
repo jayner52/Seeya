@@ -5,3 +5,4 @@ export { AddPalModal } from './AddPalModal';
 export { TravelPalsSection } from './TravelPalsSection';
 export { TripmatesSection } from './TripmatesSection';
 export { PendingRequestsSection } from './PendingRequestsSection';
+export { TravelCircleInfoBox } from './TravelCircleInfoBox';
