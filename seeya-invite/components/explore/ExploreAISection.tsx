@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, Button, Spinner } from '@/components/ui';
@@ -308,12 +308,83 @@ function TipFilterPanel({
   );
 }
 
+interface PlacePrediction {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  description: string;
+}
+
 export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProps) {
   const { user } = useAuthStore();
 
   // Destination search
   const [destination, setDestination] = useState('');
   const [searchedDestination, setSearchedDestination] = useState('');
+
+  // Places autocomplete
+  const [placePredictions, setPlacePredictions] = useState<PlacePrediction[]>([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [showPredictions, setShowPredictions] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const predictionsRef = useRef<HTMLDivElement>(null);
+
+  // Places autocomplete effect
+  useEffect(() => {
+    if (!destination.trim() || destination.length < 2) {
+      setPlacePredictions([]);
+      setShowPredictions(false);
+      return;
+    }
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearchingPlaces(true);
+      try {
+        const response = await fetch(`/api/places/autocomplete?query=${encodeURIComponent(destination)}`);
+        const data = await response.json();
+        if (data.predictions) {
+          setPlacePredictions(data.predictions);
+          setShowPredictions(true);
+        }
+      } catch {
+        setPlacePredictions([]);
+      }
+      setIsSearchingPlaces(false);
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [destination]);
+
+  // Close predictions on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (predictionsRef.current && !predictionsRef.current.contains(e.target as Node)) {
+        setShowPredictions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const handleSelectPrediction = (prediction: PlacePrediction) => {
+    setDestination(prediction.mainText);
+    setShowPredictions(false);
+    setPlacePredictions([]);
+
+    // Auto-trigger AI search with the selected place
+    setSearchedDestination(prediction.mainText);
+    setCache({});
+    setErrors({});
+    generateRecommendations(activeCategory, prediction.mainText, true);
+  };
 
   // Category and loading
   const [activeCategory, setActiveCategory] = useState<RecommendationCategory>('restaurant');
@@ -441,20 +512,57 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
 
       {/* Destination Search */}
       <div className="flex gap-2">
-        <div className="flex-1 relative">
-          <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-seeya-text-secondary" />
+        <div className="flex-1 relative" ref={predictionsRef}>
+          <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-seeya-text-secondary z-10" />
           <input
             type="text"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setShowPredictions(false);
+                handleSearch();
+              }
+            }}
+            onFocus={() => {
+              if (placePredictions.length > 0) setShowPredictions(true);
+            }}
             placeholder="Search any destination..."
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-seeya-purple focus:border-transparent"
           />
+
+          {/* Places autocomplete dropdown */}
+          {showPredictions && (placePredictions.length > 0 || isSearchingPlaces) && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
+              {isSearchingPlaces && placePredictions.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-seeya-text-secondary text-center">
+                  Searching...
+                </div>
+              ) : (
+                placePredictions.map((prediction) => (
+                  <button
+                    key={prediction.placeId}
+                    type="button"
+                    onClick={() => handleSelectPrediction(prediction)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0"
+                  >
+                    <MapPin size={16} className="text-seeya-purple shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm text-seeya-text">{prediction.mainText}</p>
+                      <p className="text-xs text-seeya-text-secondary">{prediction.secondaryText}</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
         <Button
           variant="purple"
-          onClick={handleSearch}
+          onClick={() => {
+            setShowPredictions(false);
+            handleSearch();
+          }}
           disabled={!destination.trim()}
           className="px-6"
         >

@@ -109,7 +109,7 @@ export default function ExplorePage() {
             id,
             user_id,
             place_name,
-            city:cities (id, name, country, continent)
+            city:cities (id, name, country:countries (name, continent))
           `)
           .in('user_id', friendIds),
         supabase
@@ -157,7 +157,7 @@ export default function ExplorePage() {
             ? supabase.from('trip_locations').select('trip_id, name').in('trip_id', relevantTripIds).order('order_index')
             : Promise.resolve({ data: [] as any[] }),
           allTripIds.length > 0
-            ? supabase.from('trip_locations').select('city:cities (id, name, country)').in('trip_id', allTripIds)
+            ? supabase.from('trip_locations').select('city:cities (id, name, country:countries (name))').in('trip_id', allTripIds)
             : Promise.resolve({ data: [] as any[] }),
         ]);
 
@@ -200,7 +200,7 @@ export default function ExplorePage() {
             } else {
               destCounts.set(key, {
                 name: loc.city.name,
-                country: loc.city.country,
+                country: loc.city.country?.name || '',
                 count: 1,
                 friends: new Set(),
               });
@@ -250,8 +250,8 @@ export default function ExplorePage() {
             placeMap.set(cityId, {
               id: cityId,
               name: w.city?.name || w.place_name,
-              country: w.city?.country || '',
-              continent: w.city?.continent,
+              country: w.city?.country?.name || '',
+              continent: w.city?.country?.continent,
               friendsWantToGo: [{
                 id: friend.id,
                 fullName: friend.full_name,
