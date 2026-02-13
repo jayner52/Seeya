@@ -37,21 +37,20 @@ export default function TripsPage() {
     async function fetchTrips() {
       const supabase = createClient();
 
-      // Get trips where user is a participant
-      const { data: participations } = await supabase
-        .from('trip_participants')
-        .select('trip_id')
-        .eq('user_id', user!.id)
-        .eq('status', 'accepted');
+      // Get participant and owned trip IDs in parallel
+      const [{ data: participations }, { data: ownedTrips }] = await Promise.all([
+        supabase
+          .from('trip_participants')
+          .select('trip_id')
+          .eq('user_id', user!.id)
+          .eq('status', 'accepted'),
+        supabase
+          .from('trips')
+          .select('id')
+          .eq('user_id', user!.id),
+      ]);
 
       const participantTripIds = participations?.map((p) => p.trip_id) || [];
-
-      // Get trips where user is the owner (user_id in trips table)
-      const { data: ownedTrips } = await supabase
-        .from('trips')
-        .select('id')
-        .eq('user_id', user!.id);
-
       const ownedTripIds = ownedTrips?.map((t) => t.id) || [];
 
       // Combine and deduplicate trip IDs
@@ -63,51 +62,43 @@ export default function TripsPage() {
         return;
       }
 
-      // Get trip details
-      const { data: tripsData } = await supabase
-        .from('trips')
-        .select(`
-          id,
-          name,
-          description,
-          start_date,
-          end_date
-        `)
-        .in('id', allTripIds)
-        .order('start_date', { ascending: true });
+      // Get trip details, participants, and locations in parallel
+      const [{ data: tripsData }, { data: allParticipants }, { data: allLocations }] = await Promise.all([
+        supabase
+          .from('trips')
+          .select('id, name, description, start_date, end_date')
+          .in('id', allTripIds)
+          .order('start_date', { ascending: true }),
+        supabase
+          .from('trip_participants')
+          .select(`
+            id,
+            trip_id,
+            user_id,
+            role,
+            status,
+            joined_at,
+            created_at,
+            user:profiles (
+              id,
+              full_name,
+              avatar_url
+            )
+          `)
+          .in('trip_id', allTripIds)
+          .eq('status', 'accepted'),
+        supabase
+          .from('trip_locations')
+          .select('id, trip_id, custom_location, order_index')
+          .in('trip_id', allTripIds)
+          .order('order_index'),
+      ]);
 
       if (!tripsData) {
         setTrips([]);
         setIsLoading(false);
         return;
       }
-
-      // Get participants for all trips
-      const { data: allParticipants } = await supabase
-        .from('trip_participants')
-        .select(`
-          id,
-          trip_id,
-          user_id,
-          role,
-          status,
-          joined_at,
-          created_at,
-          user:profiles (
-            id,
-            full_name,
-            avatar_url
-          )
-        `)
-        .in('trip_id', allTripIds)
-        .eq('status', 'accepted');
-
-      // Get locations for all trips
-      const { data: allLocations } = await supabase
-        .from('trip_locations')
-        .select('id, trip_id, custom_location, order_index')
-        .in('trip_id', allTripIds)
-        .order('order_index');
 
       // Combine data
       const tripsWithParticipants = tripsData.map((trip) => ({

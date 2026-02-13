@@ -12,24 +12,23 @@ import { getPalColor, LEGEND_COLORS } from '@/types/calendar';
 export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
   const supabase = createClient();
 
-  // Step 1: Get trip IDs where user is participant
-  const { data: participations } = await supabase
-    .from('trip_participants')
-    .select('trip_id, status')
-    .eq('user_id', userId);
+  // Steps 1 & 2: Get participant and owned trip IDs in parallel
+  const [{ data: participations }, { data: ownedTripData }] = await Promise.all([
+    supabase
+      .from('trip_participants')
+      .select('trip_id, status')
+      .eq('user_id', userId),
+    supabase
+      .from('trips')
+      .select('id')
+      .eq('user_id', userId)
+      .not('start_date', 'is', null),
+  ]);
 
   const participantTripIds = participations?.map((p) => p.trip_id) || [];
   const participantStatusMap = new Map(
     participations?.map((p) => [p.trip_id, p.status]) || []
   );
-
-  // Step 2: Get trip IDs where user is owner
-  const { data: ownedTripData } = await supabase
-    .from('trips')
-    .select('id')
-    .eq('user_id', userId)
-    .not('start_date', 'is', null);
-
   const ownedTripIds = ownedTripData?.map((t) => t.id) || [];
 
   // Combine and deduplicate
@@ -41,25 +40,25 @@ export async function fetchUserTrips(userId: string): Promise<CalendarTrip[]> {
     return [];
   }
 
-  // Step 3: Get trip details (simple query like Trips page)
-  const { data: tripsData, error: tripsError } = await supabase
-    .from('trips')
-    .select('id, name, start_date, end_date, user_id')
-    .in('id', allTripIds)
-    .not('start_date', 'is', null);
+  // Steps 3 & 4: Get trip details and user profile in parallel
+  const [{ data: tripsData, error: tripsError }, { data: userProfile }] = await Promise.all([
+    supabase
+      .from('trips')
+      .select('id, name, start_date, end_date, user_id')
+      .in('id', allTripIds)
+      .not('start_date', 'is', null),
+    supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .eq('id', userId)
+      .single(),
+  ]);
 
   console.log('[Calendar] Trips data:', { count: tripsData?.length, error: tripsError });
 
   if (!tripsData) {
     return [];
   }
-
-  // Step 4: Get user profile
-  const { data: userProfile } = await supabase
-    .from('profiles')
-    .select('id, full_name, avatar_url')
-    .eq('id', userId)
-    .single();
 
   // Step 5: Build calendar trips
   const trips: CalendarTrip[] = [];
@@ -126,11 +125,24 @@ export async function fetchTravelPals(userId: string): Promise<TravelPal[]> {
     f.requester_id === userId ? f.addressee_id : f.requester_id
   );
 
-  // Get friend profiles
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, full_name, avatar_url')
-    .in('id', friendIds);
+  // Get friend profiles and trip counts in parallel
+  const [{ data: profiles }, { data: tripCounts }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', friendIds),
+    supabase
+      .from('trips')
+      .select('user_id')
+      .in('user_id', friendIds)
+      .not('start_date', 'is', null),
+  ]);
+
+  // Build trip count map from batch query
+  const tripCountMap = new Map<string, number>();
+  tripCounts?.forEach((t) => {
+    tripCountMap.set(t.user_id, (tripCountMap.get(t.user_id) || 0) + 1);
+  });
 
   const pals: TravelPal[] = [];
 
@@ -140,18 +152,11 @@ export async function fetchTravelPals(userId: string): Promise<TravelPal[]> {
 
     if (!profile) continue;
 
-    // Get trip count for this pal
-    const { count } = await supabase
-      .from('trips')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', friendId)
-      .not('start_date', 'is', null);
-
     pals.push({
       id: profile.id,
       full_name: profile.full_name,
       avatar_url: profile.avatar_url,
-      trip_count: count || 0,
+      trip_count: tripCountMap.get(friendId) || 0,
       color: getPalColor(i + 1),
     });
   }
@@ -168,27 +173,25 @@ export async function fetchPalTrips(
 
   const supabase = createClient();
 
-  // Simple query
-  const { data: trips } = await supabase
-    .from('trips')
-    .select('id, name, start_date, end_date, user_id')
-    .in('user_id', palIds)
-    .not('start_date', 'is', null);
+  // Fetch trips, profiles, and friendships in parallel
+  const [{ data: trips }, { data: profiles }, { data: friendships }] = await Promise.all([
+    supabase
+      .from('trips')
+      .select('id, name, start_date, end_date, user_id')
+      .in('user_id', palIds)
+      .not('start_date', 'is', null),
+    supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', palIds),
+    supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`),
+  ]);
 
   if (!trips) return [];
-
-  // Get pal profiles
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, full_name, avatar_url')
-    .in('id', palIds);
-
-  // Get pal colors map
-  const { data: friendships } = await supabase
-    .from('friendships')
-    .select('requester_id, addressee_id')
-    .eq('status', 'accepted')
-    .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
 
   const palColorMap = new Map<string, string>();
   if (friendships) {
@@ -230,20 +233,20 @@ export async function fetchUpcomingTrips(userId: string): Promise<UpcomingTrip[]
   const supabase = createClient();
   const today = new Date().toISOString().split('T')[0];
 
-  // Get owned trips
-  const { data: ownedTrips } = await supabase
-    .from('trips')
-    .select('id, name, start_date')
-    .eq('user_id', userId)
-    .gte('start_date', today)
-    .not('start_date', 'is', null);
-
-  // Get trip IDs where user is participant
-  const { data: participations } = await supabase
-    .from('trip_participants')
-    .select('trip_id')
-    .eq('user_id', userId)
-    .eq('status', 'accepted');
+  // Get owned trips and participations in parallel
+  const [{ data: ownedTrips }, { data: participations }] = await Promise.all([
+    supabase
+      .from('trips')
+      .select('id, name, start_date')
+      .eq('user_id', userId)
+      .gte('start_date', today)
+      .not('start_date', 'is', null),
+    supabase
+      .from('trip_participants')
+      .select('trip_id')
+      .eq('user_id', userId)
+      .eq('status', 'accepted'),
+  ]);
 
   let participatingTrips: any[] = [];
   if (participations && participations.length > 0) {

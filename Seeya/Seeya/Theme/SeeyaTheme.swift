@@ -346,8 +346,11 @@ struct SectionHeader: View {
         HStack(spacing: SeeyaSpacing.xs) {
             if let icon = icon {
                 Image(systemName: icon)
-                    .font(.system(size: SeeyaIconSize.medium))
-                    .foregroundStyle(Color.seeyaPrimary)
+                    .font(.system(size: SeeyaIconSize.small))
+                    .foregroundStyle(Color.seeyaForeground)
+                    .frame(width: 26, height: 26)
+                    .background(Color.seeyaPrimary)
+                    .clipShape(Circle())
             }
 
             Text(title)

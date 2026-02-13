@@ -75,21 +75,50 @@ export default function ProfilePage() {
     const supabase = createClient();
     const today = new Date().toISOString().split('T')[0];
 
-    // Fetch trips where user is a participant
-    const { data: participations } = await supabase
-      .from('trip_participants')
-      .select('trip_id')
-      .eq('user_id', user.id)
-      .eq('status', 'accepted');
+    // Fetch trips, friends, and wanderlist all in parallel
+    const [{ data: participations }, { data: friendships }, { data: wanderlistData }] = await Promise.all([
+      supabase
+        .from('trip_participants')
+        .select('trip_id')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted'),
+      supabase
+        .from('friendships')
+        .select(`
+          *,
+          requester:profiles!friendships_requester_id_fkey (*),
+          addressee:profiles!friendships_addressee_id_fkey (*)
+        `)
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq('status', 'accepted'),
+      supabase
+        .from('wanderlist_items')
+        .select(`
+          id,
+          place_name,
+          notes,
+          city:cities (name, country, continent)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+    ]);
 
+    // Process trips
     if (participations && participations.length > 0) {
       const tripIds = participations.map((p) => p.trip_id);
 
-      const { data: trips } = await supabase
-        .from('trips')
-        .select('*')
-        .in('id', tripIds)
-        .order('start_date', { ascending: true });
+      // Fetch trip details and locations in parallel
+      const [{ data: trips }, { data: locations }] = await Promise.all([
+        supabase
+          .from('trips')
+          .select('*')
+          .in('id', tripIds)
+          .order('start_date', { ascending: true }),
+        supabase
+          .from('trip_locations')
+          .select('city:cities (country, name)')
+          .in('trip_id', tripIds),
+      ]);
 
       if (trips) {
         const upcoming = trips.filter(
@@ -98,12 +127,6 @@ export default function ProfilePage() {
         const past = trips.filter((t) => t.start_date && t.start_date < today);
         setUpcomingTrips(upcoming);
         setPastTrips(past.reverse());
-
-        // Count unique countries and cities from trips
-        const { data: locations } = await supabase
-          .from('trip_locations')
-          .select('city:cities (country, name)')
-          .in('trip_id', tripIds);
 
         const countries = new Set<string>();
         const cities = new Set<string>();
@@ -121,17 +144,7 @@ export default function ProfilePage() {
       }
     }
 
-    // Fetch travel pals
-    const { data: friendships } = await supabase
-      .from('friendships')
-      .select(`
-        *,
-        requester:profiles!friendships_requester_id_fkey (*),
-        addressee:profiles!friendships_addressee_id_fkey (*)
-      `)
-      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-      .eq('status', 'accepted');
-
+    // Process friends
     if (friendships) {
       const pals = friendships.map((f) =>
         f.requester_id === user.id ? f.addressee : f.requester
@@ -140,18 +153,7 @@ export default function ProfilePage() {
       setStats((s) => ({ ...s, travelPalsCount: pals.length }));
     }
 
-    // Fetch wanderlist
-    const { data: wanderlistData } = await supabase
-      .from('wanderlist_items')
-      .select(`
-        id,
-        place_name,
-        notes,
-        city:cities (name, country, continent)
-      `)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
+    // Process wanderlist
     if (wanderlistData) {
       const items: WanderlistItem[] = wanderlistData.map((item: any) => ({
         id: item.id,

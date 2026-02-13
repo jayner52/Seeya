@@ -83,21 +83,40 @@ export default function ExplorePage() {
     ) || [];
 
     if (friendIds.length > 0) {
-      // Get friends' trips for "Traveling Now" and upcoming
-      const { data: friendParticipations } = await supabase
-        .from('trip_participants')
-        .select(`
-          user_id,
-          trip:trips (
+      // Run all independent queries in parallel
+      const [
+        { data: friendParticipations },
+        { data: friendWanderlists },
+        { data: myWanderlist },
+      ] = await Promise.all([
+        supabase
+          .from('trip_participants')
+          .select(`
+            user_id,
+            trip:trips (
+              id,
+              name,
+              start_date,
+              end_date,
+              visibility
+            )
+          `)
+          .in('user_id', friendIds)
+          .eq('status', 'accepted'),
+        supabase
+          .from('wanderlist_items')
+          .select(`
             id,
-            name,
-            start_date,
-            end_date,
-            visibility
-          )
-        `)
-        .in('user_id', friendIds)
-        .eq('status', 'accepted');
+            user_id,
+            place_name,
+            city:cities (id, name, country, continent)
+          `)
+          .in('user_id', friendIds),
+        supabase
+          .from('wanderlist_items')
+          .select('city_id, place_name')
+          .eq('user_id', user.id),
+      ]);
 
       if (friendParticipations) {
         const friendsMap = new Map<string, any>();
@@ -108,7 +127,8 @@ export default function ExplorePage() {
           }
         });
 
-        const traveling: TravelingFriend[] = [];
+        // Filter relevant trips first, then batch-fetch all locations at once
+        const relevantTrips: { participation: any; trip: any; isNow: boolean }[] = [];
 
         for (const p of friendParticipations) {
           const trip = p.trip as any;
@@ -117,46 +137,57 @@ export default function ExplorePage() {
           const friend = friendsMap.get(p.user_id);
           if (!friend) continue;
 
-          // Check if currently traveling or upcoming in next 30 days
           if (trip.start_date && trip.end_date) {
             const isNow = trip.start_date <= today && trip.end_date >= today;
             const startDate = new Date(trip.start_date);
             const daysUntil = Math.ceil((startDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
             if (isNow || (daysUntil > 0 && daysUntil <= 30)) {
-              // Get first location
-              const { data: locations } = await supabase
-                .from('trip_locations')
-                .select('name')
-                .eq('trip_id', trip.id)
-                .order('order_index')
-                .limit(1);
-
-              traveling.push({
-                id: `${p.user_id}-${trip.id}`,
-                fullName: friend.full_name,
-                avatarUrl: friend.avatar_url,
-                tripName: trip.name,
-                tripId: trip.id,
-                destination: locations?.[0]?.name,
-                startDate: trip.start_date,
-                endDate: trip.end_date,
-                isNow,
-              });
+              relevantTrips.push({ participation: p, trip, isNow });
             }
           }
         }
 
+        // Batch fetch all locations for relevant trips + popular destinations in parallel
+        const allTripIds = friendParticipations.filter(p => p.trip).map(p => (p.trip as any).id);
+        const relevantTripIds = relevantTrips.map(r => r.trip.id);
+
+        const [{ data: travelingLocations }, { data: friendLocations }] = await Promise.all([
+          relevantTripIds.length > 0
+            ? supabase.from('trip_locations').select('trip_id, name').in('trip_id', relevantTripIds).order('order_index')
+            : Promise.resolve({ data: [] as any[] }),
+          allTripIds.length > 0
+            ? supabase.from('trip_locations').select('city:cities (id, name, country)').in('trip_id', allTripIds)
+            : Promise.resolve({ data: [] as any[] }),
+        ]);
+
+        // Build location lookup map (trip_id -> first location name)
+        const locationMap = new Map<string, string>();
+        travelingLocations?.forEach((loc: any) => {
+          if (!locationMap.has(loc.trip_id) && loc.name) {
+            locationMap.set(loc.trip_id, loc.name);
+          }
+        });
+
+        // Build traveling friends list using the pre-fetched locations
+        const traveling: TravelingFriend[] = relevantTrips.map(({ participation: p, trip, isNow }) => {
+          const friend = friendsMap.get(p.user_id);
+          return {
+            id: `${p.user_id}-${trip.id}`,
+            fullName: friend.full_name,
+            avatarUrl: friend.avatar_url,
+            tripName: trip.name,
+            tripId: trip.id,
+            destination: locationMap.get(trip.id),
+            startDate: trip.start_date,
+            endDate: trip.end_date,
+            isNow,
+          };
+        });
+
         setTravelingFriends(traveling);
 
-        // Get popular destinations from friends' trips
-        const { data: friendLocations } = await supabase
-          .from('trip_locations')
-          .select(`
-            city:cities (id, name, country)
-          `)
-          .in('trip_id', friendParticipations.filter(p => p.trip).map(p => (p.trip as any).id));
-
+        // Process popular destinations from batch-fetched locations
         if (friendLocations) {
           const destCounts = new Map<string, { name: string; country: string; count: number; friends: Set<string> }>();
 
@@ -190,23 +221,6 @@ export default function ExplorePage() {
           setPopularDestinations(popular);
         }
       }
-
-      // Get friends' wanderlist for trending
-      const { data: friendWanderlists } = await supabase
-        .from('wanderlist_items')
-        .select(`
-          id,
-          user_id,
-          place_name,
-          city:cities (id, name, country, continent)
-        `)
-        .in('user_id', friendIds);
-
-      // Get my wanderlist
-      const { data: myWanderlist } = await supabase
-        .from('wanderlist_items')
-        .select('city_id, place_name')
-        .eq('user_id', user.id);
 
       const myWanderlistIds = new Set(myWanderlist?.map(w => w.city_id || w.place_name) || []);
 
