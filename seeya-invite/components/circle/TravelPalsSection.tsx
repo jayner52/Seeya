@@ -26,20 +26,10 @@ export function TravelPalsSection({
 }: TravelPalsSectionProps) {
   return (
     <div className={className}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Users size={20} className="text-seeya-purple" />
-          <h2 className="text-lg font-semibold text-seeya-text">Travel Pals</h2>
-          <span className="text-sm text-seeya-text-secondary">({pals.length})</span>
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          leftIcon={<UserPlus size={16} />}
-          onClick={onAddClick}
-        >
-          Add
-        </Button>
+      <div className="flex items-center gap-2 mb-4">
+        <Users size={20} className="text-seeya-purple" />
+        <h2 className="text-lg font-semibold text-seeya-text">Travel Pals</h2>
+        <span className="text-sm text-seeya-text-secondary">({pals.length})</span>
       </div>
 
       {pals.length > 0 ? (
