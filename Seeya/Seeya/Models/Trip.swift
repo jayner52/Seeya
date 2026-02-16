@@ -18,6 +18,7 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
     let isFlexible: Bool?
     let visibility: VisibilityLevel?
     let isPast: Bool?
+    let isLoggedPastTrip: Bool?
     let createdAt: Date?
     let updatedAt: Date?
 
@@ -43,6 +44,7 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
         isFlexible: Bool?,
         visibility: VisibilityLevel?,
         isPast: Bool?,
+        isLoggedPastTrip: Bool? = nil,
         createdAt: Date?,
         updatedAt: Date?,
         locations: [TripLocation]?,
@@ -60,6 +62,7 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
         self.isFlexible = isFlexible
         self.visibility = visibility
         self.isPast = isPast
+        self.isLoggedPastTrip = isLoggedPastTrip
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.locations = locations
@@ -79,6 +82,7 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
         case isFlexible = "is_flexible"
         case visibility
         case isPast = "is_past"
+        case isLoggedPastTrip = "is_logged_past_trip"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case locations = "trip_locations"
@@ -259,6 +263,7 @@ struct CreateTrip: Encodable {
     let endDate: Date?
     let isFlexible: Bool
     let visibility: VisibilityLevel
+    let isLoggedPastTrip: Bool
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -268,6 +273,27 @@ struct CreateTrip: Encodable {
         case endDate = "end_date"
         case isFlexible = "is_flexible"
         case visibility
+        case isLoggedPastTrip = "is_logged_past_trip"
+    }
+
+    init(
+        userId: UUID,
+        name: String,
+        description: String?,
+        startDate: Date?,
+        endDate: Date?,
+        isFlexible: Bool,
+        visibility: VisibilityLevel,
+        isLoggedPastTrip: Bool = false
+    ) {
+        self.userId = userId
+        self.name = name
+        self.description = description
+        self.startDate = startDate
+        self.endDate = endDate
+        self.isFlexible = isFlexible
+        self.visibility = visibility
+        self.isLoggedPastTrip = isLoggedPastTrip
     }
 }
 

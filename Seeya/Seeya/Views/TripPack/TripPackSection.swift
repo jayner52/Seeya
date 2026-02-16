@@ -3,6 +3,13 @@ import SwiftUI
 struct TripPackSection: View {
     @Bindable var viewModel: TripPackViewModel
     let trip: Trip
+    var onRateShare: ((TripBit) -> Void)? = nil
+
+    /// Whether the Rate & Share action should be available for a given trip bit
+    private func canRateShare(_ tripBit: TripBit) -> Bool {
+        // Show Rate & Share for past trips or completed trip bits
+        trip.isPast == true || tripBit.displayStatus == .completed
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -125,9 +132,11 @@ struct TripPackSection: View {
                         .foregroundStyle(.secondary)
 
                     ForEach(group.items) { tripBit in
-                        TripBitCard(tripBit: tripBit) {
-                            viewModel.selectTripBit(tripBit)
-                        }
+                        TripBitCard(
+                            tripBit: tripBit,
+                            onTap: { viewModel.selectTripBit(tripBit) },
+                            onRateShare: canRateShare(tripBit) ? { onRateShare?(tripBit) } : nil
+                        )
                     }
                 }
             }
@@ -140,9 +149,11 @@ struct TripPackSection: View {
                 if index > 0 {
                     Divider()
                 }
-                TripBitCompactRow(tripBit: tripBit) {
-                    viewModel.selectTripBit(tripBit)
-                }
+                TripBitCompactRow(
+                    tripBit: tripBit,
+                    onTap: { viewModel.selectTripBit(tripBit) },
+                    onRateShare: canRateShare(tripBit) ? { onRateShare?(tripBit) } : nil
+                )
             }
         }
         .background(Color.seeyaCardBackground)
@@ -179,9 +190,11 @@ struct TripPackSection: View {
                             if index > 0 {
                                 Divider()
                             }
-                            TripBitCompactRow(tripBit: tripBit) {
-                                viewModel.selectTripBit(tripBit)
-                            }
+                            TripBitCompactRow(
+                                tripBit: tripBit,
+                                onTap: { viewModel.selectTripBit(tripBit) },
+                                onRateShare: canRateShare(tripBit) ? { onRateShare?(tripBit) } : nil
+                            )
                         }
                     }
                     .background(Color.seeyaCardBackground)

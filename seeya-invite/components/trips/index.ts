@@ -13,5 +13,8 @@ export { InviteSection } from './InviteSection';
 export { PlanningTab } from './PlanningTab';
 export { ItineraryTab } from './ItineraryTab';
 export { AIRecommendationsSection } from './AIRecommendationsSection';
+export { FriendRecommendationsSection } from './FriendRecommendationsSection';
+export { RateShareModal } from './RateShareModal';
 export { CreateTripWizard } from './CreateTripWizard';
 export { AIQuickAddSheet } from './AIQuickAddSheet';
+export { LogPastTripDialog } from './LogPastTripDialog';

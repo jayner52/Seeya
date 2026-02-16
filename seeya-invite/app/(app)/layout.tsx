@@ -14,12 +14,17 @@ import {
   X,
   Calendar,
   Sparkles,
+  MessageSquare,
+  Bell,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { AppTour } from '@/components/tour';
 
 const navItems = [
   { label: 'Trips', href: '/trips', icon: Plane },
   { label: 'Explore', href: '/explore', icon: Sparkles },
+  { label: 'Messages', href: '/messages', icon: MessageSquare },
   { label: 'Calendar', href: '/calendar', icon: Calendar },
   { label: 'Circle', href: '/circle', icon: Users },
   { label: 'Profile', href: '/profile', icon: User },
@@ -30,6 +35,55 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, profile, isAuthenticated, isLoading, signOut } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showTour, setShowTour] = useState(false);
+
+  // Fetch unread notification count
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return;
+    const supabase = createClient();
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    setUnreadNotifications(count || 0);
+  }, [user]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Subscribe to new notifications
+    if (!user) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel('nav-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        fetchUnreadCount();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchUnreadCount]);
+
+  // Show app tour for first-time users
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const hasSeenTour = localStorage.getItem('hasSeenTour');
+      if (!hasSeenTour) {
+        const timer = setTimeout(() => setShowTour(true), 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isLoading, isAuthenticated]);
+
+  const handleTourComplete = useCallback(() => {
+    localStorage.setItem('hasSeenTour', 'true');
+    setShowTour(false);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -88,12 +142,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Sidebar Header */}
           <div className="p-4 flex items-center justify-between border-b border-gray-100">
             <Logo size="md" />
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="md:hidden p-2"
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-1">
+              <Link
+                href="/notifications"
+                onClick={() => setSidebarOpen(false)}
+                className="relative p-2 text-seeya-text-secondary hover:text-seeya-purple transition-colors rounded-lg hover:bg-gray-100"
+              >
+                <Bell size={20} />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1">
+                    {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                  </span>
+                )}
+              </Link>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="md:hidden p-2"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Navigation */}
@@ -156,6 +224,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="md:ml-64 pt-16 md:pt-0 min-h-screen">
         {children}
       </main>
+
+      {/* App Tour */}
+      <AppTour isOpen={showTour} onComplete={handleTourComplete} />
     </div>
   );
 }

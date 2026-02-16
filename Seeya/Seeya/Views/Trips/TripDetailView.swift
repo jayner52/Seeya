@@ -38,6 +38,17 @@ struct TripDetailView: View {
     // Current user ID for itinerary filtering
     @State private var currentUserId: UUID?
 
+    // Rate & Share
+    @State private var tripBitToRate: TripBit?
+
+    // Calendar Export
+    @State private var calendarExportURL: URL?
+    @State private var itinerarySummaryURL: URL?
+    @State private var showExportShare = false
+    @State private var showItineraryShare = false
+    @State private var exportError: String?
+    @State private var showExportError = false
+
     private var isOwner: Bool {
         viewModel.isOwner(of: trip)
     }
@@ -75,6 +86,12 @@ struct TripDetailView: View {
 
                 // Participants Section
                 participantsSection
+
+                // Friend Recommendations Section
+                FriendRecommendationsSection(
+                    tripId: currentTrip.id,
+                    tripLocations: currentTrip.locations ?? []
+                )
 
                 // Recommendations Section
                 recommendationsSection
@@ -125,23 +142,40 @@ struct TripDetailView: View {
         .navigationTitle(currentTrip.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if isOwner {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    // Export options (available to all)
+                    Section {
                         Button {
-                            showEditSheet = true
+                            exportCalendar()
                         } label: {
-                            Label("Edit Trip", systemImage: "pencil")
+                            Label("Export Calendar (.ics)", systemImage: "calendar.badge.plus")
                         }
 
-                        Button(role: .destructive) {
-                            showDeleteConfirmation = true
+                        Button {
+                            exportItinerarySummary()
                         } label: {
-                            Label("Delete Trip", systemImage: "trash")
+                            Label("Share Itinerary", systemImage: "doc.text")
                         }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
                     }
+
+                    if isOwner {
+                        Section {
+                            Button {
+                                showEditSheet = true
+                            } label: {
+                                Label("Edit Trip", systemImage: "pencil")
+                            }
+
+                            Button(role: .destructive) {
+                                showDeleteConfirmation = true
+                            } label: {
+                                Label("Delete Trip", systemImage: "trash")
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -212,6 +246,9 @@ struct TripDetailView: View {
                 TripBitDetailView(viewModel: packViewModel, tripBit: tripBit, trip: currentTrip)
             }
         }
+        .sheet(item: $tripBitToRate) { tripBit in
+            RateShareSheet(tripBit: tripBit, trip: currentTrip)
+        }
         .onChange(of: tripPackViewModel?.showAddTripBit) { _, newValue in
             if newValue == true {
                 showAddTripBitSheet = true
@@ -230,12 +267,29 @@ struct TripDetailView: View {
                 tripPackViewModel?.clearSelection()
             }
         }
+        .sheet(isPresented: $showExportShare) {
+            if let url = calendarExportURL {
+                ShareSheet(activityItems: [url])
+            }
+        }
+        .sheet(isPresented: $showItineraryShare) {
+            if let url = itinerarySummaryURL {
+                ShareSheet(activityItems: [url])
+            }
+        }
+        .alert("Export Error", isPresented: $showExportError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "An unknown error occurred.")
+        }
     }
 
     // MARK: - TripPack Section
 
     private func tripPackSection(_ packViewModel: TripPackViewModel) -> some View {
-        TripPackSection(viewModel: packViewModel, trip: currentTrip)
+        TripPackSection(viewModel: packViewModel, trip: currentTrip) { tripBit in
+            tripBitToRate = tripBit
+        }
     }
 
     // MARK: - Documents Section
@@ -644,6 +698,42 @@ struct TripDetailView: View {
             let success = await viewModel.deleteTrip(id: currentTrip.id)
             if success {
                 dismiss()
+            }
+        }
+    }
+
+    // MARK: - Calendar Export
+
+    private func exportCalendar() {
+        Task {
+            do {
+                let tripBits = tripPackViewModel?.tripBits ?? []
+                let url = try await CalendarExportService.shared.exportTripCalendar(
+                    trip: currentTrip,
+                    tripBits: tripBits
+                )
+                calendarExportURL = url
+                showExportShare = true
+            } catch {
+                exportError = "Failed to generate calendar file: \(error.localizedDescription)"
+                showExportError = true
+            }
+        }
+    }
+
+    private func exportItinerarySummary() {
+        Task {
+            do {
+                let tripBits = tripPackViewModel?.tripBits ?? []
+                let url = try await CalendarExportService.shared.exportItinerarySummary(
+                    trip: currentTrip,
+                    tripBits: tripBits
+                )
+                itinerarySummaryURL = url
+                showItineraryShare = true
+            } catch {
+                exportError = "Failed to generate itinerary: \(error.localizedDescription)"
+                showExportError = true
             }
         }
     }

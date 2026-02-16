@@ -118,6 +118,23 @@ final class AuthViewModel {
         }
     }
 
+    // MARK: - Password Reset
+
+    func resetPassword(email: String) async {
+        errorMessage = nil
+        isLoading = true
+
+        do {
+            try await SupabaseService.shared.client.auth.resetPasswordForEmail(email)
+            print("✅ [AuthViewModel] Password reset email sent to \(email)")
+        } catch {
+            print("❌ [AuthViewModel] Password reset error: \(error)")
+            errorMessage = error.localizedDescription
+        }
+
+        isLoading = false
+    }
+
     // MARK: - Google Sign-In
 
     func signInWithGoogle() async {

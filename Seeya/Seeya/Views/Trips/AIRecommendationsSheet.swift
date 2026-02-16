@@ -52,12 +52,7 @@ struct AIRecommendationsSheet: View {
                     }
                 }
             }
-            .task {
-                // Auto-generate first category on open
-                if cache[selectedCategory] == nil {
-                    await generateRecommendations(for: selectedCategory)
-                }
-            }
+            // No auto-generate — user must click "Get Suggestions"
         }
     }
 
@@ -564,9 +559,6 @@ struct AIRecommendationsSheet: View {
     private func applyFilters() {
         showFilters = false
         cache[selectedCategory] = nil
-        Task {
-            await generateRecommendations(for: selectedCategory, forceRefresh: true)
-        }
     }
 
     private func clearFilters() {
@@ -577,9 +569,6 @@ struct AIRecommendationsSheet: View {
         case .tip: tipFilters = AIService.TipFilters()
         }
         cache[selectedCategory] = nil
-        Task {
-            await generateRecommendations(for: selectedCategory, forceRefresh: true)
-        }
     }
 
     private func addRecommendation(_ item: AIService.AIRecommendation) {

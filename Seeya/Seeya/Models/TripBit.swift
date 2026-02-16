@@ -67,20 +67,38 @@ enum TripBitStatus: String, Codable, Sendable, CaseIterable {
     case confirmed
     case pending
     case cancelled
+    // Shared statuses with web for full parity
+    case booked
+    case planned
+    case idea
+    case completed
 
     var displayName: String {
         switch self {
-        case .confirmed: return "Confirmed"
-        case .pending: return "Pending"
+        case .confirmed, .booked: return "Confirmed"
+        case .pending, .planned: return "Pending"
+        case .idea: return "Idea"
+        case .completed: return "Completed"
         case .cancelled: return "Cancelled"
         }
     }
 
     var color: Color {
         switch self {
-        case .confirmed: return .green
-        case .pending: return .orange
+        case .confirmed, .booked: return .green
+        case .pending, .planned: return .orange
+        case .idea: return .blue
+        case .completed: return .green
         case .cancelled: return .red
+        }
+    }
+
+    /// Normalized status for display — maps web synonyms to canonical iOS values
+    var normalized: TripBitStatus {
+        switch self {
+        case .booked: return .confirmed
+        case .planned: return .pending
+        default: return self
         }
     }
 }

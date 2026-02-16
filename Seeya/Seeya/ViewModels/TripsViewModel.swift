@@ -94,6 +94,10 @@ final class TripsViewModel {
     var upcomingTrips: [Trip] {
         // Include trips that are upcoming, current, OR have flexible/no dates (not past)
         trips.filter { trip in
+            // Logged past trips never appear in upcoming
+            if trip.isLoggedPastTrip == true {
+                return false
+            }
             // If trip has no dates, show in upcoming (it's planned but not past)
             if trip.startDate == nil {
                 return true
@@ -106,6 +110,10 @@ final class TripsViewModel {
 
     var pastTrips: [Trip] {
         trips.filter { trip in
+            // Logged past trips always go to past section
+            if trip.isLoggedPastTrip == true {
+                return true
+            }
             // Only show as past if we have dates AND the trip has ended
             guard let endDate = trip.endDate else { return false }
             return endDate < Date()
@@ -442,6 +450,156 @@ final class TripsViewModel {
             visibility: visibility,
             destinations: destinations
         )
+    }
+
+    // MARK: - Log Past Trip
+
+    struct PastTripRecommendation {
+        let title: String
+        let category: RecommendationCategory
+        let rating: Int
+        let tips: String?
+    }
+
+    func logPastTrip(
+        name: String,
+        startDate: Date?,
+        endDate: Date?,
+        isFlexible: Bool,
+        destinations: [String],
+        recommendations: [PastTripRecommendation]
+    ) async -> Trip? {
+        guard let userId = await getCurrentUserId() else {
+            errorMessage = "Not authenticated"
+            print("❌ [TripsViewModel] Not authenticated")
+            return nil
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        // Ensure user has a profile before creating trip
+        guard await ensureProfileExists(userId: userId) else {
+            isLoading = false
+            return nil
+        }
+
+        do {
+            // 1. Create the trip with isLoggedPastTrip flag
+            let newTrip = CreateTrip(
+                userId: userId,
+                name: name,
+                description: nil,
+                startDate: startDate,
+                endDate: endDate,
+                isFlexible: isFlexible,
+                visibility: .fullDetails,
+                isLoggedPastTrip: true
+            )
+
+            print("📝 [TripsViewModel] Logging past trip: \(name)")
+
+            let createdTrip: Trip = try await SupabaseService.shared.client
+                .from("trips")
+                .insert(newTrip)
+                .select()
+                .single()
+                .execute()
+                .value
+
+            print("✅ [TripsViewModel] Past trip created with ID: \(createdTrip.id)")
+
+            // 2. Add locations
+            for (index, destination) in destinations.enumerated() {
+                let location = CreateTripLocation(
+                    tripId: createdTrip.id,
+                    countryId: nil,
+                    cityId: nil,
+                    customLocation: destination,
+                    orderIndex: index
+                )
+
+                try await SupabaseService.shared.client
+                    .from("trip_locations")
+                    .insert(location)
+                    .execute()
+
+                print("✅ [TripsViewModel] Added location: \(destination)")
+            }
+
+            // 3. Add owner as participant
+            let ownerParticipant = InviteParticipant(tripId: createdTrip.id, userId: userId)
+            try await SupabaseService.shared.client
+                .from("trip_participants")
+                .insert(ownerParticipant)
+                .execute()
+
+            // Accept the owner's participation immediately
+            let ownerParticipants: [TripParticipant] = try await SupabaseService.shared.client
+                .from("trip_participants")
+                .select()
+                .eq("trip_id", value: createdTrip.id.uuidString)
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+                .value
+
+            if let ownerPart = ownerParticipants.first {
+                let confirmUpdate = UpdateParticipantStatus(status: .confirmed, respondedAt: Date())
+                try await SupabaseService.shared.client
+                    .from("trip_participants")
+                    .update(confirmUpdate)
+                    .eq("id", value: ownerPart.id.uuidString)
+                    .execute()
+            }
+
+            print("✅ [TripsViewModel] Added owner as confirmed participant")
+
+            // 4. Add shared recommendations
+            for rec in recommendations {
+                let sharedRec = CreateSharedRecommendation(
+                    userId: userId,
+                    cityId: nil,
+                    countryId: nil,
+                    title: rec.title,
+                    description: nil,
+                    category: rec.category,
+                    rating: rec.rating > 0 ? rec.rating : nil,
+                    tips: rec.tips,
+                    url: nil,
+                    googlePlaceId: nil,
+                    latitude: nil,
+                    longitude: nil,
+                    sourceTripId: createdTrip.id,
+                    sourceResourceId: nil
+                )
+
+                try await SupabaseService.shared.client
+                    .from("shared_recommendations")
+                    .insert(sharedRec)
+                    .execute()
+
+                print("✅ [TripsViewModel] Added recommendation: \(rec.title)")
+            }
+
+            // 5. Fetch the complete trip with relationships
+            await fetchTrip(id: createdTrip.id)
+
+            if let fullTrip = selectedTrip {
+                trips.insert(fullTrip, at: 0)
+                isLoading = false
+                print("✅ [TripsViewModel] Past trip logging complete!")
+                return fullTrip
+            }
+
+            isLoading = false
+            return createdTrip
+        } catch {
+            print("❌ [TripsViewModel] Error logging past trip: \(error)")
+            print("❌ [TripsViewModel] Full error: \(String(describing: error))")
+            errorMessage = String(describing: error)
+            isLoading = false
+            return nil
+        }
     }
 
     // MARK: - Update Trip

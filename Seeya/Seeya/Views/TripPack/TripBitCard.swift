@@ -3,6 +3,7 @@ import SwiftUI
 struct TripBitCard: View {
     let tripBit: TripBit
     let onTap: () -> Void
+    var onRateShare: (() -> Void)? = nil
 
     var body: some View {
         Button(action: onTap) {
@@ -43,6 +44,26 @@ struct TripBitCard: View {
                     travelerAvatars
 
                     Spacer()
+
+                    // Rate & Share button (for completed / past trip bits)
+                    if let onRateShare {
+                        Button {
+                            onRateShare()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.bubble")
+                                    .font(.caption2)
+                                Text("Rate & Share")
+                                    .font(.caption2)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.seeyaPurple.opacity(0.12))
+                            .foregroundStyle(Color.seeyaPurple)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     // Confirmation number if present
                     if let confirmNumber = tripBit.details?.confirmationNumber {

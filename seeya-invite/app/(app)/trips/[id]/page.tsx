@@ -28,10 +28,14 @@ import {
   ArrowLeft,
   MoreHorizontal,
   Sparkles,
+  Download,
+  Printer,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
 import type { TripBitAttachment } from '@/types/database';
 import { getLocationDisplayName } from '@/types/database';
+import { generateTripICS, downloadICS, generateTripFilename } from '@/lib/utils/calendarExport';
+import { printTripItinerary } from '@/lib/utils/pdfExport';
 
 export default function TripDetailPage() {
   const params = useParams();
@@ -268,6 +272,31 @@ export default function TripDetailPage() {
                         <Settings size={16} />
                         <span>Edit Trip</span>
                       </Link>
+                      <div className="border-t border-gray-100 my-1" />
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          if (trip) {
+                            const ics = generateTripICS(trip, trip.locations, tripbits);
+                            const filename = generateTripFilename(trip.name, trip.start_date);
+                            downloadICS(ics, filename);
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
+                      >
+                        <Download size={16} className="text-seeya-purple" />
+                        <span>Export Calendar (.ics)</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          printTripItinerary();
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
+                      >
+                        <Printer size={16} className="text-seeya-purple" />
+                        <span>Print Itinerary</span>
+                      </button>
                     </div>
                   </>
                 )}

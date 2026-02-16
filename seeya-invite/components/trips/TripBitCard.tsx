@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronRight,
+  Star,
 } from 'lucide-react';
 import type { TripBit } from '@/types/database';
 
@@ -25,6 +26,8 @@ interface TripBitCardProps {
   tripBit: TripBit;
   onClick?: () => void;
   className?: string;
+  isPastTrip?: boolean;
+  onRateShare?: (tripBit: TripBit) => void;
 }
 
 const categoryConfig: Record<string, { icon: typeof Plane; color: string; bgColor: string }> = {
@@ -65,9 +68,20 @@ function getDisplayTime(tripBit: TripBit): string | null {
   return null;
 }
 
-export function TripBitCard({ tripBit, onClick, className }: TripBitCardProps) {
+// Check if a trip bit is shareable (restaurant, activity, stay, etc.)
+function isShareable(tripBit: TripBit): boolean {
+  const shareableCategories = ['reservation', 'restaurant', 'activity', 'stay', 'hotel', 'other', 'note'];
+  return shareableCategories.includes(tripBit.category);
+}
+
+export function TripBitCard({ tripBit, onClick, className, isPastTrip, onRateShare }: TripBitCardProps) {
   const config = categoryConfig[tripBit.category] || categoryConfig.other;
   const Icon = config.icon;
+
+  const showRateShare =
+    onRateShare &&
+    isShareable(tripBit) &&
+    (isPastTrip || tripBit.status === 'completed');
 
   return (
     <Card
@@ -96,11 +110,25 @@ export function TripBitCard({ tripBit, onClick, className }: TripBitCardProps) {
                 <h4 className="font-medium text-seeya-text truncate">
                   {tripBit.title}
                 </h4>
-                {isConfirmed(tripBit) ? (
-                  <CheckCircle2 size={16} className="text-seeya-success flex-shrink-0" />
-                ) : (
-                  <AlertCircle size={16} className="text-seeya-warning flex-shrink-0" />
-                )}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {showRateShare && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRateShare(tripBit);
+                      }}
+                      className="p-1 rounded-md hover:bg-yellow-50 transition-colors"
+                      title="Rate & Share"
+                    >
+                      <Star size={15} className="text-yellow-500" />
+                    </button>
+                  )}
+                  {isConfirmed(tripBit) ? (
+                    <CheckCircle2 size={16} className="text-seeya-success" />
+                  ) : (
+                    <AlertCircle size={16} className="text-seeya-warning" />
+                  )}
+                </div>
               </div>
 
               {/* Date/Time */}

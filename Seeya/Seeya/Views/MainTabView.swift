@@ -24,6 +24,8 @@ class AppNavigationState {
 struct MainTabView: View {
     @Bindable var authViewModel: AuthViewModel
     @State private var navigationState = AppNavigationState()
+    @AppStorage("hasSeenAppTour") private var hasSeenAppTour = false
+    @State private var showAppTour = false
 
     var body: some View {
         TabView(selection: $navigationState.selectedTab) {
@@ -45,6 +47,16 @@ struct MainTabView: View {
 
             Tab("Profile", systemImage: "person.circle", value: .profile) {
                 ProfileView(authViewModel: authViewModel)
+            }
+        }
+        .onAppear {
+            if !hasSeenAppTour {
+                showAppTour = true
+            }
+        }
+        .fullScreenCover(isPresented: $showAppTour) {
+            AppTourView {
+                hasSeenAppTour = true
             }
         }
     }

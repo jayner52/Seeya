@@ -171,9 +171,68 @@ export default function ProfilePage() {
       setWanderlist(items);
     }
 
-    // TODO: Fetch saved recommendations when that table exists
-    setSavedRecommendations([]);
-    setStats((s) => ({ ...s, recommendationsCount: 0 }));
+    // Fetch saved recommendations
+    const { data: savedRecsData } = await supabase
+      .from('saved_recommendations')
+      .select(`
+        id,
+        shared_recommendation_id,
+        created_at,
+        shared_recommendations (
+          id,
+          user_id,
+          city_id,
+          country_id,
+          title,
+          description,
+          category,
+          rating,
+          tips,
+          url,
+          google_place_id,
+          created_at,
+          profiles:profiles!shared_recommendations_user_id_fkey (
+            id,
+            full_name,
+            avatar_url
+          ),
+          city:cities (
+            id,
+            name
+          ),
+          country:countries (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (savedRecsData) {
+      const recs: SavedRecommendation[] = savedRecsData.map((item: any) => {
+        const sr = item.shared_recommendations;
+        return {
+          id: item.shared_recommendation_id,
+          title: sr?.title || 'Unknown',
+          description: sr?.description,
+          category: sr?.category || 'tip',
+          rating: sr?.rating,
+          cityName: sr?.city?.name,
+          countryName: sr?.country?.name,
+          createdBy: sr?.profiles ? {
+            id: sr.profiles.id,
+            fullName: sr.profiles.full_name || 'Unknown',
+            avatarUrl: sr.profiles.avatar_url,
+          } : undefined,
+        };
+      });
+      setSavedRecommendations(recs);
+      setStats((s) => ({ ...s, recommendationsCount: recs.length }));
+    } else {
+      setSavedRecommendations([]);
+      setStats((s) => ({ ...s, recommendationsCount: 0 }));
+    }
 
     setIsLoading(false);
   }, [user]);
@@ -195,8 +254,18 @@ export default function ProfilePage() {
   };
 
   const handleUnsaveRecommendation = async (id: string) => {
-    // TODO: Implement when saved_recommendations table exists
-    setSavedRecommendations((prev) => prev.filter((rec) => rec.id !== id));
+    if (!user) return;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('saved_recommendations')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('shared_recommendation_id', id);
+
+    if (!error) {
+      setSavedRecommendations((prev) => prev.filter((rec) => rec.id !== id));
+      setStats((s) => ({ ...s, recommendationsCount: Math.max(0, s.recommendationsCount - 1) }));
+    }
   };
 
   const handleEditSuccess = () => {

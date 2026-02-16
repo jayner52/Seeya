@@ -24,6 +24,8 @@ interface TripPackSectionProps {
   tripBits: TripBit[];
   onAddClick?: (category?: TripBitCategory) => void;
   onTripBitClick?: (tripBit: TripBit) => void;
+  isPastTrip?: boolean;
+  onRateShare?: (tripBit: TripBit) => void;
   className?: string;
 }
 
@@ -42,9 +44,11 @@ interface CategorySectionProps {
   tripBits: TripBit[];
   onAddClick?: () => void;
   onTripBitClick?: (tripBit: TripBit) => void;
+  isPastTrip?: boolean;
+  onRateShare?: (tripBit: TripBit) => void;
 }
 
-function CategorySection({ category, tripBits, onAddClick, onTripBitClick }: CategorySectionProps) {
+function CategorySection({ category, tripBits, onAddClick, onTripBitClick, isPastTrip, onRateShare }: CategorySectionProps) {
   const [isExpanded, setIsExpanded] = useState(tripBits.length > 0);
   const Icon = category.icon;
 
@@ -77,6 +81,8 @@ function CategorySection({ category, tripBits, onAddClick, onTripBitClick }: Cat
               key={bit.id}
               tripBit={bit}
               onClick={() => onTripBitClick?.(bit)}
+              isPastTrip={isPastTrip}
+              onRateShare={onRateShare}
             />
           ))}
           <button
@@ -96,6 +102,8 @@ export function TripPackSection({
   tripBits,
   onAddClick,
   onTripBitClick,
+  isPastTrip,
+  onRateShare,
   className,
 }: TripPackSectionProps) {
   // Group trip bits by category (including iOS category aliases)
@@ -137,6 +145,8 @@ export function TripPackSection({
             tripBits={groupedBits[category.id] || []}
             onAddClick={() => onAddClick?.(category.id)}
             onTripBitClick={onTripBitClick}
+            isPastTrip={isPastTrip}
+            onRateShare={onRateShare}
           />
         ))}
       </Card>

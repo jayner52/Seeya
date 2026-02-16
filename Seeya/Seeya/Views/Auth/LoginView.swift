@@ -5,6 +5,7 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var showSignUp = false
+    @State private var showForgotPassword = false
 
     var body: some View {
         NavigationStack {
@@ -100,6 +101,12 @@ struct LoginView: View {
                 .padding(.horizontal)
                 .disabled(email.isEmpty || password.isEmpty || viewModel.isLoading)
 
+                Button("Forgot password?") {
+                    showForgotPassword = true
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
                 Button("Don't have an account? Sign Up") {
                     showSignUp = true
                 }
@@ -109,6 +116,9 @@ struct LoginView: View {
             }
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView(viewModel: viewModel)
+            }
+            .navigationDestination(isPresented: $showForgotPassword) {
+                ForgotPasswordView(viewModel: viewModel)
             }
         }
     }

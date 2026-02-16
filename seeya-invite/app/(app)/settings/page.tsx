@@ -19,7 +19,9 @@ import {
   Globe,
   ChevronDown,
   Check,
+  Compass,
 } from 'lucide-react';
+import { AppTour } from '@/components/tour';
 import { cn } from '@/lib/utils/cn';
 import type { UserSettings, VisibilityLevel } from '@/types/database';
 import { VISIBILITY_OPTIONS, DEFAULT_USER_SETTINGS } from '@/types/database';
@@ -31,6 +33,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState<Partial<UserSettings>>(DEFAULT_USER_SETTINGS);
   const [showVisibilityMenu, setShowVisibilityMenu] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     if (!user) return;
@@ -329,6 +332,16 @@ export default function SettingsPage() {
             >
               <span className="text-seeya-text-secondary">Redo Initial Setup</span>
             </Link>
+            <button
+              onClick={() => {
+                localStorage.removeItem('hasSeenTour');
+                setShowTour(true);
+              }}
+              className="flex items-center gap-3 px-4 py-3 w-full text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <Compass size={18} className="text-seeya-text-secondary" />
+              <span className="text-seeya-text-secondary">Replay App Tour</span>
+            </button>
           </div>
         </Card>
 
@@ -350,6 +363,15 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* App Tour */}
+      <AppTour
+        isOpen={showTour}
+        onComplete={() => {
+          localStorage.setItem('hasSeenTour', 'true');
+          setShowTour(false);
+        }}
+      />
     </div>
   );
 }

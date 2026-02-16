@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { TripPackSection } from './TripPackSection';
 import { ParticipantsSection } from './ParticipantsSection';
 import { InviteSection } from './InviteSection';
 import { AIRecommendationsSection } from './AIRecommendationsSection';
+import { FriendRecommendationsSection } from './FriendRecommendationsSection';
+import { RateShareModal } from './RateShareModal';
 import type { TripBit, TripParticipant, TripBitCategory, TripLocation } from '@/types/database';
 
 interface PlanningTabProps {
@@ -33,6 +36,15 @@ export function PlanningTab({
   onInviteClick,
   onTripBitAdded,
 }: PlanningTabProps) {
+  const [rateShareBit, setRateShareBit] = useState<TripBit | null>(null);
+
+  // Determine if this is a past trip
+  const isPastTrip = endDate
+    ? new Date(endDate) < new Date()
+    : startDate
+      ? new Date(startDate) < new Date()
+      : false;
+
   return (
     <div className="space-y-8">
       {/* Travelers */}
@@ -46,6 +58,15 @@ export function PlanningTab({
         tripBits={tripBits}
         onAddClick={onAddTripBit}
         onTripBitClick={onTripBitClick}
+        isPastTrip={isPastTrip}
+        onRateShare={(tripBit) => setRateShareBit(tripBit)}
+      />
+
+      {/* Friend Recommendations */}
+      <FriendRecommendationsSection
+        tripId={tripId}
+        tripLocations={locations}
+        onTripBitAdded={onTripBitAdded}
       />
 
       {/* AI Recommendations */}
@@ -62,6 +83,20 @@ export function PlanningTab({
         tripId={tripId}
         existingCode={existingInviteCode}
       />
+
+      {/* Rate & Share Modal */}
+      {rateShareBit && (
+        <RateShareModal
+          tripBit={rateShareBit}
+          tripId={tripId}
+          tripLocations={locations}
+          isOpen={!!rateShareBit}
+          onClose={() => setRateShareBit(null)}
+          onSuccess={() => {
+            // Modal handles its own success state, just close after
+          }}
+        />
+      )}
     </div>
   );
 }

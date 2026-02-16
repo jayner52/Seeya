@@ -3,6 +3,7 @@ import SwiftUI
 struct TripsView: View {
     @State private var viewModel = TripsViewModel()
     @State private var showCreateTrip = false
+    @State private var showLogPastTrip = false
     @State private var selectedTrip: Trip?
     @Binding var tripIdToOpen: UUID?
 
@@ -50,10 +51,18 @@ struct TripsView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showCreateTrip = true
-                    } label: {
-                        Image(systemName: "plus")
+                    HStack(spacing: 16) {
+                        Button {
+                            showLogPastTrip = true
+                        } label: {
+                            Image(systemName: "clock.arrow.circlepath")
+                        }
+
+                        Button {
+                            showCreateTrip = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
@@ -66,6 +75,13 @@ struct TripsView: View {
                 }
             }) {
                 CreateTripView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $showLogPastTrip, onDismiss: {
+                Task {
+                    await viewModel.fetchTrips()
+                }
+            }) {
+                LogPastTripView(viewModel: viewModel)
             }
             .navigationDestination(item: $selectedTrip) { trip in
                 TripDetailView(viewModel: viewModel, trip: trip)
@@ -87,13 +103,24 @@ struct TripsView: View {
     }
 
     private var emptyState: some View {
-        EmptyStateView(
-            icon: "airplane.departure",
-            title: "No Trips Yet",
-            message: "Start planning your next adventure with friends!",
-            buttonTitle: "Create Trip",
-            buttonAction: { showCreateTrip = true }
-        )
+        VStack(spacing: 16) {
+            EmptyStateView(
+                icon: "airplane.departure",
+                title: "No Trips Yet",
+                message: "Start planning your next adventure with friends!",
+                buttonTitle: "Create Trip",
+                buttonAction: { showCreateTrip = true }
+            )
+
+            Button {
+                showLogPastTrip = true
+            } label: {
+                Label("Log a Past Trip", systemImage: "clock.arrow.circlepath")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Color.seeyaPurple)
+            }
+        }
     }
 
     private var tripsList: some View {

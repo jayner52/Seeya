@@ -3,6 +3,7 @@ import SwiftUI
 struct TripBitCompactRow: View {
     let tripBit: TripBit
     let onTap: () -> Void
+    var onRateShare: (() -> Void)? = nil
 
     var body: some View {
         Button(action: onTap) {
@@ -41,6 +42,18 @@ struct TripBitCompactRow: View {
                 }
 
                 Spacer()
+
+                // Rate & Share button
+                if let onRateShare {
+                    Button {
+                        onRateShare()
+                    } label: {
+                        Image(systemName: "star.bubble")
+                            .font(.caption)
+                            .foregroundStyle(Color.seeyaPurple)
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 // Status indicator
                 Circle()

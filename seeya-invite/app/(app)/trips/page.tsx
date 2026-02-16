@@ -9,6 +9,7 @@ import { formatDateRange } from '@/lib/utils/date';
 import { Plus, MapPin, Calendar, Briefcase, Clock } from 'lucide-react';
 import type { TripParticipant } from '@/types';
 import { transformParticipant } from '@/types/database';
+import { LogPastTripDialog } from '@/components/trips/LogPastTripDialog';
 
 interface TripLocation {
   id: string;
@@ -30,90 +31,93 @@ export default function TripsPage() {
   const { user } = useAuthStore();
   const [trips, setTrips] = useState<TripWithParticipants[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLogPastTrip, setShowLogPastTrip] = useState(false);
+
+  const fetchTrips = async () => {
+    if (!user) return;
+
+    const supabase = createClient();
+
+    // Get participant and owned trip IDs in parallel
+    const [{ data: participations }, { data: ownedTrips }] = await Promise.all([
+      supabase
+        .from('trip_participants')
+        .select('trip_id')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted'),
+      supabase
+        .from('trips')
+        .select('id')
+        .eq('user_id', user.id),
+    ]);
+
+    const participantTripIds = participations?.map((p) => p.trip_id) || [];
+    const ownedTripIds = ownedTrips?.map((t) => t.id) || [];
+
+    // Combine and deduplicate trip IDs
+    const allTripIds = Array.from(new Set([...participantTripIds, ...ownedTripIds]));
+
+    if (allTripIds.length === 0) {
+      setTrips([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Get trip details, participants, and locations in parallel
+    const [{ data: tripsData }, { data: allParticipants }, { data: allLocations }] = await Promise.all([
+      supabase
+        .from('trips')
+        .select('id, name, description, start_date, end_date')
+        .in('id', allTripIds)
+        .order('start_date', { ascending: true }),
+      supabase
+        .from('trip_participants')
+        .select(`
+          id,
+          trip_id,
+          user_id,
+          role,
+          status,
+          joined_at,
+          created_at,
+          user:profiles (
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
+        .in('trip_id', allTripIds)
+        .eq('status', 'accepted'),
+      supabase
+        .from('trip_locations')
+        .select('id, trip_id, custom_location, order_index')
+        .in('trip_id', allTripIds)
+        .order('order_index'),
+    ]);
+
+    if (!tripsData) {
+      setTrips([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Combine data
+    const tripsWithParticipants = tripsData.map((trip) => ({
+      ...trip,
+      participants:
+        (allParticipants?.filter((p) => p.trip_id === trip.id) || []).map(transformParticipant),
+      locations:
+        allLocations?.filter((l) => l.trip_id === trip.id) || [],
+    }));
+
+    setTrips(tripsWithParticipants);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     if (!user) return;
-
-    async function fetchTrips() {
-      const supabase = createClient();
-
-      // Get participant and owned trip IDs in parallel
-      const [{ data: participations }, { data: ownedTrips }] = await Promise.all([
-        supabase
-          .from('trip_participants')
-          .select('trip_id')
-          .eq('user_id', user!.id)
-          .eq('status', 'accepted'),
-        supabase
-          .from('trips')
-          .select('id')
-          .eq('user_id', user!.id),
-      ]);
-
-      const participantTripIds = participations?.map((p) => p.trip_id) || [];
-      const ownedTripIds = ownedTrips?.map((t) => t.id) || [];
-
-      // Combine and deduplicate trip IDs
-      const allTripIds = Array.from(new Set([...participantTripIds, ...ownedTripIds]));
-
-      if (allTripIds.length === 0) {
-        setTrips([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Get trip details, participants, and locations in parallel
-      const [{ data: tripsData }, { data: allParticipants }, { data: allLocations }] = await Promise.all([
-        supabase
-          .from('trips')
-          .select('id, name, description, start_date, end_date')
-          .in('id', allTripIds)
-          .order('start_date', { ascending: true }),
-        supabase
-          .from('trip_participants')
-          .select(`
-            id,
-            trip_id,
-            user_id,
-            role,
-            status,
-            joined_at,
-            created_at,
-            user:profiles (
-              id,
-              full_name,
-              avatar_url
-            )
-          `)
-          .in('trip_id', allTripIds)
-          .eq('status', 'accepted'),
-        supabase
-          .from('trip_locations')
-          .select('id, trip_id, custom_location, order_index')
-          .in('trip_id', allTripIds)
-          .order('order_index'),
-      ]);
-
-      if (!tripsData) {
-        setTrips([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Combine data
-      const tripsWithParticipants = tripsData.map((trip) => ({
-        ...trip,
-        participants:
-          (allParticipants?.filter((p) => p.trip_id === trip.id) || []).map(transformParticipant),
-        locations:
-          allLocations?.filter((l) => l.trip_id === trip.id) || [],
-      }));
-
-      setTrips(tripsWithParticipants);
-      setIsLoading(false);
-    }
-
     fetchTrips();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   if (isLoading) {
@@ -136,12 +140,28 @@ export default function TripsPage() {
             {trips.length} {trips.length === 1 ? 'trip' : 'trips'}
           </p>
         </div>
-        <Link href="/trips/new">
-          <Button variant="primary" leftIcon={<Plus size={20} />}>
-            New Trip
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowLogPastTrip(true)}
+            leftIcon={<Clock size={20} />}
+          >
+            Log Past Trip
           </Button>
-        </Link>
+          <Link href="/trips/new">
+            <Button variant="primary" leftIcon={<Plus size={20} />}>
+              New Trip
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {/* Log Past Trip Dialog */}
+      <LogPastTripDialog
+        isOpen={showLogPastTrip}
+        onClose={() => setShowLogPastTrip(false)}
+        onSuccess={() => fetchTrips()}
+      />
 
       {/* Trips List */}
       {trips.length === 0 ? (

@@ -6,6 +6,8 @@ struct SettingsView: View {
     @State private var viewModel = SettingsViewModel()
     @State private var showingRedoSetupAlert = false
     @State private var isResettingOnboarding = false
+    @AppStorage("hasSeenAppTour") private var hasSeenAppTour = true
+    @State private var showAppTour = false
 
     private let settingsAccent = Color(red: 0.95, green: 0.85, blue: 0.4) // Yellow/gold accent
 
@@ -33,6 +35,11 @@ struct SettingsView: View {
             }
             .task {
                 await viewModel.loadSettings()
+            }
+            .fullScreenCover(isPresented: $showAppTour) {
+                AppTourView {
+                    hasSeenAppTour = true
+                }
             }
         }
     }
@@ -166,7 +173,7 @@ struct SettingsView: View {
                     title: "Replay App Tour",
                     icon: "play.circle"
                 ) {
-                    // App tour not yet implemented - placeholder
+                    showAppTour = true
                 }
 
                 SettingsButtonRow(

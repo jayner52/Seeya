@@ -20,6 +20,10 @@ struct ExploreAISection: View {
     @State private var tipFilters = AIService.TipFilters()
     @State private var showFilters = false
 
+    // Places autocomplete
+    @State private var predictions: [PlacePrediction] = []
+    @State private var autocompleteTask: Task<Void, Never>?
+
     // Add to trip
     @State private var selectedRecommendation: AIService.AIRecommendation?
     @State private var showAddToTripSheet = false
@@ -38,10 +42,8 @@ struct ExploreAISection: View {
                 // Category Tabs
                 categoryTabs
 
-                // Filters Toggle (when results exist)
-                if cache[selectedCategory] != nil {
-                    filtersSection
-                }
+                // Filters Toggle
+                filtersSection
 
                 // Content
                 contentArea
@@ -99,12 +101,35 @@ struct ExploreAISection: View {
                     .font(SeeyaTypography.bodyMedium)
                     .submitLabel(.search)
                     .onSubmit {
+                        predictions = []
                         searchDestination()
+                    }
+                    .onChange(of: destination) { _, newValue in
+                        autocompleteTask?.cancel()
+                        guard !newValue.isEmpty else {
+                            predictions = []
+                            return
+                        }
+                        autocompleteTask = Task {
+                            try? await Task.sleep(nanoseconds: 300_000_000)
+                            guard !Task.isCancelled else { return }
+                            do {
+                                let results = try await PlacesService.shared.autocomplete(query: newValue)
+                                if !Task.isCancelled {
+                                    predictions = results
+                                }
+                            } catch {
+                                if !Task.isCancelled {
+                                    predictions = []
+                                }
+                            }
+                        }
                     }
 
                 if !destination.isEmpty {
                     Button {
                         clearSearch()
+                        predictions = []
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Color.seeyaTextTertiary)
@@ -117,6 +142,7 @@ struct ExploreAISection: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
             Button {
+                predictions = []
                 searchDestination()
             } label: {
                 Image(systemName: "arrow.right.circle.fill")
@@ -125,6 +151,49 @@ struct ExploreAISection: View {
             }
             .disabled(destination.isEmpty)
         }
+        .overlay(alignment: .top) {
+            if !predictions.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(predictions) { prediction in
+                        Button {
+                            destination = prediction.fullText
+                            predictions = []
+                            autocompleteTask?.cancel()
+                            searchDestination()
+                        } label: {
+                            HStack(spacing: SeeyaSpacing.xs) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .foregroundStyle(Color.seeyaPurple)
+                                    .font(.body)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(prediction.mainText)
+                                        .font(SeeyaTypography.labelSmall)
+                                        .foregroundStyle(Color.seeyaTextPrimary)
+                                    if !prediction.secondaryText.isEmpty {
+                                        Text(prediction.secondaryText)
+                                            .font(SeeyaTypography.caption)
+                                            .foregroundStyle(Color.seeyaTextTertiary)
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .padding(.horizontal, SeeyaSpacing.sm)
+                            .padding(.vertical, SeeyaSpacing.xs)
+                        }
+
+                        if prediction.id != predictions.last?.id {
+                            Divider()
+                                .padding(.leading, SeeyaSpacing.xl)
+                        }
+                    }
+                }
+                .background(Color.seeyaSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                .offset(y: 48)
+            }
+        }
+        .zIndex(1)
     }
 
     // MARK: - Empty Prompt
@@ -158,6 +227,8 @@ struct ExploreAISection: View {
     private func quickDestinationChip(_ name: String) -> some View {
         Button {
             destination = name
+            predictions = []
+            autocompleteTask?.cancel()
             searchDestination()
         } label: {
             Text(name)
@@ -568,10 +639,6 @@ struct ExploreAISection: View {
         cache = [:] // Clear cache for new destination
         errors = [:]
         addedIds = []
-
-        Task {
-            await generateRecommendations(for: selectedCategory)
-        }
     }
 
     private func clearSearch() {
@@ -631,9 +698,6 @@ struct ExploreAISection: View {
     private func applyFilters() {
         showFilters = false
         cache[selectedCategory] = nil
-        Task {
-            await generateRecommendations(for: selectedCategory, forceRefresh: true)
-        }
     }
 
     private func clearFilters() {
@@ -644,9 +708,6 @@ struct ExploreAISection: View {
         case .tip: tipFilters = AIService.TipFilters()
         }
         cache[selectedCategory] = nil
-        Task {
-            await generateRecommendations(for: selectedCategory, forceRefresh: true)
-        }
     }
 
     private func addRecommendationToTrip(_ recommendation: AIService.AIRecommendation, trip: Trip) async -> Bool {
