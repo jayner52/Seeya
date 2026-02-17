@@ -34,6 +34,8 @@ actor PlacesService {
 
     private let baseURL = "https://maps.googleapis.com/maps/api/place"
 
+    private var cityPhotoCache: [String: URL?] = [:]
+
     private init() {}
 
     var isConfigured: Bool {
@@ -149,6 +151,45 @@ actor PlacesService {
             longitude: place.geometry?.location.lng
         )
     }
+
+    // MARK: - City Photo
+
+    func fetchCityPhotoURL(query: String, maxWidth: Int = 800) async -> URL? {
+        if let cached = cityPhotoCache[query] {
+            return cached
+        }
+
+        guard isConfigured else { return nil }
+
+        guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(baseURL)/findplacefromtext/json?input=\(encodedQuery)&inputtype=textquery&fields=photos&key=\(apiKey)") else {
+            return nil
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                cityPhotoCache[query] = nil
+                return nil
+            }
+
+            let result = try JSONDecoder().decode(FindPlaceResponse.self, from: data)
+
+            guard let photoRef = result.candidates.first?.photos?.first?.photo_reference else {
+                cityPhotoCache[query] = nil
+                return nil
+            }
+
+            let photoURL = URL(string: "\(baseURL)/photo?photoreference=\(photoRef)&maxwidth=\(maxWidth)&key=\(apiKey)")
+            cityPhotoCache[query] = photoURL
+            return photoURL
+        } catch {
+            print("⚠️ [PlacesService] City photo lookup failed: \(error.localizedDescription)")
+            cityPhotoCache[query] = nil
+            return nil
+        }
+    }
 }
 
 // MARK: - Errors
@@ -186,6 +227,19 @@ private struct AutocompleteResponse: Decodable {
         struct StructuredFormatting: Decodable {
             let main_text: String
             let secondary_text: String?
+        }
+    }
+}
+
+private struct FindPlaceResponse: Decodable {
+    let candidates: [Candidate]
+    let status: String
+
+    struct Candidate: Decodable {
+        let photos: [Photo]?
+
+        struct Photo: Decodable {
+            let photo_reference: String
         }
     }
 }

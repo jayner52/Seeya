@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
@@ -245,6 +245,8 @@ function TripsListByStatus({ trips }: { trips: TripWithParticipants[] }) {
 }
 
 function TripCard({ trip }: { trip: TripWithParticipants }) {
+  const [photoLoaded, setPhotoLoaded] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
 
   // Get location display string
@@ -256,6 +258,11 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
       : firstLocation
     : null;
 
+  const photoQuery = firstLocation ? encodeURIComponent(firstLocation) : null;
+
+  const handleImgLoad = useCallback(() => setPhotoLoaded(true), []);
+  const handleImgError = useCallback(() => setPhotoError(true), []);
+
   return (
     <Link href={`/trips/${trip.id}`} className="h-full">
       <Card
@@ -263,6 +270,25 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
         padding="none"
         className="overflow-hidden hover:shadow-seeya-lg transition-shadow cursor-pointer h-full flex flex-col"
       >
+        {/* Photo Banner */}
+        {photoQuery && !photoError && (
+          <div className="relative w-full h-[140px] overflow-hidden bg-gray-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/places/city-photo?query=${photoQuery}&maxwidth=800`}
+              alt={firstLocation ?? ''}
+              loading="lazy"
+              onLoad={handleImgLoad}
+              onError={handleImgError}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${photoLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+            {/* Gradient overlay */}
+            {photoLoaded && (
+              <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent" />
+            )}
+          </div>
+        )}
+
         {/* Content */}
         <div className="p-4 flex flex-col flex-1">
           {/* Title - fixed 2 lines height */}
