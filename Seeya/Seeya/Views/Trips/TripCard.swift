@@ -107,7 +107,7 @@ struct TripCard: View {
         .seeyaCard()
         .task {
             let destination = trip.destination
-            guard !destination.isEmpty, destination != "No destination" else { return }
+            guard !destination.isEmpty, destination != "Destination TBD" else { return }
             photoURL = await PlacesService.shared.fetchCityPhotoURL(query: destination)
         }
     }
