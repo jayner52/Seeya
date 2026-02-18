@@ -4,14 +4,15 @@ struct TripCard: View {
     let trip: Trip
     let isOwner: Bool
 
-    @State private var photoURL: URL?
+    @State private var photo: UnsplashPhoto?
+    @State private var showAttribution = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Photo Banner
-            if let photoURL {
+            if let photo {
                 ZStack(alignment: .bottom) {
-                    AsyncImage(url: photoURL) { phase in
+                    AsyncImage(url: photo.url) { phase in
                         switch phase {
                         case .success(let image):
                             image
@@ -19,7 +20,7 @@ struct TripCard: View {
                                 .scaledToFill()
                         case .failure:
                             EmptyView()
-                                .onAppear { self.photoURL = nil }
+                                .onAppear { self.photo = nil }
                         default:
                             Color(.systemGray5)
                         }
@@ -34,6 +35,35 @@ struct TripCard: View {
                         endPoint: .top
                     )
                     .frame(height: 40)
+
+                    // Attribution overlay
+                    if showAttribution {
+                        HStack(spacing: 0) {
+                            Text("Photo by ")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white.opacity(0.9))
+                            Link(photo.photographer, destination: photo.photographerURL.appending(queryItems: [URLQueryItem(name: "utm_source", value: "seeya"), URLQueryItem(name: "utm_medium", value: "referral")]))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .underline()
+                            Text(" / ")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white.opacity(0.9))
+                            Link("Unsplash", destination: URL(string: "https://unsplash.com/?utm_source=seeya&utm_medium=referral")!)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .underline()
+                            Spacer()
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.bottom, 4)
+                        .transition(.opacity)
+                    }
+                }
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showAttribution.toggle()
+                    }
                 }
             }
 
@@ -108,7 +138,7 @@ struct TripCard: View {
         .task {
             let destination = trip.destination
             guard !destination.isEmpty, destination != "Destination TBD" else { return }
-            photoURL = await PlacesService.shared.fetchCityPhotoURL(query: destination)
+            photo = await UnsplashService.shared.fetchCityPhoto(query: destination)
         }
     }
 }

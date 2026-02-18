@@ -17,4 +17,8 @@ enum SecretsManager {
     static var openRouterAPIKey: String {
         secrets?["OPENROUTER_API_KEY"] as? String ?? ""
     }
+
+    static var unsplashAccessKey: String {
+        secrets?["UNSPLASH_ACCESS_KEY"] as? String ?? ""
+    }
 }

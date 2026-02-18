@@ -244,9 +244,18 @@ function TripsListByStatus({ trips }: { trips: TripWithParticipants[] }) {
   );
 }
 
+interface UnsplashPhoto {
+  url: string;
+  photographer: string;
+  photographerUrl: string;
+  unsplashUrl: string;
+}
+
 function TripCard({ trip }: { trip: TripWithParticipants }) {
+  const [photo, setPhoto] = useState<UnsplashPhoto | null>(null);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [photoError, setPhotoError] = useState(false);
+  const [showAttribution, setShowAttribution] = useState(false);
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
 
   // Get location display string
@@ -260,6 +269,23 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
 
   const photoQuery = firstLocation ? encodeURIComponent(firstLocation) : null;
 
+  useEffect(() => {
+    if (!photoQuery) return;
+    let cancelled = false;
+    fetch(`/api/unsplash/city-photo?query=${photoQuery}`)
+      .then((res) => {
+        if (!res.ok || res.status === 204) throw new Error('no photo');
+        return res.json();
+      })
+      .then((data: UnsplashPhoto) => {
+        if (!cancelled) setPhoto(data);
+      })
+      .catch(() => {
+        if (!cancelled) setPhotoError(true);
+      });
+    return () => { cancelled = true; };
+  }, [photoQuery]);
+
   const handleImgLoad = useCallback(() => setPhotoLoaded(true), []);
   const handleImgError = useCallback(() => setPhotoError(true), []);
 
@@ -271,11 +297,19 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
         className="overflow-hidden hover:shadow-seeya-lg transition-shadow cursor-pointer h-full flex flex-col"
       >
         {/* Photo Banner */}
-        {photoQuery && !photoError && (
-          <div className="relative w-full h-[140px] overflow-hidden bg-gray-100">
+        {photo && !photoError && (
+          <div
+            className="group relative w-full h-[140px] overflow-hidden bg-gray-100"
+            onMouseEnter={() => setShowAttribution(true)}
+            onMouseLeave={() => setShowAttribution(false)}
+            onClick={(e) => {
+              if (showAttribution) return;
+              // On touch devices, first tap shows attribution
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`/api/places/city-photo?query=${photoQuery}&maxwidth=800`}
+              src={photo.url}
               alt={firstLocation ?? ''}
               loading="lazy"
               onLoad={handleImgLoad}
@@ -285,6 +319,31 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
             {/* Gradient overlay */}
             {photoLoaded && (
               <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent" />
+            )}
+            {/* Attribution overlay */}
+            {photoLoaded && (
+              <div className={`absolute inset-x-0 bottom-0 px-2 py-1 text-[10px] text-white/90 transition-opacity duration-200 ${showAttribution ? 'opacity-100' : 'opacity-0'}`}>
+                Photo by{' '}
+                <a
+                  href={`${photo.photographerUrl}?utm_source=seeya&utm_medium=referral`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {photo.photographer}
+                </a>
+                {' / '}
+                <a
+                  href={`${photo.unsplashUrl}?utm_source=seeya&utm_medium=referral`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Unsplash
+                </a>
+              </div>
             )}
           </div>
         )}
