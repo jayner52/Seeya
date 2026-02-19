@@ -361,19 +361,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
 
       if (tripError) throw tripError;
 
-      // Add locations
-      for (let i = 0; i < destinations.length; i++) {
-        const dest = destinations[i];
-        await supabase.from('trip_locations').insert({
-          trip_id: trip.id,
-          custom_location: dest.name,
-          arrival_date: dest.startDate || null,
-          departure_date: dest.endDate || null,
-          order_index: i,
-        });
-      }
-
-      // Add owner as participant
+      // Add owner as participant first (needed for RLS on trip_locations)
       await supabase.from('trip_participants').insert({
         trip_id: trip.id,
         user_id: user.id,
@@ -381,6 +369,19 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
         status: 'accepted',
         joined_at: new Date().toISOString(),
       });
+
+      // Add locations
+      for (let i = 0; i < destinations.length; i++) {
+        const dest = destinations[i];
+        const { error: locationError } = await supabase.from('trip_locations').insert({
+          trip_id: trip.id,
+          custom_location: dest.name,
+          arrival_date: dest.startDate || null,
+          departure_date: dest.endDate || null,
+          order_index: i,
+        });
+        if (locationError) throw locationError;
+      }
 
       // Invite selected friends
       for (const friendId of Array.from(selectedFriends)) {
