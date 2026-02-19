@@ -361,7 +361,15 @@ final class TripsViewModel {
 
             print("✅ [TripsViewModel] Trip created with ID: \(createdTrip.id)")
 
-            // 2. Add all locations
+            // 2. Add owner as participant before inserting locations (required for RLS)
+            let ownerParticipant = InviteParticipant(tripId: createdTrip.id, userId: userId)
+            try await SupabaseService.shared.client
+                .from("trip_participants")
+                .insert(ownerParticipant)
+                .execute()
+            print("✅ [TripsViewModel] Added owner as participant")
+
+            // 3. Add all locations
             for (index, destination) in destinations.enumerated() {
                 var countryId: UUID? = nil
                 if let city = destination.city {
@@ -509,25 +517,7 @@ final class TripsViewModel {
 
             print("✅ [TripsViewModel] Past trip created with ID: \(createdTrip.id)")
 
-            // 2. Add locations
-            for (index, destination) in destinations.enumerated() {
-                let location = CreateTripLocation(
-                    tripId: createdTrip.id,
-                    countryId: nil,
-                    cityId: nil,
-                    customLocation: destination,
-                    orderIndex: index
-                )
-
-                try await SupabaseService.shared.client
-                    .from("trip_locations")
-                    .insert(location)
-                    .execute()
-
-                print("✅ [TripsViewModel] Added location: \(destination)")
-            }
-
-            // 3. Add owner as participant
+            // 2. Add owner as participant before inserting locations (required for RLS)
             let ownerParticipant = InviteParticipant(tripId: createdTrip.id, userId: userId)
             try await SupabaseService.shared.client
                 .from("trip_participants")
@@ -553,6 +543,24 @@ final class TripsViewModel {
             }
 
             print("✅ [TripsViewModel] Added owner as confirmed participant")
+
+            // 3. Add locations
+            for (index, destination) in destinations.enumerated() {
+                let location = CreateTripLocation(
+                    tripId: createdTrip.id,
+                    countryId: nil,
+                    cityId: nil,
+                    customLocation: destination,
+                    orderIndex: index
+                )
+
+                try await SupabaseService.shared.client
+                    .from("trip_locations")
+                    .insert(location)
+                    .execute()
+
+                print("✅ [TripsViewModel] Added location: \(destination)")
+            }
 
             // 4. Add shared recommendations
             for rec in recommendations {
