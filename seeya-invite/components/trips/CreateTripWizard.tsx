@@ -361,14 +361,15 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
 
       if (tripError) throw tripError;
 
-      // Add owner as participant first (needed for RLS on trip_locations)
-      await supabase.from('trip_participants').insert({
+      // Add owner as participant
+      const { error: participantError } = await supabase.from('trip_participants').insert({
         trip_id: trip.id,
         user_id: user.id,
         role: 'owner',
         status: 'accepted',
         joined_at: new Date().toISOString(),
       });
+      if (participantError) console.error('Participant insert error:', participantError);
 
       // Add locations
       for (let i = 0; i < destinations.length; i++) {
@@ -380,7 +381,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           departure_date: dest.endDate || null,
           order_index: i,
         });
-        if (locationError) throw locationError;
+        if (locationError) console.error('Location insert error:', locationError);
       }
 
       // Invite selected friends
