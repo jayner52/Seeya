@@ -922,7 +922,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
             onClick={currentStep === 'privacy' ? handleCreateTrip : goToNextStep}
             disabled={!canProceed() || isCreating}
             isLoading={isCreating}
-            className="flex-1 bg-black hover:bg-gray-800"
+            className="flex-1 bg-black hover:bg-gray-800 text-white"
           >
             {currentStep === 'privacy' ? 'Create Trip' : 'Next'}
           </Button>
