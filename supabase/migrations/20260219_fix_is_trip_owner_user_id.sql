@@ -1,18 +1,16 @@
--- Fix is_trip_owner to use user_id column
--- The trips table was migrated to use user_id (not owner_id) as the owner field,
--- but this function was never updated, causing trip_locations RLS to silently block
--- all insert/update/delete operations by trip owners.
-CREATE OR REPLACE FUNCTION public.is_trip_owner(_user_id uuid, _trip_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.trips
-    WHERE id = _trip_id
-      AND user_id = _user_id
-  )
-$$;
+-- Fix is_trip_owner function body
+-- The function signature is (trip_uuid, user_uuid) but every RLS policy calls it as
+-- is_trip_owner(auth.uid(), trip_id) — user first, trip second. The body was checking
+-- id = trip_uuid AND user_id = user_uuid, which evaluated to id = auth.uid() AND
+-- user_id = trip_id — always false. Fix by swapping the body to match call order.
+CREATE OR REPLACE FUNCTION public.is_trip_owner(trip_uuid uuid, user_uuid uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+    SELECT EXISTS (
+      SELECT 1 FROM trips
+      WHERE id = user_uuid AND user_id = trip_uuid
+    );
+$function$
