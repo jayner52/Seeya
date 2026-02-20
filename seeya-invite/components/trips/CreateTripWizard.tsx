@@ -377,8 +377,6 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
         const { error: locationError } = await supabase.from('trip_locations').insert({
           trip_id: trip.id,
           custom_location: dest.name,
-          arrival_date: dest.startDate || null,
-          departure_date: dest.endDate || null,
           order_index: i,
         });
         if (locationError) console.error('Location insert error:', locationError);

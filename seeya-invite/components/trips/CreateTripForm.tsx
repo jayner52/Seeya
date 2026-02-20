@@ -82,8 +82,6 @@ export function CreateTripForm() {
           custom_location: loc.name,  // Use custom_location to match iOS
           city_id: loc.cityId || null,
           order_index: index,
-          arrival_date: index === 0 ? startDate : null,
-          departure_date: index === locations.length - 1 ? endDate : null,
         }));
 
         const { error: locationError } = await supabase

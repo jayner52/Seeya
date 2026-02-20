@@ -36,6 +36,25 @@ struct TripCard: View {
                     )
                     .frame(height: 40)
 
+                    // Attribution info button
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showAttribution.toggle()
+                            }
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.white.opacity(0.7))
+                                .padding(6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.trailing, 2)
+                    .padding(.top, 2)
+                    .frame(maxHeight: .infinity, alignment: .top)
+
                     // Attribution overlay
                     if showAttribution {
                         HStack(spacing: 0) {
@@ -58,11 +77,6 @@ struct TripCard: View {
                         .padding(.horizontal, 6)
                         .padding(.bottom, 4)
                         .transition(.opacity)
-                    }
-                }
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showAttribution.toggle()
                     }
                 }
             }
@@ -138,7 +152,9 @@ struct TripCard: View {
         .task {
             let destination = trip.destination
             guard !destination.isEmpty, destination != "Destination TBD" else { return }
-            photo = await UnsplashService.shared.fetchCityPhoto(query: destination)
+            let result = await UnsplashService.shared.fetchCityPhoto(query: destination)
+            print("📸 [TripCard] \(destination): \(result?.url.absoluteString.prefix(60) ?? "nil") by \(result?.photographer ?? "n/a")")
+            photo = result
         }
     }
 }

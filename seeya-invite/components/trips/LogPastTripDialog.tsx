@@ -283,8 +283,6 @@ export function LogPastTripDialog({ isOpen, onClose, onSuccess }: LogPastTripDia
           trip_id: trip.id,
           custom_location: dest.name,
           order_index: i,
-          arrival_date: i === 0 ? tripStartDate : null,
-          departure_date: i === destinations.length - 1 ? tripEndDate : null,
         });
       }
 
