@@ -66,8 +66,6 @@ export async function validateInviteCode(
         trip_id,
         city_id,
         name,
-        arrival_date,
-        departure_date,
         order_index,
         created_at,
         city:cities (
@@ -92,7 +90,6 @@ export async function validateInviteCode(
         user_id,
         role,
         status,
-        joined_at,
         created_at,
         user:profiles (
           id,
@@ -102,7 +99,7 @@ export async function validateInviteCode(
       `
       )
       .eq('trip_id', trip.id)
-      .eq('status', 'accepted');
+      .eq('status', 'confirmed');
 
     const tripWithDetails: TripWithDetails = {
       ...trip,
@@ -148,13 +145,13 @@ export async function acceptInvite(
       .single();
 
     if (existingParticipant) {
-      if (existingParticipant.status === 'accepted') {
+      if (existingParticipant.status === 'confirmed') {
         return { success: true }; // Already a member
       }
       // Update existing participant to accepted
       const { error: updateError } = await supabase
         .from('trip_participants')
-        .update({ status: 'accepted', joined_at: new Date().toISOString() })
+        .update({ status: 'confirmed' })
         .eq('id', existingParticipant.id);
 
       if (updateError) {
@@ -168,8 +165,7 @@ export async function acceptInvite(
           trip_id: invite.trip_id,
           user_id: userId,
           role: 'member',
-          status: 'accepted',
-          joined_at: new Date().toISOString(),
+          status: 'confirmed',
         });
 
       if (insertError) {

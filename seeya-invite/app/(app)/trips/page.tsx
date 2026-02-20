@@ -78,7 +78,6 @@ export default function TripsPage() {
           user_id,
           role,
           status,
-          joined_at,
           created_at,
           user:profiles (
             id,

@@ -88,7 +88,6 @@ async function getInviteData(code: string) {
       user_id,
       role,
       status,
-      joined_at,
       created_at,
       user:profiles (
         id,

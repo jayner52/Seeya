@@ -70,8 +70,7 @@ export async function POST(request: Request) {
       const { error: updateError } = await supabase
         .from('trip_participants')
         .update({
-          status: 'accepted',
-          joined_at: new Date().toISOString(),
+          status: 'confirmed',
         })
         .eq('id', existingParticipant.id);
 
@@ -90,8 +89,7 @@ export async function POST(request: Request) {
           trip_id: invite.trip_id,
           user_id: user.id,
           role: 'member',
-          status: 'accepted',
-          joined_at: new Date().toISOString(),
+          status: 'confirmed',
         });
 
       if (insertError) {

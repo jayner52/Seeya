@@ -61,7 +61,7 @@ async function getInviteAndUserData(code: string) {
   const { data: participants } = await supabase
     .from('trip_participants')
     .select(`
-      id, trip_id, user_id, role, status, joined_at, created_at,
+      id, trip_id, user_id, role, status, created_at,
       user:profiles (id, full_name, avatar_url)
     `)
     .eq('trip_id', trip.id)

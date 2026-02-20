@@ -12,7 +12,7 @@ interface ParticipantsSectionProps {
 }
 
 const statusConfig = {
-  accepted: { label: 'Confirmed', icon: CheckCircle2, color: 'text-seeya-success' },
+  confirmed: { label: 'Confirmed', icon: CheckCircle2, color: 'text-seeya-success' },
   invited: { label: 'Pending', icon: Clock, color: 'text-seeya-warning' },
   declined: { label: 'Declined', icon: XCircle, color: 'text-seeya-error' },
 };

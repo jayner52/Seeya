@@ -55,7 +55,7 @@ export function CreateTripForm() {
           end_date: endDate,
           user_id: user.id,
           visibility,
-          flexible_dates: flexibleDates,
+          is_flexible_dates: flexibleDates,
         })
         .select()
         .single();

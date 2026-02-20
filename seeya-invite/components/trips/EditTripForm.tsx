@@ -71,7 +71,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       setDescription(tripData.description || '');
       setStartDate(tripData.start_date);
       setEndDate(tripData.end_date);
-      setFlexibleDates(tripData.flexible_dates || false);
+      setFlexibleDates(tripData.is_flexible_dates || false);
       setVisibility(tripData.visibility || 'full_details');
 
       if (locationsData && locationsData.length > 0) {
@@ -112,7 +112,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
           start_date: startDate,
           end_date: endDate,
           visibility,
-          flexible_dates: flexibleDates,
+          is_flexible_dates: flexibleDates,
           updated_at: new Date().toISOString(),
         })
         .eq('id', tripId);
