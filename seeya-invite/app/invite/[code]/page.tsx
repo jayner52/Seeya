@@ -61,9 +61,7 @@ async function getInviteData(code: string) {
       id,
       trip_id,
       city_id,
-      name,
-      arrival_date,
-      departure_date,
+      custom_location,
       order_index,
       created_at,
       city:cities (

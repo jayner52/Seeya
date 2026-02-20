@@ -52,7 +52,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     const { data: locations } = await supabase
       .from('trip_locations')
       .select(`
-        id, trip_id, city_id, name, arrival_date, departure_date, order_index, created_at,
+        id, trip_id, city_id, custom_location, order_index, created_at,
         city:cities (id, name, country, country_code, continent)
       `)
       .eq('trip_id', trip.id)
