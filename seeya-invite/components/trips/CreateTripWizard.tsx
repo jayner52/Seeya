@@ -346,6 +346,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
       }
 
       // Create trip
+      console.log('🚀 [CreateTrip] Step 1: Creating trip...');
       const { data: trip, error: tripError } = await supabase
         .from('trips')
         .insert({
@@ -360,17 +361,24 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
         .single();
 
       if (tripError) throw tripError;
+      console.log('✅ [CreateTrip] Trip created:', trip.id);
 
       // Add owner as participant
+      console.log('🚀 [CreateTrip] Step 2: Adding owner as participant...');
       const { error: participantError } = await supabase.from('trip_participants').insert({
         trip_id: trip.id,
         user_id: user.id,
         role: 'owner',
         status: 'confirmed',
       });
-      if (participantError) console.error('Participant insert error:', participantError);
+      if (participantError) {
+        console.error('❌ [CreateTrip] Participant insert error:', participantError);
+      } else {
+        console.log('✅ [CreateTrip] Owner participant added');
+      }
 
       // Add locations
+      console.log('🚀 [CreateTrip] Step 3: Adding', destinations.length, 'location(s)...');
       for (let i = 0; i < destinations.length; i++) {
         const dest = destinations[i];
         const { error: locationError } = await supabase.from('trip_locations').insert({
@@ -378,23 +386,32 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           custom_location: dest.name,
           order_index: i,
         });
-        if (locationError) console.error('Location insert error:', locationError);
+        if (locationError) {
+          console.error(`❌ [CreateTrip] Location ${i} insert error:`, locationError);
+        } else {
+          console.log(`✅ [CreateTrip] Location ${i} added:`, dest.name);
+        }
       }
 
       // Invite selected friends
-      for (const friendId of Array.from(selectedFriends)) {
-        await supabase.from('trip_participants').insert({
-          trip_id: trip.id,
-          user_id: friendId,
-          role: 'member',
-          status: 'invited',
-        });
+      if (selectedFriends.size > 0) {
+        console.log('🚀 [CreateTrip] Step 4: Inviting', selectedFriends.size, 'friend(s)...');
+        for (const friendId of Array.from(selectedFriends)) {
+          const { error: friendError } = await supabase.from('trip_participants').insert({
+            trip_id: trip.id,
+            user_id: friendId,
+            role: 'member',
+            status: 'invited',
+          });
+          if (friendError) console.error('❌ [CreateTrip] Friend invite error:', friendError);
+        }
       }
 
+      console.log('✅ [CreateTrip] Done! Navigating to trip...');
       onSuccess(trip.id);
     } catch (err) {
-      console.error('Error creating trip:', err);
-      setError('Failed to create trip. Please try again.');
+      console.error('❌ [CreateTrip] Fatal error:', err);
+      setError(`Failed to create trip: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsCreating(false);
     }
