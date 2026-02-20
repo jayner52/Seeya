@@ -22,7 +22,7 @@ export function ParticipantsSection({
   onInviteClick,
   className,
 }: ParticipantsSectionProps) {
-  const acceptedCount = participants.filter((p) => p.status === 'accepted').length;
+  const acceptedCount = participants.filter((p) => p.status === 'confirmed').length;
   const pendingCount = participants.filter((p) => p.status === 'invited').length;
 
   return (

@@ -48,7 +48,7 @@ export function ConversationList({
         .from('trip_participants')
         .select('trip_id')
         .eq('user_id', user.id)
-        .eq('status', 'accepted'),
+        .eq('status', 'confirmed'),
       supabase
         .from('trips')
         .select('id')
@@ -80,7 +80,7 @@ export function ConversationList({
         .from('trip_participants')
         .select('trip_id, user_id, profiles:user_id (id, full_name, avatar_url)')
         .in('trip_id', allTripIds)
-        .eq('status', 'accepted'),
+        .eq('status', 'confirmed'),
       // Get the most recent message per trip (using a subquery approach)
       supabase
         .from('trip_messages')

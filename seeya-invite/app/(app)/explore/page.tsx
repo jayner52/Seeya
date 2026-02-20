@@ -102,7 +102,7 @@ export default function ExplorePage() {
             )
           `)
           .in('user_id', friendIds)
-          .eq('status', 'accepted'),
+          .eq('status', 'confirmed'),
         supabase
           .from('wanderlist_items')
           .select(`

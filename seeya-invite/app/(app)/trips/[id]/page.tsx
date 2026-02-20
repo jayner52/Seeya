@@ -218,9 +218,9 @@ export default function TripDetailPage() {
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
   const daysUntil = getDaysUntil(trip.start_date);
   const acceptedParticipants = trip.participants.filter(
-    (p) => p.status === 'accepted'
+    (p) => p.status === 'confirmed'
   );
-  // Total travelers = owner (1) + accepted participants (matching iOS behavior)
+  // Total travelers = owner (1) + confirmed participants (matching iOS behavior)
   const totalTravelers = 1 + acceptedParticipants.length;
   const firstLocation = trip.locations[0];
 

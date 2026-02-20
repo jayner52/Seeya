@@ -291,8 +291,7 @@ export function LogPastTripDialog({ isOpen, onClose, onSuccess }: LogPastTripDia
         trip_id: trip.id,
         user_id: user.id,
         role: 'owner',
-        status: 'accepted',
-        joined_at: new Date().toISOString(),
+        status: 'confirmed',
       });
 
       // 4. Insert shared_recommendations for each recommendation

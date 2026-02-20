@@ -65,7 +65,7 @@ async function getInviteAndUserData(code: string) {
       user:profiles (id, full_name, avatar_url)
     `)
     .eq('trip_id', trip.id)
-    .eq('status', 'accepted');
+    .eq('status', 'confirmed');
 
   const tripWithDetails: TripWithDetails = {
     ...trip,
@@ -84,7 +84,7 @@ async function getInviteAndUserData(code: string) {
       .single();
 
     isAlreadyMember =
-      existingParticipant?.status === 'accepted';
+      existingParticipant?.status === 'confirmed';
   }
 
   return {

@@ -59,7 +59,7 @@ export function AddToTripModal({
       .from('trip_participants')
       .select('trip_id')
       .eq('user_id', user.id)
-      .eq('status', 'accepted');
+      .eq('status', 'confirmed');
 
     const ownedIds = ownedTrips?.map(t => t.id) || [];
     const participantIds = participations?.map(p => p.trip_id) || [];

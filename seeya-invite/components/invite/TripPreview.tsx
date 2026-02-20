@@ -26,7 +26,7 @@ export function TripPreview({
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
   const daysUntil = getDaysUntil(trip.start_date);
   const acceptedParticipants = trip.participants.filter(
-    (p) => p.status === 'accepted'
+    (p) => p.status === 'confirmed'
   );
 
   return (

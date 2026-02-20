@@ -366,8 +366,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
         trip_id: trip.id,
         user_id: user.id,
         role: 'owner',
-        status: 'accepted',
-        joined_at: new Date().toISOString(),
+        status: 'confirmed',
       });
       if (participantError) console.error('Participant insert error:', participantError);
 

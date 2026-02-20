@@ -68,7 +68,7 @@ export default function CirclePage() {
         .from('trip_participants')
         .select('trip_id')
         .eq('user_id', user.id)
-        .eq('status', 'accepted'),
+        .eq('status', 'confirmed'),
       supabase
         .from('trips')
         .select('id')
@@ -137,7 +137,7 @@ export default function CirclePage() {
           user:profiles (*)
         `)
         .in('trip_id', allTripIds)
-        .eq('status', 'accepted');
+        .eq('status', 'confirmed');
 
       if (allParticipants) {
         // Count shared trips per person, excluding friends and self

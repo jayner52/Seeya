@@ -69,8 +69,7 @@ export function CreateTripForm() {
           trip_id: trip.id,
           user_id: user.id,
           role: 'owner',
-          status: 'accepted',
-          joined_at: new Date().toISOString(),
+          status: 'confirmed',
         });
 
       if (participantError) throw participantError;

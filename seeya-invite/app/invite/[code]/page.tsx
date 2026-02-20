@@ -98,7 +98,7 @@ async function getInviteData(code: string) {
     `
     )
     .eq('trip_id', trip.id)
-    .eq('status', 'accepted');
+    .eq('status', 'confirmed');
 
   const tripWithDetails: TripWithDetails = {
     ...trip,

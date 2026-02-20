@@ -44,7 +44,7 @@ export default function TripsPage() {
         .from('trip_participants')
         .select('trip_id')
         .eq('user_id', user.id)
-        .eq('status', 'accepted'),
+        .eq('status', 'confirmed'),
       supabase
         .from('trips')
         .select('id')
@@ -87,7 +87,7 @@ export default function TripsPage() {
           )
         `)
         .in('trip_id', allTripIds)
-        .eq('status', 'accepted'),
+        .eq('status', 'confirmed'),
       supabase
         .from('trip_locations')
         .select('id, trip_id, custom_location, order_index')

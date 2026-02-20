@@ -81,7 +81,7 @@ export default function ProfilePage() {
         .from('trip_participants')
         .select('trip_id')
         .eq('user_id', user.id)
-        .eq('status', 'accepted'),
+        .eq('status', 'confirmed'),
       supabase
         .from('trips')
         .select('id')
