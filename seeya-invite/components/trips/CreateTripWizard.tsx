@@ -368,7 +368,6 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
       const { error: participantError } = await supabase.from('trip_participants').insert({
         trip_id: trip.id,
         user_id: user.id,
-        role: 'owner',
         status: 'confirmed',
       });
       if (participantError) {
@@ -400,7 +399,6 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           const { error: friendError } = await supabase.from('trip_participants').insert({
             trip_id: trip.id,
             user_id: friendId,
-            role: 'member',
             status: 'invited',
           });
           if (friendError) console.error('❌ [CreateTrip] Friend invite error:', friendError);
