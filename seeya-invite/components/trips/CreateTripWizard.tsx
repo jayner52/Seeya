@@ -338,77 +338,32 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           return !max || d.endDate > max ? d.endDate : max;
         }, null as string | null);
       } else if (dateMode === 'flexible' && selectedMonth) {
-        // Set to first and last of month
         const [year, month] = selectedMonth.split('-').map(Number);
         startDate = `${year}-${String(month).padStart(2, '0')}-01`;
         const lastDay = new Date(year, month, 0).getDate();
         endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
       }
 
-      // Create trip
-      console.log('🚀 [CreateTrip] Step 1: Creating trip...');
-      const { data: trip, error: tripError } = await supabase
-        .from('trips')
-        .insert({
-          user_id: user.id,
-          name: tripName.trim(),
-          description: tripDescription.trim() || null,
-          start_date: startDate,
-          end_date: endDate,
-          visibility,
-        })
-        .select()
-        .single();
-
-      if (tripError) throw tripError;
-      console.log('✅ [CreateTrip] Trip created:', trip.id);
-
-      // Add owner as participant
-      console.log('🚀 [CreateTrip] Step 2: Adding owner as participant...');
-      const { error: participantError } = await supabase.from('trip_participants').insert({
-        trip_id: trip.id,
-        user_id: user.id,
-        status: 'confirmed',
-      });
-      if (participantError) {
-        console.error('❌ [CreateTrip] Participant insert error:', participantError);
-      } else {
-        console.log('✅ [CreateTrip] Owner participant added');
-      }
-
-      // Add locations
-      console.log('🚀 [CreateTrip] Step 3: Adding', destinations.length, 'location(s)...');
-      for (let i = 0; i < destinations.length; i++) {
-        const dest = destinations[i];
-        const { error: locationError } = await supabase.from('trip_locations').insert({
-          trip_id: trip.id,
+      // Single SECURITY DEFINER RPC call — creates trip, participant, locations,
+      // and friend invites atomically, bypassing all client-side RLS.
+      const { data: tripId, error: rpcError } = await supabase.rpc('create_trip_with_locations', {
+        p_name: tripName.trim(),
+        p_description: tripDescription.trim() || null,
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_visibility: visibility,
+        p_locations: destinations.map((dest, i) => ({
           custom_location: dest.name,
           order_index: i,
-        });
-        if (locationError) {
-          console.error(`❌ [CreateTrip] Location ${i} insert error:`, locationError);
-        } else {
-          console.log(`✅ [CreateTrip] Location ${i} added:`, dest.name);
-        }
-      }
+        })),
+        p_invited_friends: Array.from(selectedFriends),
+      });
 
-      // Invite selected friends
-      if (selectedFriends.size > 0) {
-        console.log('🚀 [CreateTrip] Step 4: Inviting', selectedFriends.size, 'friend(s)...');
-        for (const friendId of Array.from(selectedFriends)) {
-          const { error: friendError } = await supabase.from('trip_participants').insert({
-            trip_id: trip.id,
-            user_id: friendId,
-            status: 'invited',
-          });
-          if (friendError) console.error('❌ [CreateTrip] Friend invite error:', friendError);
-        }
-      }
+      if (rpcError) throw rpcError;
 
-      console.log('✅ [CreateTrip] Done! Navigating to trip...');
-      onSuccess(trip.id);
+      onSuccess(tripId as string);
     } catch (err) {
-      console.error('❌ [CreateTrip] Fatal error:', err);
+      console.error('❌ [CreateTrip] Error:', err);
       setError(`Failed to create trip: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsCreating(false);
