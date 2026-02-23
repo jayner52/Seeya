@@ -277,7 +277,17 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
 
   const handleUpdateDestinationDate = (id: string, field: 'startDate' | 'endDate', value: string) => {
     setDestinations(
-      destinations.map((d) => (d.id === id ? { ...d, [field]: value } : d))
+      destinations.map((d) => {
+        if (d.id !== id) return d;
+        const updated = { ...d, [field]: value };
+        // When start date changes, push end date to be at least 1 day after
+        if (field === 'startDate' && value && updated.endDate && updated.endDate <= value) {
+          const next = new Date(value);
+          next.setDate(next.getDate() + 1);
+          updated.endDate = next.toISOString().split('T')[0];
+        }
+        return updated;
+      })
     );
   };
 
@@ -488,6 +498,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
                   <input
                     type="date"
                     value={dest.endDate || ''}
+                    min={dest.startDate || undefined}
                     onChange={(e) => handleUpdateDestinationDate(dest.id, 'endDate', e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
                   />
