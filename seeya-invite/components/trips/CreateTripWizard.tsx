@@ -369,12 +369,19 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
         p_invited_friends: Array.from(selectedFriends),
       });
 
-      if (rpcError) throw rpcError;
+      if (rpcError) {
+        console.error('❌ [CreateTrip] RPC error:', rpcError);
+        setError(`Failed to create trip: ${rpcError.message} [code: ${rpcError.code}]`);
+        return;
+      }
 
       onSuccess(tripId as string);
     } catch (err) {
       console.error('❌ [CreateTrip] Error:', err);
-      setError(`Failed to create trip: ${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error
+        ? err.message
+        : (err as { message?: string })?.message ?? JSON.stringify(err);
+      setError(`Failed to create trip: ${msg}`);
     } finally {
       setIsCreating(false);
     }
