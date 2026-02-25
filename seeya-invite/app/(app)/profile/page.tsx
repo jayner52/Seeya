@@ -97,12 +97,7 @@ export default function ProfilePage() {
         .eq('status', 'accepted'),
       supabase
         .from('wanderlist_items')
-        .select(`
-          id,
-          place_name,
-          notes,
-          city:cities (name, country:countries (name, continent))
-        `)
+        .select('id, place_name, notes')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
     ]);
@@ -163,9 +158,7 @@ export default function ProfilePage() {
     if (wanderlistData) {
       const items: WanderlistItem[] = wanderlistData.map((item: any) => ({
         id: item.id,
-        placeName: item.place_name || item.city?.name || 'Unknown',
-        country: item.city?.country?.name,
-        continent: item.city?.country?.continent,
+        placeName: item.place_name || 'Unknown',
         notes: item.notes,
       }));
       setWanderlist(items);
