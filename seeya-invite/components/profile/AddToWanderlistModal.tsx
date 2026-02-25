@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { extractCountryFromSecondaryText, getContinent } from '@/lib/countryContinent';
 import { X, Search, MapPin, Plus } from 'lucide-react';
 
 interface AddToWanderlistModalProps {
@@ -75,12 +76,17 @@ export function AddToWanderlistModal({
     try {
       const supabase = createClient();
 
+      const country = extractCountryFromSecondaryText(place.secondaryText);
+      const continent = country ? getContinent(country) : 'Other';
+
       const { error: insertError } = await supabase
         .from('wanderlist_items')
         .insert({
           user_id: userId,
           place_name: place.description,
           place_id: place.placeId,
+          country: country ?? null,
+          continent,
         });
 
       if (insertError) throw insertError;

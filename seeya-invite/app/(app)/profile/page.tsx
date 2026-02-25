@@ -97,7 +97,7 @@ export default function ProfilePage() {
         .eq('status', 'accepted'),
       supabase
         .from('wanderlist_items')
-        .select('id, place_name, notes')
+        .select('id, place_name, notes, country, continent')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
     ]);
@@ -160,6 +160,8 @@ export default function ProfilePage() {
         id: item.id,
         placeName: item.place_name || 'Unknown',
         notes: item.notes,
+        country: item.country ?? undefined,
+        continent: item.continent ?? undefined,
       }));
       setWanderlist(items);
     }
