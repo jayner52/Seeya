@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { Button, Spinner } from '@/components/ui';
 import { cn } from '@/lib/utils/cn';
-import { X, MapPin, Calendar, Check, Plus } from 'lucide-react';
+import { X, MapPin, Calendar, Check, Plus, ChevronDown } from 'lucide-react';
 import { formatDateRange } from '@/lib/utils/date';
 import type { AIRecommendation } from '@/types';
 
@@ -35,6 +35,32 @@ export function AddToTripModal({
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+
+  // Map recommendation category to TripBit category
+  const categoryMap: Record<string, string> = {
+    restaurant: 'dining',
+    activity: 'activity',
+    stay: 'stay',
+    tip: 'other',
+  };
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    categoryMap[recommendation.category] || 'other'
+  );
+
+  const allCategories = [
+    { id: 'flight', label: 'Flight' },
+    { id: 'stay', label: 'Stay' },
+    { id: 'car', label: 'Car' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'transport', label: 'Transit' },
+    { id: 'money', label: 'Money' },
+    { id: 'dining', label: 'Dining' },
+    { id: 'reservation', label: 'Reserv.' },
+    { id: 'document', label: 'Doc' },
+    { id: 'photos', label: 'Photos' },
+    { id: 'other', label: 'Other' },
+  ];
 
   useEffect(() => {
     if (isOpen && user) {
@@ -110,14 +136,6 @@ export function AddToTripModal({
     setIsAdding(true);
     const supabase = createClient();
 
-    // Map recommendation category to TripBit category
-    const categoryMap: Record<string, string> = {
-      restaurant: 'restaurant',
-      activity: 'activity',
-      stay: 'hotel',
-      tip: 'note',
-    };
-
     // Build notes from recommendation
     const notesParts: string[] = [];
     if (recommendation.description) {
@@ -136,10 +154,10 @@ export function AddToTripModal({
     const { error } = await supabase.from('trip_bits').insert({
       trip_id: selectedTripId,
       created_by: user.id,
-      category: categoryMap[recommendation.category] || 'other',
+      category: selectedCategory,
       title: recommendation.title,
       notes: notesParts.join('\n\n'),
-      status: 'idea',
+      status: 'pending',
     });
 
     setIsAdding(false);
@@ -177,6 +195,38 @@ export function AddToTripModal({
         <div className="p-4 bg-gray-50 border-b">
           <p className="text-sm text-seeya-text-secondary mb-1">Adding:</p>
           <p className="font-medium text-seeya-text">{recommendation.title}</p>
+        </div>
+
+        {/* Category row */}
+        <div className="px-4 py-3 border-b bg-white">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-seeya-text-secondary">Category</span>
+            <button
+              onClick={() => setShowCategoryPicker(!showCategoryPicker)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-medium"
+            >
+              {allCategories.find(c => c.id === selectedCategory)?.label || selectedCategory}
+              <ChevronDown size={14} className={cn('transition-transform', showCategoryPicker && 'rotate-180')} />
+            </button>
+          </div>
+          {showCategoryPicker && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {allCategories.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setSelectedCategory(cat.id); setShowCategoryPicker(false); }}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+                    selectedCategory === cat.id
+                      ? 'bg-seeya-purple text-white'
+                      : 'bg-gray-100 text-seeya-text-secondary hover:bg-gray-200'
+                  )}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}

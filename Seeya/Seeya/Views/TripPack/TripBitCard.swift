@@ -119,6 +119,8 @@ struct TripBitCard: View {
             carDetails
         case .activity:
             activityDetails
+        case .dining:
+            diningDetails
         case .transport:
             transportDetails
         case .money:
@@ -292,6 +294,36 @@ struct TripBitCard: View {
         }
     }
 
+    private var diningDetails: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let restaurant = tripBit.details?.restaurantName {
+                Text(restaurant)
+                    .font(.caption)
+                    .fontWeight(.medium)
+            }
+
+            HStack(spacing: 12) {
+                if let time = tripBit.details?.reservationTime {
+                    Label(time, systemImage: "clock")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let partySize = tripBit.details?.partySize {
+                    Label("\(partySize) guests", systemImage: "person.2")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let cuisine = tripBit.details?.cuisine {
+                Text(cuisine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private var reservationDetails: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let venue = tripBit.details?.venueName {
@@ -340,13 +372,18 @@ struct TripBitCard: View {
 
     private var photosDetails: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let albumName = tripBit.details?.albumName {
-                Text(albumName)
+            // Show new albumTitle or fall back to legacy albumName
+            if let title = tripBit.details?.albumTitle ?? tripBit.details?.albumName {
+                Text(title)
                     .font(.caption)
                     .fontWeight(.medium)
             }
 
-            if let count = tripBit.details?.photoCount {
+            if let platform = tripBit.details?.photoPlatform {
+                Text(platform)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if let count = tripBit.details?.photoCount {
                 Text("\(count) photos")
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -5,13 +5,15 @@ import { Card } from '@/components/ui';
 import { formatDate } from '@/lib/utils/date';
 import {
   Plane,
-  Hotel,
-  Utensils,
-  Ticket,
+  BedDouble,
   Car,
-  Wallet,
+  PersonStanding,
+  TramFront,
+  CreditCard,
+  Utensils,
+  CalendarClock,
   FileText,
-  Image,
+  Images,
   MoreHorizontal,
   MapPin,
   Clock,
@@ -32,14 +34,20 @@ interface TripBitCardProps {
 
 const categoryConfig: Record<string, { icon: typeof Plane; color: string; bgColor: string }> = {
   flight: { icon: Plane, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-  hotel: { icon: Hotel, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-  stay: { icon: Hotel, color: 'text-purple-600', bgColor: 'bg-purple-50' },
-  restaurant: { icon: Utensils, color: 'text-orange-600', bgColor: 'bg-orange-50' },
-  activity: { icon: Ticket, color: 'text-green-600', bgColor: 'bg-green-50' },
-  transport: { icon: Car, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-  car: { icon: Car, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
-  note: { icon: FileText, color: 'text-gray-600', bgColor: 'bg-gray-50' },
+  stay: { icon: BedDouble, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+  car: { icon: Car, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+  activity: { icon: PersonStanding, color: 'text-green-600', bgColor: 'bg-green-50' },
+  transport: { icon: TramFront, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+  money: { icon: CreditCard, color: 'text-amber-600', bgColor: 'bg-amber-50' },
+  dining: { icon: Utensils, color: 'text-red-500', bgColor: 'bg-red-50' },
+  reservation: { icon: CalendarClock, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+  document: { icon: FileText, color: 'text-gray-600', bgColor: 'bg-gray-50' },
+  photos: { icon: Images, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
   other: { icon: MoreHorizontal, color: 'text-gray-500', bgColor: 'bg-gray-50' },
+  // Legacy aliases
+  hotel: { icon: BedDouble, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+  restaurant: { icon: Utensils, color: 'text-red-500', bgColor: 'bg-red-50' },
+  note: { icon: FileText, color: 'text-gray-600', bgColor: 'bg-gray-50' },
 };
 
 // Helper to check if trip bit is confirmed/booked
@@ -70,7 +78,7 @@ function getDisplayTime(tripBit: TripBit): string | null {
 
 // Check if a trip bit is shareable (restaurant, activity, stay, etc.)
 function isShareable(tripBit: TripBit): boolean {
-  const shareableCategories = ['reservation', 'restaurant', 'activity', 'stay', 'hotel', 'other', 'note'];
+  const shareableCategories = ['dining', 'reservation', 'restaurant', 'activity', 'stay', 'hotel', 'other', 'note'];
   return shareableCategories.includes(tripBit.category);
 }
 

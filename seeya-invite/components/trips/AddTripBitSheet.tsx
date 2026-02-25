@@ -8,14 +8,15 @@ import { Input, Button } from '@/components/ui';
 import {
   X,
   Plane,
-  Hotel,
+  BedDouble,
   Car,
-  Ticket,
-  Bus,
-  DollarSign,
-  CalendarCheck,
+  PersonStanding,
+  TramFront,
+  CreditCard,
+  Utensils,
+  CalendarClock,
   FileText,
-  Image,
+  Images,
   MoreHorizontal,
   Link2,
   Calendar,
@@ -33,6 +34,7 @@ import {
   ActivityFields,
   TransportFields,
   MoneyFields,
+  DiningFields,
   ReservationFields,
   DocumentFields,
   PhotosFields,
@@ -53,14 +55,15 @@ interface AddTripBitSheetProps {
 
 const categories: { id: TripBitCategory; label: string; icon: typeof Plane; color: string }[] = [
   { id: 'flight', label: 'Flight', icon: Plane, color: 'bg-blue-100 text-blue-600' },
-  { id: 'stay', label: 'Stay', icon: Hotel, color: 'bg-purple-100 text-purple-600' },
-  { id: 'car', label: 'Car', icon: Car, color: 'bg-pink-100 text-pink-600' },
-  { id: 'activity', label: 'Activity', icon: Ticket, color: 'bg-green-100 text-green-600' },
-  { id: 'transport', label: 'Transit', icon: Bus, color: 'bg-yellow-100 text-yellow-700' },
-  { id: 'money', label: 'Money', icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
-  { id: 'reservation', label: 'Reserv.', icon: CalendarCheck, color: 'bg-red-100 text-red-600' },
-  { id: 'document', label: 'Doc', icon: FileText, color: 'bg-orange-100 text-orange-600' },
-  { id: 'photos', label: 'Photos', icon: Image, color: 'bg-indigo-100 text-indigo-600' },
+  { id: 'stay', label: 'Stay', icon: BedDouble, color: 'bg-purple-100 text-purple-600' },
+  { id: 'car', label: 'Car', icon: Car, color: 'bg-orange-100 text-orange-600' },
+  { id: 'activity', label: 'Activity', icon: PersonStanding, color: 'bg-green-100 text-green-600' },
+  { id: 'transport', label: 'Transit', icon: TramFront, color: 'bg-cyan-100 text-cyan-600' },
+  { id: 'money', label: 'Money', icon: CreditCard, color: 'bg-amber-100 text-amber-600' },
+  { id: 'dining', label: 'Dining', icon: Utensils, color: 'bg-red-50 text-red-500' },
+  { id: 'reservation', label: 'Reserv.', icon: CalendarClock, color: 'bg-pink-100 text-pink-600' },
+  { id: 'document', label: 'Doc', icon: FileText, color: 'bg-gray-100 text-gray-600' },
+  { id: 'photos', label: 'Photos', icon: Images, color: 'bg-indigo-100 text-indigo-600' },
   { id: 'other', label: 'Other', icon: MoreHorizontal, color: 'bg-gray-100 text-gray-600' },
 ];
 
@@ -328,9 +331,9 @@ export function AddTripBitSheet({
         ? new Date(`${endDate}T23:59:59`).toISOString()
         : null;
 
-      // Map status to TripBitStatus
-      const tripBitStatus = status === 'confirmed' ? 'booked'
-        : status === 'pending' ? 'planned'
+      // Map status to TripBitStatus (DB accepts: confirmed, pending, cancelled, idea, completed)
+      const tripBitStatus = status === 'confirmed' ? 'confirmed'
+        : status === 'pending' ? 'pending'
         : 'cancelled';
 
       let tripBitId: string;
@@ -469,6 +472,8 @@ export function AddTripBitSheet({
         return <TransportFields details={details} setDetails={setDetails} />;
       case 'money':
         return <MoneyFields details={details} setDetails={setDetails} />;
+      case 'dining':
+        return <DiningFields details={details} setDetails={setDetails} />;
       case 'reservation':
       case 'restaurant':
         return <ReservationFields details={details} setDetails={setDetails} />;

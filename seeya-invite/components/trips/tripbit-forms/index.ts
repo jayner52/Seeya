@@ -4,6 +4,7 @@ export { CarFields } from './CarFields';
 export { ActivityFields } from './ActivityFields';
 export { TransportFields } from './TransportFields';
 export { MoneyFields } from './MoneyFields';
+export { DiningFields } from './DiningFields';
 export { ReservationFields } from './ReservationFields';
 export { DocumentFields } from './DocumentFields';
 export { PhotosFields } from './PhotosFields';

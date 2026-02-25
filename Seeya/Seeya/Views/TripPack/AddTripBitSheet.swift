@@ -511,6 +511,8 @@ struct AddTripBitSheet: View {
             CarFormFields(details: $details)
         case .activity:
             ActivityFormFields(details: $details)
+        case .dining:
+            DiningFormFields(details: $details)
         case .transport:
             TransportFormFields(details: $details)
         case .money:
@@ -789,6 +791,7 @@ struct CategoryGridTile: View {
         case .stay: return "Stay"
         case .car: return "Car"
         case .activity: return "Activity"
+        case .dining: return "Dining"
         case .transport: return "Transit"
         case .money: return "Money"
         case .reservation: return "Reserv."

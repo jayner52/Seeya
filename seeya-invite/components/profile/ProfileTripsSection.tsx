@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, Button, Badge } from '@/components/ui';
 import { Plane, ChevronRight, Calendar } from 'lucide-react';
@@ -20,12 +21,32 @@ function TripItem({ trip }: TripItemProps) {
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
   const daysUntil = getDaysUntil(trip.start_date);
   const isPast = daysUntil !== null && daysUntil < 0;
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/unsplash/city-photo?query=${encodeURIComponent(trip.name)}`)
+      .then((res) => {
+        if (!res.ok || res.status === 204) throw new Error('no photo');
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled) setPhotoUrl(`${data.url.split('?')[0]}?w=80&h=80&fit=crop`);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [trip.name]);
 
   return (
     <Link href={`/trips/${trip.id}`}>
       <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
-        <div className="w-10 h-10 rounded-lg bg-seeya-purple/10 flex items-center justify-center">
-          <Plane size={18} className="text-seeya-purple" />
+        <div className="w-10 h-10 rounded-lg bg-seeya-purple/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoUrl} alt={trip.name} className="w-full h-full object-cover" />
+          ) : (
+            <Plane size={18} className="text-seeya-purple" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">

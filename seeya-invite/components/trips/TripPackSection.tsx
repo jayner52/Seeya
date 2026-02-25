@@ -6,13 +6,15 @@ import { Card, Button } from '@/components/ui';
 import { TripBitCard } from './TripBitCard';
 import {
   Plane,
-  Hotel,
-  Utensils,
-  Ticket,
+  BedDouble,
   Car,
-  Wallet,
+  PersonStanding,
+  TramFront,
+  CreditCard,
+  Utensils,
+  CalendarClock,
   FileText,
-  Image,
+  Images,
   MoreHorizontal,
   Plus,
   ChevronDown,
@@ -29,14 +31,18 @@ interface TripPackSectionProps {
   className?: string;
 }
 
-const categories: { id: TripBitCategory; label: string; icon: typeof Plane; aliases?: string[] }[] = [
-  { id: 'flight', label: 'Flights', icon: Plane },
-  { id: 'hotel', label: 'Stays', icon: Hotel, aliases: ['stay'] },
-  { id: 'transport', label: 'Transport', icon: Car, aliases: ['car'] },
-  { id: 'activity', label: 'Activities', icon: Ticket },
-  { id: 'restaurant', label: 'Dining', icon: Utensils, aliases: ['reservation'] },
-  { id: 'note', label: 'Notes', icon: FileText },
-  { id: 'other', label: 'Other', icon: MoreHorizontal },
+const categories: { id: TripBitCategory; label: string; icon: typeof Plane; color: string; bgColor: string }[] = [
+  { id: 'flight', label: 'Flights', icon: Plane, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  { id: 'stay', label: 'Stays', icon: BedDouble, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  { id: 'car', label: 'Car', icon: Car, color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  { id: 'activity', label: 'Activities', icon: PersonStanding, color: 'text-green-600', bgColor: 'bg-green-100' },
+  { id: 'transport', label: 'Transit', icon: TramFront, color: 'text-cyan-600', bgColor: 'bg-cyan-100' },
+  { id: 'money', label: 'Money', icon: CreditCard, color: 'text-amber-600', bgColor: 'bg-amber-100' },
+  { id: 'dining', label: 'Dining', icon: Utensils, color: 'text-red-500', bgColor: 'bg-red-50' },
+  { id: 'reservation', label: 'Reservations', icon: CalendarClock, color: 'text-pink-600', bgColor: 'bg-pink-100' },
+  { id: 'document', label: 'Documents', icon: FileText, color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  { id: 'photos', label: 'Photos', icon: Images, color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
+  { id: 'other', label: 'Other', icon: MoreHorizontal, color: 'text-gray-500', bgColor: 'bg-gray-100' },
 ];
 
 interface CategorySectionProps {
@@ -58,7 +64,9 @@ function CategorySection({ category, tripBits, onAddClick, onTripBitClick, isPas
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
       >
-        <Icon size={18} className="text-seeya-text-secondary" />
+        <div className={cn('w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0', category.bgColor)}>
+          <Icon size={14} className={category.color} />
+        </div>
         <span className="flex-1 text-left font-medium text-seeya-text">
           {category.label}
         </span>
@@ -106,15 +114,11 @@ export function TripPackSection({
   onRateShare,
   className,
 }: TripPackSectionProps) {
-  // Group trip bits by category (including iOS category aliases)
+  // Group trip bits by category
   const groupedBits = categories.reduce((acc, category) => {
-    acc[category.id] = tripBits.filter((bit) => {
-      if (bit.category === category.id) return true;
-      if (category.aliases?.includes(bit.category)) return true;
-      return false;
-    });
+    acc[category.id] = tripBits.filter((bit) => bit.category === category.id);
     return acc;
-  }, {} as Record<TripBitCategory, TripBit[]>);
+  }, {} as Record<string, TripBit[]>);
 
   const totalCount = tripBits.length;
 

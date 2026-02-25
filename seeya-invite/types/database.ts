@@ -100,7 +100,7 @@ export interface TripBit {
 
 export type TripBitStatus = 'idea' | 'planned' | 'booked' | 'confirmed' | 'completed' | 'cancelled';
 
-// Updated TripBitCategory to match iOS (10 categories)
+// Updated TripBitCategory to match iOS (11 categories)
 export type TripBitCategory =
   | 'flight'
   | 'stay'
@@ -108,6 +108,7 @@ export type TripBitCategory =
   | 'activity'
   | 'transport'
   | 'money'
+  | 'dining'
   | 'reservation'
   | 'document'
   | 'photos'

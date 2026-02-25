@@ -8,6 +8,7 @@ enum TripBitCategory: String, Codable, Sendable, CaseIterable {
     case stay
     case car
     case activity
+    case dining
     case transport
     case money
     case reservation
@@ -21,6 +22,7 @@ enum TripBitCategory: String, Codable, Sendable, CaseIterable {
         case .stay: return "Stay"
         case .car: return "Car Rental"
         case .activity: return "Activity"
+        case .dining: return "Dining"
         case .transport: return "Transport"
         case .money: return "Money"
         case .reservation: return "Reservation"
@@ -36,6 +38,7 @@ enum TripBitCategory: String, Codable, Sendable, CaseIterable {
         case .stay: return "bed.double.fill"
         case .car: return "car.fill"
         case .activity: return "figure.hiking"
+        case .dining: return "fork.knife"
         case .transport: return "tram.fill"
         case .money: return "creditcard.fill"
         case .reservation: return "calendar.badge.clock"
@@ -51,6 +54,7 @@ enum TripBitCategory: String, Codable, Sendable, CaseIterable {
         case .stay: return .purple
         case .car: return .orange
         case .activity: return .green
+        case .dining: return .orange
         case .transport: return .cyan
         case .money: return .yellow
         case .reservation: return .pink
@@ -356,7 +360,15 @@ struct TripBitDetails: Codable, Identifiable, Sendable {
     var expiryDate: String? { string(for: "expiryDate") }
     var holderName: String? { string(for: "holderName") }
 
+    // MARK: - Dining-specific accessors
+    var restaurantName: String? { string(for: "restaurantName") }
+    var cuisine: String? { string(for: "cuisine") }
+
     // MARK: - Photos-specific accessors
+    var albumTitle: String? { string(for: "albumTitle") }
+    var albumLink: String? { string(for: "albumLink") }
+    var photoPlatform: String? { string(for: "platform") }
+    // Legacy photos accessors
     var albumName: String? { string(for: "albumName") }
     var photoCount: Int? { int(for: "photoCount") }
     var coverPhotoUrl: String? { string(for: "coverPhotoUrl") }

@@ -105,6 +105,9 @@ struct TripBitCompactRow: View {
             }
             return tripBit.details?.moneyType
 
+        case .dining:
+            return tripBit.details?.restaurantName
+
         case .reservation:
             return tripBit.details?.venueName
 
@@ -112,10 +115,13 @@ struct TripBitCompactRow: View {
             return tripBit.details?.documentType
 
         case .photos:
+            if let platform = tripBit.details?.photoPlatform {
+                return platform
+            }
             if let count = tripBit.details?.photoCount {
                 return "\(count) photos"
             }
-            return tripBit.details?.albumName
+            return tripBit.details?.albumTitle ?? tripBit.details?.albumName
 
         case .other:
             return tripBit.details?.customType

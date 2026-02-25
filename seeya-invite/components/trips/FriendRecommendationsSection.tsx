@@ -73,7 +73,7 @@ const categoryConfig: Record<
 function mapRecCategoryToTripBitCategory(category: RecommendationCategory): TripBitCategory {
   switch (category) {
     case 'restaurant':
-      return 'reservation';
+      return 'dining';
     case 'activity':
       return 'activity';
     case 'stay':

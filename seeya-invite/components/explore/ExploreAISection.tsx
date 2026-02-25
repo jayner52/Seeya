@@ -74,7 +74,7 @@ function AIRecommendationCard({
   isAdded: boolean;
   onAddToTrip: () => void;
 }) {
-  const config = categoryConfig[recommendation.category];
+  const config = categoryConfig[recommendation.category] ?? categoryConfig['tip'];
   const Icon = config.icon;
   const hasPhoto = !!recommendation.photoUrl;
   const isTip = recommendation.category === 'tip';
@@ -521,7 +521,8 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
       }
 
       const result = await response.json();
-      setCache(prev => ({ ...prev, [category]: result.recommendations }));
+      const recs = Array.isArray(result.recommendations) ? result.recommendations : [];
+      setCache(prev => ({ ...prev, [category]: recs }));
     } catch (err) {
       console.error(`Error generating ${category} recommendations:`, err);
       setErrors(prev => ({

@@ -44,6 +44,7 @@ const categoryLabels: Record<RecommendationCategory, string> = {
 
 function mapTripBitCategory(category: TripBitCategory): RecommendationCategory {
   switch (category) {
+    case 'dining':
     case 'reservation':
     case 'restaurant':
       return 'restaurant';
