@@ -29,7 +29,7 @@ BEGIN
 
   -- 1. Create the trip
   INSERT INTO public.trips (user_id, name, description, start_date, end_date, visibility)
-  VALUES (v_user_id, p_name, p_description, p_start_date, p_end_date, p_visibility)
+  VALUES (v_user_id, p_name, p_description, p_start_date, p_end_date, p_visibility::visibility_level)
   RETURNING id INTO v_trip_id;
 
   -- 2. Add owner as confirmed participant

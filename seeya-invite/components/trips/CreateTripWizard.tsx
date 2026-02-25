@@ -875,7 +875,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
       {/* Content */}
       <div className="max-w-lg mx-auto px-6 py-6">
         <h2 className="text-2xl font-semibold text-seeya-text mb-6">
-          {STEP_CONFIG[currentStep].subtitle}{/* canary-v2 */} (v2)
+          {STEP_CONFIG[currentStep].subtitle}
         </h2>
 
         {error && (
