@@ -213,10 +213,17 @@ function parseRecommendations(content: string): AIRecommendation[] {
   const parsed = JSON.parse(jsonStr.trim());
   const items = Array.isArray(parsed) ? parsed : (parsed.recommendations || []);
 
-  return items.map((item: Omit<AIRecommendation, 'id'>) => ({
-    ...item,
-    id: generateId(),
-  }));
+  const validCategories = ['restaurant', 'activity', 'stay', 'tip'];
+  return items
+    .filter((item: any) => item && typeof item === 'object')
+    .map((item: Omit<AIRecommendation, 'id'>) => ({
+      ...item,
+      id: generateId(),
+      // Normalize any unexpected category value the AI might return
+      category: validCategories.includes(item.category as string)
+        ? item.category
+        : 'tip',
+    })) as AIRecommendation[];
 }
 
 export async function POST(request: Request) {

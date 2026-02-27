@@ -74,7 +74,7 @@ function AIRecommendationCard({
   isAdded: boolean;
   onAddToTrip: () => void;
 }) {
-  const config = categoryConfig[recommendation.category] ?? categoryConfig['tip'];
+  const config = categoryConfig[recommendation.category as RecommendationCategory] || categoryConfig['tip'];
   const Icon = config.icon;
   const hasPhoto = !!recommendation.photoUrl;
   const isTip = recommendation.category === 'tip';
