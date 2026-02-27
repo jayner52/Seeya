@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 
 /// AI recommendations section for Explore page with destination search
 struct ExploreAISection: View {
@@ -18,6 +19,9 @@ struct ExploreAISection: View {
     @State private var stayFilters = AIService.StayFilters()
     @State private var tipFilters = AIService.TipFilters()
     @State private var showFilters = false
+
+    // Upcoming trip destination chips
+    @State private var upcomingTripChips: [TripDestinationChip] = []
 
     // Places autocomplete
     @State private var predictions: [PlacePrediction] = []
@@ -74,6 +78,7 @@ struct ExploreAISection: View {
             }
         }
         .animation(.spring(response: 0.3), value: successMessage)
+        .task { await fetchUpcomingTrips() }
     }
 
     // MARK: - Header
@@ -214,15 +219,31 @@ struct ExploreAISection: View {
                 .foregroundStyle(Color.seeyaTextSecondary)
                 .multilineTextAlignment(.center)
 
-            // Quick suggestions
-            Text("Try:")
-                .font(SeeyaTypography.caption)
-                .foregroundStyle(Color.seeyaTextTertiary)
+            // Quick destination suggestions
+            if upcomingTripChips.isEmpty {
+                Text("Try:")
+                    .font(SeeyaTypography.caption)
+                    .foregroundStyle(Color.seeyaTextTertiary)
 
-            HStack(spacing: SeeyaSpacing.xs) {
-                quickDestinationChip("Tokyo")
-                quickDestinationChip("Paris")
-                quickDestinationChip("Bali")
+                HStack(spacing: SeeyaSpacing.xs) {
+                    quickDestinationChip("Tokyo")
+                    quickDestinationChip("Paris")
+                    quickDestinationChip("Bali")
+                }
+            } else {
+                VStack(spacing: SeeyaSpacing.xs) {
+                    Text("Your upcoming trips:")
+                        .font(SeeyaTypography.caption)
+                        .foregroundStyle(Color.seeyaTextTertiary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: SeeyaSpacing.xs) {
+                            ForEach(upcomingTripChips) { chip in
+                                tripDestinationChip(chip)
+                            }
+                        }
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -633,6 +654,84 @@ struct ExploreAISection: View {
         .clipShape(Capsule())
         .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
         .padding(.bottom, SeeyaSpacing.lg)
+    }
+
+    // MARK: - Trip Destination Chips
+
+    struct TripDestinationChip: Identifiable {
+        let id: String  // city name used as unique key
+        let tripName: String
+        let cityName: String
+        let flag: String?
+    }
+
+    private func tripDestinationChip(_ chip: TripDestinationChip) -> some View {
+        Button {
+            destination = chip.cityName
+            predictions = []
+            autocompleteTask?.cancel()
+            searchDestination()
+        } label: {
+            HStack(spacing: 4) {
+                if let flag = chip.flag {
+                    Text(flag).font(.caption)
+                }
+                Text(chip.cityName)
+                    .font(SeeyaTypography.labelSmall)
+                    .foregroundStyle(Color.seeyaPurple)
+            }
+            .padding(.horizontal, SeeyaSpacing.sm)
+            .padding(.vertical, SeeyaSpacing.xs)
+            .background(Color.seeyaPurple.opacity(0.1))
+            .clipShape(Capsule())
+        }
+    }
+
+    private func fetchUpcomingTrips() async {
+        do {
+            let session = try await SupabaseService.shared.client.auth.session
+            let userId = session.user.id
+            let today = Calendar.current.startOfDay(for: Date())
+
+            let trips: [Trip] = try await SupabaseService.shared.client
+                .from("trips")
+                .select("*, trip_locations(*, cities(*, countries(*)))")
+                .eq("user_id", value: userId.uuidString)
+                .order("start_date", ascending: true)
+                .execute()
+                .value
+
+            // Filter to current + upcoming trips
+            let relevant = trips.filter { trip in
+                guard let endDate = trip.endDate else { return true }
+                return Calendar.current.startOfDay(for: endDate) >= today
+            }
+
+            // Extract unique city destinations in trip order
+            var seen = Set<String>()
+            var chips: [TripDestinationChip] = []
+
+            for trip in relevant {
+                let sorted = trip.locations?.sorted { $0.orderIndex < $1.orderIndex } ?? []
+                for loc in sorted {
+                    let name = loc.displayName
+                    guard name != "Destination TBD", !seen.contains(name) else { continue }
+                    seen.insert(name)
+                    chips.append(TripDestinationChip(
+                        id: name,
+                        tripName: trip.name,
+                        cityName: name,
+                        flag: loc.flagEmoji
+                    ))
+                }
+            }
+
+            await MainActor.run {
+                upcomingTripChips = Array(chips.prefix(5))
+            }
+        } catch {
+            print("❌ [ExploreAISection] Error fetching upcoming trips: \(error)")
+        }
     }
 
     // MARK: - Actions

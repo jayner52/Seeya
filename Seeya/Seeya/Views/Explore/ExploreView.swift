@@ -93,7 +93,7 @@ struct ExploreView: View {
                 .font(SeeyaTypography.headlineLarge)
                 .foregroundStyle(Color.seeyaTextPrimary)
 
-            Text("AI recommendations & inspiration from your circle")
+            Text("AI recommendations for your upcoming trips")
                 .font(SeeyaTypography.bodyMedium)
                 .foregroundStyle(Color.seeyaTextSecondary)
         }

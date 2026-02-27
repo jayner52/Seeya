@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useAuthStore } from '@/stores/authStore';
+import { createClient } from '@/lib/supabase/client';
 import { Card, Button, Spinner } from '@/components/ui';
 import {
   Sparkles,
@@ -387,6 +388,52 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
   const [destination, setDestination] = useState('');
   const [searchedDestination, setSearchedDestination] = useState('');
 
+  // Upcoming trip destination chips
+  const [upcomingTripChips, setUpcomingTripChips] = useState<
+    { id: string; tripName: string; cityName: string; flag?: string }[]
+  >([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchUpcomingTrips = async () => {
+      const supabase = createClient();
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data: trips } = await supabase
+        .from('trips')
+        .select(`id, name, trip_locations(order_index, cities(name, countries(flag_emoji)))`)
+        .eq('user_id', user.id)
+        .or(`end_date.gte.${today},end_date.is.null`)
+        .order('start_date', { ascending: true });
+
+      if (!trips) return;
+
+      const seen = new Set<string>();
+      const chips: typeof upcomingTripChips = [];
+
+      for (const trip of trips) {
+        const locs = ((trip.trip_locations as any[]) || []).sort(
+          (a, b) => a.order_index - b.order_index
+        );
+        for (const loc of locs) {
+          const cityName: string | undefined = loc.cities?.name;
+          if (!cityName || seen.has(cityName)) continue;
+          seen.add(cityName);
+          chips.push({
+            id: trip.id + cityName,
+            tripName: trip.name,
+            cityName,
+            flag: loc.cities?.countries?.flag_emoji,
+          });
+        }
+      }
+
+      setUpcomingTripChips(chips.slice(0, 5));
+    };
+
+    fetchUpcomingTrips();
+  }, [user]);
+
   // Places autocomplete
   const [placePredictions, setPlacePredictions] = useState<PlacePrediction[]>([]);
   const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
@@ -632,6 +679,31 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
           <Search size={18} />
         </Button>
       </div>
+
+      {/* Upcoming trip destination pills */}
+      {!searchedDestination && upcomingTripChips.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-seeya-text-secondary">Your upcoming trips:</p>
+          <div className="flex flex-wrap gap-2">
+            {upcomingTripChips.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => {
+                  setDestination(chip.cityName);
+                  setSearchedDestination(chip.cityName);
+                  setCache({});
+                  setErrors({});
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-seeya-purple/10 text-seeya-purple rounded-full text-sm font-medium hover:bg-seeya-purple/20 transition-colors"
+              >
+                {chip.flag && <span>{chip.flag}</span>}
+                <span>{chip.cityName}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       {searchedDestination ? (
