@@ -1,5 +1,4 @@
 import SwiftUI
-import Supabase
 
 /// AI recommendations section for Explore page with destination search
 struct ExploreAISection: View {
@@ -56,8 +55,14 @@ struct ExploreAISection: View {
             if let rec = selectedRecommendation {
                 AddToTripSheet(
                     recommendation: rec,
-                    onAdd: { trip in
-                        await addRecommendationToTrip(rec, trip: trip)
+                    destination: destination,
+                    onSuccess: { tripName in
+                        addedIds.insert(rec.id)
+                        successMessage = "Added to \(tripName)"
+                        Task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            await MainActor.run { successMessage = nil }
+                        }
                     }
                 )
             }
@@ -708,74 +713,6 @@ struct ExploreAISection: View {
         case .tip: tipFilters = AIService.TipFilters()
         }
         cache[selectedCategory] = nil
-    }
-
-    private func addRecommendationToTrip(_ recommendation: AIService.AIRecommendation, trip: Trip) async -> Bool {
-        do {
-            let session = try await SupabaseService.shared.client.auth.session
-            let userId = session.user.id
-
-            // Map recommendation category to TripBit category
-            let tripBitCategory: TripBitCategory = {
-                switch recommendation.category.lowercased() {
-                case "restaurant": return .reservation
-                case "activity": return .activity
-                case "stay": return .stay
-                case "tip": return .other
-                default: return .other
-                }
-            }()
-
-            // Build notes
-            var notesParts: [String] = []
-            notesParts.append(recommendation.description)
-            if let tips = recommendation.tips {
-                notesParts.append("Tip: \(tips)")
-            }
-            if let cost = recommendation.estimatedCost {
-                notesParts.append("Estimated cost: \(cost)")
-            }
-            if let time = recommendation.bestTimeToVisit {
-                notesParts.append("Best time: \(time)")
-            }
-
-            let tripBit = CreateTripBit(
-                tripId: trip.id,
-                createdBy: userId,
-                category: tripBitCategory,
-                title: recommendation.title,
-                status: .pending,
-                startDatetime: nil,
-                endDatetime: nil,
-                locationId: nil,
-                notes: notesParts.joined(separator: "\n\n"),
-                orderIndex: nil
-            )
-
-            try await SupabaseService.shared.client
-                .from("trip_bits")
-                .insert(tripBit)
-                .execute()
-
-            await MainActor.run {
-                addedIds.insert(recommendation.id)
-                successMessage = "Added to \(trip.name)"
-
-                // Hide toast after 3 seconds
-                Task {
-                    try? await Task.sleep(nanoseconds: 3_000_000_000)
-                    await MainActor.run {
-                        successMessage = nil
-                    }
-                }
-            }
-
-            print("✅ [ExploreAISection] Added recommendation to trip \(trip.name)")
-            return true
-        } catch {
-            print("❌ [ExploreAISection] Error adding to trip: \(error)")
-            return false
-        }
     }
 
     private func categoryColor(for category: AIService.RecommendationCategory) -> Color {
