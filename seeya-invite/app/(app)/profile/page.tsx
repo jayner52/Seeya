@@ -122,10 +122,15 @@ export default function ProfilePage() {
       ]);
 
       if (trips) {
-        const upcoming = trips.filter(
-          (t) => !t.start_date || t.start_date >= today
-        );
-        const past = trips.filter((t) => t.start_date && t.start_date < today);
+        // A trip is past only when its end_date has passed; fall back to start_date if no end_date
+        const upcoming = trips.filter((t) => {
+          const end = t.end_date ?? t.start_date;
+          return !end || end >= today;
+        });
+        const past = trips.filter((t) => {
+          const end = t.end_date ?? t.start_date;
+          return !!end && end < today;
+        });
         setUpcomingTrips(upcoming);
         setPastTrips(past.reverse());
 

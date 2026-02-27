@@ -190,16 +190,19 @@ function TripsListByStatus({ trips }: { trips: TripWithParticipants[] }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // A trip is past only when its end_date has passed; fall back to start_date if no end_date
   const upcomingTrips = trips.filter((trip) => {
-    if (!trip.start_date) return true; // No date = treat as upcoming
-    const startDate = new Date(trip.start_date);
-    return startDate >= today;
+    const endDate = trip.end_date ? new Date(trip.end_date) : null;
+    if (endDate) return endDate >= today;
+    if (!trip.start_date) return true;
+    return new Date(trip.start_date) >= today;
   });
 
   const pastTrips = trips.filter((trip) => {
+    const endDate = trip.end_date ? new Date(trip.end_date) : null;
+    if (endDate) return endDate < today;
     if (!trip.start_date) return false;
-    const startDate = new Date(trip.start_date);
-    return startDate < today;
+    return new Date(trip.start_date) < today;
   });
 
   return (
