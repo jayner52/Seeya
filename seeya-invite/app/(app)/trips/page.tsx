@@ -187,22 +187,18 @@ export default function TripsPage() {
 }
 
 function TripsListByStatus({ trips }: { trips: TripWithParticipants[] }) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Use local date string (YYYY-MM-DD) so timezone differences never shift a trip into the past
+  // early. A trip is past only once its end_date is strictly before today's local date.
+  const todayStr = new Date().toLocaleDateString('en-CA'); // always "YYYY-MM-DD" in local tz
 
-  // A trip is past only when its end_date has passed; fall back to start_date if no end_date
   const upcomingTrips = trips.filter((trip) => {
-    const endDate = trip.end_date ? new Date(trip.end_date) : null;
-    if (endDate) return endDate >= today;
-    if (!trip.start_date) return true;
-    return new Date(trip.start_date) >= today;
+    const end = trip.end_date ?? trip.start_date;
+    return !end || end >= todayStr;
   });
 
   const pastTrips = trips.filter((trip) => {
-    const endDate = trip.end_date ? new Date(trip.end_date) : null;
-    if (endDate) return endDate < today;
-    if (!trip.start_date) return false;
-    return new Date(trip.start_date) < today;
+    const end = trip.end_date ?? trip.start_date;
+    return !!end && end < todayStr;
   });
 
   return (
