@@ -36,6 +36,27 @@ struct TripCard: View {
                     )
                     .frame(height: 40)
 
+                    // Happening Now pill
+                    if trip.isCurrent {
+                        HStack {
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 6, height: 6)
+                                Text("Happening Now")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(.white)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.green.opacity(0.9))
+                            .clipShape(Capsule())
+                            .padding(8)
+                            Spacer()
+                        }
+                        .frame(maxHeight: .infinity, alignment: .top)
+                    }
+
                     // Attribution info button
                     HStack {
                         Spacer()
@@ -82,6 +103,22 @@ struct TripCard: View {
             }
 
             VStack(alignment: .leading, spacing: SeeyaSpacing.sm) {
+                // Happening Now pill (for photo-less cards)
+                if trip.isCurrent && photo == nil {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                        Text("Happening Now")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.green)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.1))
+                    .clipShape(Capsule())
+                }
+
                 // Destination & Visibility
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: SeeyaSpacing.xxs) {

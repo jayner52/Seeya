@@ -210,7 +210,7 @@ function TripsListByStatus({ trips }: { trips: TripWithParticipants[] }) {
           <div className="flex items-center gap-2 mb-4">
             <Briefcase size={20} className="text-seeya-purple" />
             <h2 className="text-lg font-semibold text-seeya-text">
-              Upcoming Trips
+              Current &amp; Upcoming
             </h2>
             <span className="text-seeya-text-secondary">({upcomingTrips.length})</span>
           </div>
@@ -256,6 +256,10 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
   const [photoError, setPhotoError] = useState(false);
   const [showAttribution, setShowAttribution] = useState(false);
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
+
+  const _now = new Date();
+  const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
+  const isHappeningNow = !!trip.start_date && trip.start_date <= todayStr && (!trip.end_date || trip.end_date >= todayStr);
 
   // Get location display string
   const firstLocation = trip.locations[0]?.custom_location;
@@ -319,6 +323,13 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
             {photoLoaded && (
               <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent" />
             )}
+            {/* Happening Now pill */}
+            {isHappeningNow && (
+              <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-green-500/90 text-white text-xs font-semibold rounded-full backdrop-blur-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-white inline-block" />
+                Happening Now
+              </div>
+            )}
             {/* Attribution overlay */}
             {photoLoaded && (
               <div className={`absolute inset-x-0 bottom-0 px-2 py-1 text-[10px] text-white/90 transition-opacity duration-200 ${showAttribution ? 'opacity-100' : 'opacity-0'}`}>
@@ -349,6 +360,13 @@ function TripCard({ trip }: { trip: TripWithParticipants }) {
 
         {/* Content */}
         <div className="p-4 flex flex-col flex-1">
+          {/* Happening Now pill for photo-less cards */}
+          {isHappeningNow && (!photo || photoError) && (
+            <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/10 text-green-700 text-xs font-semibold rounded-full w-fit mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+              Happening Now
+            </div>
+          )}
           {/* Title - fixed 2 lines height */}
           <h3 className="font-semibold text-seeya-text mb-2 line-clamp-2 min-h-[2.75rem]">
             {trip.name}

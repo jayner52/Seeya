@@ -131,10 +131,10 @@ struct TripsView: View {
                     invitationsSection
                 }
 
-                // Upcoming Trips
+                // Current & Upcoming Trips
                 if !viewModel.upcomingTrips.isEmpty {
                     tripSection(
-                        title: "Upcoming Trips",
+                        title: "Current & Upcoming",
                         trips: viewModel.upcomingTrips
                     )
                 }
