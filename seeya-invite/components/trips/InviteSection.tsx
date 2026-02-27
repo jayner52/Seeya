@@ -21,6 +21,7 @@ const CATEGORY_ICONS: Record<TripBitCategory, React.ReactNode> = {
   car: <Car size={14} />,
   activity: <Activity size={14} />,
   restaurant: <Utensils size={14} />,
+  dining: <Utensils size={14} />,
   reservation: <Utensils size={14} />,
   transport: <Car size={14} />,
   money: <FileText size={14} />,
