@@ -403,7 +403,7 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
         .from('trips')
         .select(`
           id, name,
-          trip_locations(order_index, name, custom_location, cities(name, countries(flag_emoji)))
+          trip_locations(order_index, custom_location, cities(name, countries(flag_emoji)))
         `)
         .eq('user_id', user.id)
         .or(`end_date.gte.${today},end_date.is.null`)
@@ -421,7 +421,7 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
         for (const loc of locs) {
           // Prefer linked city name, fall back to custom_location or location name
           const cityName: string | undefined =
-            loc.cities?.name || loc.custom_location || loc.name;
+            loc.cities?.name || loc.custom_location;
           if (!cityName || seen.has(cityName)) continue;
           seen.add(cityName);
           chips.push({
