@@ -55,6 +55,97 @@ function getTripGroup(trip: Trip): TripGroup {
   return 'upcoming';
 }
 
+function TripCard({
+  trip,
+  isSelected,
+  onClick,
+}: {
+  trip: Trip;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const group = getTripGroup(trip);
+  const location = trip.locations[0]?.custom_location || trip.locations[0]?.city?.name;
+  const dateRange = formatDateRange(trip.start_date, trip.end_date);
+  const photoQuery = location || trip.name;
+
+  useEffect(() => {
+    if (!photoQuery) return;
+    let cancelled = false;
+    fetch(`/api/unsplash/city-photo?query=${encodeURIComponent(photoQuery)}`)
+      .then(res => {
+        if (!res.ok || res.status === 204) throw new Error('no photo');
+        return res.json();
+      })
+      .then(data => {
+        if (!cancelled) setPhotoUrl(`${data.url.split('?')[0]}?w=400&h=120&fit=crop`);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [photoQuery]);
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full text-left rounded-xl border-2 transition-all overflow-hidden',
+        isSelected ? 'border-seeya-purple' : 'border-gray-200 hover:border-gray-300',
+        group === 'past' && 'opacity-70'
+      )}
+    >
+      {photoUrl && (
+        <div className="relative w-full h-16 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photoUrl} alt={location ?? ''} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+          {group === 'current' && (
+            <span className="absolute top-1.5 left-2 flex items-center gap-1 text-xs text-white font-semibold bg-green-500/90 px-2 py-0.5 rounded-full backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-white inline-block" />
+              Now
+            </span>
+          )}
+          {isSelected && (
+            <div className="absolute top-1.5 right-2 w-5 h-5 rounded-full bg-seeya-purple flex items-center justify-center">
+              <Check size={12} className="text-white" />
+            </div>
+          )}
+        </div>
+      )}
+      <div className={cn('flex items-start justify-between', photoUrl ? 'p-3' : 'p-4')}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-seeya-text truncate">{trip.name}</p>
+            {group === 'current' && !photoUrl && (
+              <span className="flex-shrink-0 flex items-center gap-1 text-xs text-green-600 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                Now
+              </span>
+            )}
+          </div>
+          {location && (
+            <div className="flex items-center gap-1 text-sm text-seeya-text-secondary mt-1">
+              <MapPin size={14} />
+              <span className="truncate">{location}</span>
+            </div>
+          )}
+          {dateRange && (
+            <div className="flex items-center gap-1 text-sm text-seeya-text-secondary mt-0.5">
+              <Calendar size={14} />
+              <span>{dateRange}</span>
+            </div>
+          )}
+        </div>
+        {!photoUrl && isSelected && (
+          <div className="w-6 h-6 rounded-full bg-seeya-purple flex items-center justify-center flex-shrink-0">
+            <Check size={14} className="text-white" />
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export function AddToTripModal({
   recommendation,
   isOpen,
@@ -351,55 +442,14 @@ export function AddToTripModal({
   const showsParticipants = showsDining || selectedCategory === 'activity';
   const statusLabel = showsDining ? 'Made reservation' : 'Booked';
 
-  const renderTripCard = (trip: Trip) => {
-    const isSelected = selectedTripId === trip.id;
-    const group = getTripGroup(trip);
-    const location = trip.locations[0]?.custom_location || trip.locations[0]?.city?.name;
-    const dateRange = formatDateRange(trip.start_date, trip.end_date);
-
-    return (
-      <button
-        key={trip.id}
-        onClick={() => setSelectedTripId(trip.id)}
-        className={cn(
-          'w-full text-left p-4 rounded-xl border-2 transition-all',
-          isSelected ? 'border-seeya-purple bg-purple-50' : 'border-gray-200 hover:border-gray-300',
-          group === 'past' && 'opacity-70'
-        )}
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-seeya-text truncate">{trip.name}</p>
-              {group === 'current' && (
-                <span className="flex-shrink-0 flex items-center gap-1 text-xs text-green-600 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                  Now
-                </span>
-              )}
-            </div>
-            {location && (
-              <div className="flex items-center gap-1 text-sm text-seeya-text-secondary mt-1">
-                <MapPin size={14} />
-                <span className="truncate">{location}</span>
-              </div>
-            )}
-            {dateRange && (
-              <div className="flex items-center gap-1 text-sm text-seeya-text-secondary mt-0.5">
-                <Calendar size={14} />
-                <span>{dateRange}</span>
-              </div>
-            )}
-          </div>
-          {isSelected && (
-            <div className="w-6 h-6 rounded-full bg-seeya-purple flex items-center justify-center flex-shrink-0">
-              <Check size={14} className="text-white" />
-            </div>
-          )}
-        </div>
-      </button>
-    );
-  };
+  const renderTripCard = (trip: Trip) => (
+    <TripCard
+      key={trip.id}
+      trip={trip}
+      isSelected={selectedTripId === trip.id}
+      onClick={() => setSelectedTripId(trip.id)}
+    />
+  );
 
   if (!isOpen) return null;
 
