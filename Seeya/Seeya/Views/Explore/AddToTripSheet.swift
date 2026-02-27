@@ -595,11 +595,24 @@ struct AddToTripSheet: View {
     }
 
     private func getTripGroup(_ trip: Trip) -> TripGroup {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+        // Supabase date-only strings (e.g. "2026-02-27") are decoded as UTC midnight.
+        // Use a UTC calendar to extract the intended year/month/day, then build
+        // a local-midnight Date for comparison — same fix as the web app.
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(identifier: "UTC")!
+        let localCal = Calendar.current
+
+        let nowComponents = localCal.dateComponents([.year, .month, .day], from: Date())
+        guard let today = localCal.date(from: nowComponents) else { return .upcoming }
         guard let startDate = trip.startDate else { return .upcoming }
-        let start = calendar.startOfDay(for: startDate)
-        let end = trip.endDate.map { calendar.startOfDay(for: $0) }
+
+        let startComponents = utcCal.dateComponents([.year, .month, .day], from: startDate)
+        guard let start = localCal.date(from: startComponents) else { return .upcoming }
+
+        let end: Date? = trip.endDate.flatMap {
+            let comps = utcCal.dateComponents([.year, .month, .day], from: $0)
+            return localCal.date(from: comps)
+        }
 
         if let end, end < today { return .past }
         if start <= today && (end == nil || end! >= today) { return .current }

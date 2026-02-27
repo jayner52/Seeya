@@ -47,13 +47,11 @@ function getInitials(name: string | null): string {
 }
 
 function getTripGroup(trip: Trip): TripGroup {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   if (!trip.start_date) return 'upcoming';
-  const start = new Date(trip.start_date);
-  const end = trip.end_date ? new Date(trip.end_date) : null;
-  if (end && end < today) return 'past';
-  if (start <= today && (!end || end >= today)) return 'current';
+  if (trip.end_date && trip.end_date < todayStr) return 'past';
+  if (trip.start_date <= todayStr && (!trip.end_date || trip.end_date >= todayStr)) return 'current';
   return 'upcoming';
 }
 
