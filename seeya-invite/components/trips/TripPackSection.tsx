@@ -14,7 +14,7 @@ import {
   Utensils,
   CalendarClock,
   FileText,
-  Images,
+  Image,
   MoreHorizontal,
   Plus,
   ChevronDown,
@@ -41,7 +41,7 @@ const categories: { id: TripBitCategory; label: string; icon: typeof Plane; colo
   { id: 'dining', label: 'Dining', icon: Utensils, color: 'text-red-500', bgColor: 'bg-red-50' },
   { id: 'reservation', label: 'Reservations', icon: CalendarClock, color: 'text-pink-600', bgColor: 'bg-pink-100' },
   { id: 'document', label: 'Documents', icon: FileText, color: 'text-gray-600', bgColor: 'bg-gray-100' },
-  { id: 'photos', label: 'Photos', icon: Images, color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
+  { id: 'photos', label: 'Photos', icon: Image, color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
   { id: 'other', label: 'Other', icon: MoreHorizontal, color: 'text-gray-500', bgColor: 'bg-gray-100' },
 ];
 

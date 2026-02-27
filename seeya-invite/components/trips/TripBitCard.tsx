@@ -13,7 +13,7 @@ import {
   Utensils,
   CalendarClock,
   FileText,
-  Images,
+  Image,
   MoreHorizontal,
   MapPin,
   Clock,
@@ -42,7 +42,7 @@ const categoryConfig: Record<string, { icon: typeof Plane; color: string; bgColo
   dining: { icon: Utensils, color: 'text-red-500', bgColor: 'bg-red-50' },
   reservation: { icon: CalendarClock, color: 'text-pink-600', bgColor: 'bg-pink-50' },
   document: { icon: FileText, color: 'text-gray-600', bgColor: 'bg-gray-50' },
-  photos: { icon: Images, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+  photos: { icon: Image, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
   other: { icon: MoreHorizontal, color: 'text-gray-500', bgColor: 'bg-gray-50' },
   // Legacy aliases
   hotel: { icon: BedDouble, color: 'text-purple-600', bgColor: 'bg-purple-50' },
