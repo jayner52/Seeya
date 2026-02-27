@@ -83,7 +83,7 @@ function RecommendationCard({
   isAdding: boolean;
   onAdd: () => void;
 }) {
-  const config = categoryConfig[recommendation.category];
+  const config = categoryConfig[recommendation.category] ?? categoryConfig['tip'];
   const Icon = config.icon;
   const hasPhoto = !!recommendation.photoUrl;
   const isTip = recommendation.category === 'tip';

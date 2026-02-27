@@ -120,7 +120,7 @@ function FriendRecCard({
   onSave: () => void;
   onAddToTrip: () => void;
 }) {
-  const config = categoryConfig[recommendation.category];
+  const config = categoryConfig[recommendation.category] ?? categoryConfig['tip'];
   const Icon = config.icon;
 
   return (
