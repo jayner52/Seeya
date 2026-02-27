@@ -199,6 +199,8 @@ struct TripBitDetailView: View {
             transportDetailRows
         case .money:
             moneyDetailRows
+        case .dining:
+            reservationDetailRows
         case .reservation:
             reservationDetailRows
         case .document:
@@ -747,6 +749,8 @@ struct EditTripBitSheet: View {
             TransportFormFields(details: $details)
         case .money:
             MoneyFormFields(details: $details)
+        case .dining:
+            ReservationFormFields(details: $details)
         case .reservation:
             ReservationFormFields(details: $details)
         case .document:

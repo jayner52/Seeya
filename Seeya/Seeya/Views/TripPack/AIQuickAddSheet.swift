@@ -431,6 +431,8 @@ struct AIQuickAddSheet: View {
             TransportFormFields(details: $editedDetails)
         case .money:
             MoneyFormFields(details: $editedDetails)
+        case .dining:
+            ReservationFormFields(details: $editedDetails)
         case .reservation:
             ReservationFormFields(details: $editedDetails)
         case .document:
