@@ -251,7 +251,7 @@ export function AddToTripModal({
 
     const allTrips: Trip[] = (tripsData || []).map(trip => ({
       ...trip,
-      locations: (locations?.filter(l => l.trip_id === trip.id) || []) as TripLocation[],
+      locations: (locations?.filter(l => l.trip_id === trip.id) || []) as unknown as TripLocation[],
     }));
 
     // Look up destination country for sorting
@@ -263,7 +263,7 @@ export function AddToTripModal({
         .ilike('name', destination)
         .limit(1)
         .maybeSingle();
-      destinationCountry = (cityData?.country as { name: string } | null)?.name || null;
+      destinationCountry = (cityData?.country as unknown as { name: string } | null)?.name || null;
     }
 
     const matchScore = (trip: Trip): number => {
