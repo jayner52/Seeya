@@ -73,7 +73,8 @@ export default function ProfilePage() {
     if (!user) return;
 
     const supabase = createClient();
-    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
+    const _now = new Date();
+    const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
 
     // Fetch participations, owned trips, friends, and wanderlist all in parallel
     const [{ data: participations }, { data: ownedTrips }, { data: friendships }, { data: wanderlistData }] = await Promise.all([
