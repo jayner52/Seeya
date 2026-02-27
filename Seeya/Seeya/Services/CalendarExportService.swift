@@ -15,6 +15,7 @@ actor CalendarExportService {
         case .car: return "\u{1F697}"                 // 🚗
         case .activity: return "\u{1F3AF}"            // 🎯
         case .transport: return "\u{1F68C}"           // 🚌
+        case .dining: return "\u{1F374}"              // 🍴
         case .reservation: return "\u{1F4C5}"         // 📅
         case .document: return "\u{1F4C4}"            // 📄
         case .money: return "\u{1F4B0}"               // 💰
@@ -266,6 +267,12 @@ actor CalendarExportService {
             if let departure = details.departureStation { parts.append("From: \(departure)") }
             if let arrival = details.arrivalStation { parts.append("To: \(arrival)") }
             if let platform = details.platform { parts.append("Platform: \(platform)") }
+            if let confirmation = details.confirmationNumber { parts.append("Confirmation: \(confirmation)") }
+
+        case .dining:
+            if let venue = details.venueName { parts.append("Restaurant: \(venue)") }
+            if let time = details.reservationTime { parts.append("Time: \(time)") }
+            if let partySize = details.partySize { parts.append("Party Size: \(partySize)") }
             if let confirmation = details.confirmationNumber { parts.append("Confirmation: \(confirmation)") }
 
         case .reservation:

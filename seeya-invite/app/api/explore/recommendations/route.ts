@@ -201,7 +201,7 @@ Be specific and actionable. Avoid generic advice.`,
   return categoryPrompts[category];
 }
 
-function parseRecommendations(content: string): AIRecommendation[] {
+function parseRecommendations(content: string, requestedCategory: string): AIRecommendation[] {
   let jsonStr = content;
 
   // Handle markdown code blocks
@@ -222,7 +222,7 @@ function parseRecommendations(content: string): AIRecommendation[] {
       // Normalize any unexpected category value the AI might return
       category: validCategories.includes(item.category as string)
         ? item.category
-        : 'tip',
+        : requestedCategory,
     })) as AIRecommendation[];
 }
 
@@ -325,7 +325,7 @@ export async function POST(request: Request) {
     }
 
     // Parse the AI response
-    const recommendations = parseRecommendations(content);
+    const recommendations = parseRecommendations(content, category);
 
     // Enrich with Google Places data (rating, photo, address)
     const enrichedRecommendations = await enrichWithGooglePlaces(
