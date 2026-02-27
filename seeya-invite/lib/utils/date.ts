@@ -40,9 +40,19 @@ export function formatRelativeDate(date: string | Date | null | undefined): stri
 
 export function getDaysUntil(date: string | Date | null | undefined): number | null {
   if (!date) return null;
-  const d = typeof date === 'string' ? parseISO(date) : date;
+  if (typeof date === 'string') {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    // Compare date strings directly to avoid UTC parsing issues
+    if (date < todayStr) return -1;  // past
+    if (date === todayStr) return 0;  // today
+    // For future dates, parse both as local midnight
+    const target = new Date(`${date}T00:00:00`);  // local midnight
+    const today = new Date(`${todayStr}T00:00:00`);
+    return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  }
+  const d = date instanceof Date ? date : new Date(date);
   if (!isValid(d)) return null;
-
   const now = new Date();
   const diffTime = d.getTime() - now.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));

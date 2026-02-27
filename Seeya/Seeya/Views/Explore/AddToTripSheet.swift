@@ -206,19 +206,8 @@ struct AddToTripSheet: View {
                 }
 
                 if !pastTrips.isEmpty {
-                    HStack {
-                        Rectangle().fill(Color.seeyaBorder).frame(height: 1)
-                        Text("PAST TRIPS")
-                            .font(SeeyaTypography.captionSmall)
-                            .foregroundStyle(Color.seeyaTextTertiary)
-                            .fixedSize()
-                        Rectangle().fill(Color.seeyaBorder).frame(height: 1)
-                    }
-                    .padding(.top, SeeyaSpacing.xs)
-
                     ForEach(pastTrips) { trip in
                         tripRow(trip, isCurrentTrip: false)
-                            .opacity(0.7)
                     }
                 }
             }

@@ -90,8 +90,7 @@ function TripCard({
       onClick={onClick}
       className={cn(
         'w-full text-left rounded-xl border-2 transition-all overflow-hidden',
-        isSelected ? 'border-seeya-purple' : 'border-gray-200 hover:border-gray-300',
-        group === 'past' && 'opacity-70'
+        isSelected ? 'border-seeya-purple' : 'border-gray-200 hover:border-gray-300'
       )}
     >
       {photoUrl && (
@@ -532,23 +531,10 @@ export function AddToTripModal({
                     </div>
                   )}
 
-                  {upcomingTrips.length > 0 && (
-                    <div>
-                      {currentTrips.length > 0 && (
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Upcoming</p>
-                      )}
-                      <div className="space-y-2">{upcomingTrips.map(renderTripCard)}</div>
-                    </div>
-                  )}
-
-                  {pastTrips.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="h-px flex-1 bg-gray-200" />
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Past Trips</p>
-                        <div className="h-px flex-1 bg-gray-200" />
-                      </div>
-                      <div className="space-y-2">{pastTrips.map(renderTripCard)}</div>
+                  {(upcomingTrips.length > 0 || pastTrips.length > 0) && (
+                    <div className="space-y-2">
+                      {upcomingTrips.map(renderTripCard)}
+                      {pastTrips.map(renderTripCard)}
                     </div>
                   )}
                 </div>
