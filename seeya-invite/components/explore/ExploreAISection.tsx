@@ -44,7 +44,7 @@ import {
 } from '@/types';
 
 interface ExploreAISectionProps {
-  onAddToTrip: (recommendation: AIRecommendation) => void;
+  onAddToTrip: (recommendation: AIRecommendation, destination: string) => void;
   addedIds: Set<string>;
 }
 
@@ -807,7 +807,7 @@ export function ExploreAISection({ onAddToTrip, addedIds }: ExploreAISectionProp
                   key={recommendation.id}
                   recommendation={recommendation}
                   isAdded={addedIds.has(recommendation.id)}
-                  onAddToTrip={() => onAddToTrip(recommendation)}
+                  onAddToTrip={() => onAddToTrip(recommendation, searchedDestination)}
                 />
               ))}
             </div>

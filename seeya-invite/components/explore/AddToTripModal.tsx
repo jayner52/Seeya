@@ -9,12 +9,18 @@ import { X, MapPin, Calendar, Check, Plus, ChevronDown } from 'lucide-react';
 import { formatDateRange } from '@/lib/utils/date';
 import type { AIRecommendation } from '@/types';
 
+interface TripLocation {
+  trip_id: string;
+  custom_location: string | null;
+  city: { name: string; country: { name: string } | null } | null;
+}
+
 interface Trip {
   id: string;
   name: string;
   start_date: string | null;
   end_date: string | null;
-  locations: { custom_location: string | null }[];
+  locations: TripLocation[];
 }
 
 interface AddToTripModalProps {
@@ -22,6 +28,7 @@ interface AddToTripModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (tripId: string, tripName: string) => void;
+  destination?: string;
 }
 
 export function AddToTripModal({
@@ -29,12 +36,14 @@ export function AddToTripModal({
   isOpen,
   onClose,
   onSuccess,
+  destination,
 }: AddToTripModalProps) {
   const { user } = useAuthStore();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   // Map recommendation category to TripBit category
@@ -104,17 +113,17 @@ export function AddToTripModal({
       .in('id', allTripIds)
       .order('start_date', { ascending: true });
 
-    // Get locations for all trips
+    // Get locations for all trips, joining city + country for smart sorting
     const { data: locations } = await supabase
       .from('trip_locations')
-      .select('trip_id, custom_location')
+      .select('trip_id, custom_location, city:cities(name, country:countries(name))')
       .in('trip_id', allTripIds)
       .order('order_index');
 
     // Combine data
     const tripsWithLocations = (tripsData || []).map(trip => ({
       ...trip,
-      locations: locations?.filter(l => l.trip_id === trip.id) || [],
+      locations: (locations?.filter(l => l.trip_id === trip.id) || []) as TripLocation[],
     }));
 
     // Filter to only upcoming/current trips (not past)
@@ -122,9 +131,48 @@ export function AddToTripModal({
     today.setHours(0, 0, 0, 0);
 
     const upcomingTrips = tripsWithLocations.filter(trip => {
-      if (!trip.end_date) return true; // No end date = include
+      if (!trip.end_date) return true;
       return new Date(trip.end_date) >= today;
     });
+
+    // Look up destination country for country-match sorting
+    let destinationCountry: string | null = null;
+    if (destination) {
+      const { data: cityData } = await supabase
+        .from('cities')
+        .select('country:countries(name)')
+        .ilike('name', destination)
+        .limit(1)
+        .maybeSingle();
+      destinationCountry = (cityData?.country as { name: string } | null)?.name || null;
+    }
+
+    // Sort: city match first (soonest first), then country match, then rest (soonest first)
+    if (destination) {
+      const dest = destination.toLowerCase();
+      const matchScore = (trip: Trip): number => {
+        const cityMatch = trip.locations.some(l => {
+          const cityName = l.city?.name?.toLowerCase() || '';
+          const customLoc = l.custom_location?.toLowerCase() || '';
+          return cityName === dest || customLoc.includes(dest);
+        });
+        if (cityMatch) return 2;
+        if (destinationCountry) {
+          const countryMatch = trip.locations.some(l =>
+            l.city?.country?.name?.toLowerCase() === destinationCountry!.toLowerCase()
+          );
+          if (countryMatch) return 1;
+        }
+        return 0;
+      };
+      upcomingTrips.sort((a, b) => {
+        const scoreDiff = matchScore(b) - matchScore(a);
+        if (scoreDiff !== 0) return scoreDiff;
+        const dateA = a.start_date ? new Date(a.start_date).getTime() : Infinity;
+        const dateB = b.start_date ? new Date(b.start_date).getTime() : Infinity;
+        return dateA - dateB;
+      });
+    }
 
     setTrips(upcomingTrips);
     setIsLoading(false);
@@ -134,6 +182,7 @@ export function AddToTripModal({
     if (!user || !selectedTripId) return;
 
     setIsAdding(true);
+    setAddError(null);
     const supabase = createClient();
 
     // Build notes from recommendation
@@ -162,7 +211,9 @@ export function AddToTripModal({
 
     setIsAdding(false);
 
-    if (!error) {
+    if (error) {
+      setAddError(error.message || 'Failed to add to trip. Please try again.');
+    } else {
       const trip = trips.find(t => t.id === selectedTripId);
       onSuccess(selectedTripId, trip?.name || 'Trip');
     }
@@ -307,6 +358,9 @@ export function AddToTripModal({
         {/* Footer */}
         {trips.length > 0 && (
           <div className="p-4 border-t">
+            {addError && (
+              <p className="text-sm text-red-600 mb-3">{addError}</p>
+            )}
             <Button
               variant="purple"
               className="w-full"

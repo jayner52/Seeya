@@ -58,6 +58,7 @@ export default function ExplorePage() {
 
   // Add to trip modal
   const [selectedRecommendation, setSelectedRecommendation] = useState<AIRecommendation | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState('');
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
 
@@ -277,8 +278,9 @@ export default function ExplorePage() {
     fetchExploreData();
   }, [fetchExploreData]);
 
-  const handleAddToTrip = (recommendation: AIRecommendation) => {
+  const handleAddToTrip = (recommendation: AIRecommendation, destination: string) => {
     setSelectedRecommendation(recommendation);
+    setSelectedDestination(destination);
   };
 
   const handleAddSuccess = (tripId: string, tripName: string) => {
@@ -368,6 +370,7 @@ export default function ExplorePage() {
           isOpen={!!selectedRecommendation}
           onClose={() => setSelectedRecommendation(null)}
           onSuccess={handleAddSuccess}
+          destination={selectedDestination}
         />
       )}
 
