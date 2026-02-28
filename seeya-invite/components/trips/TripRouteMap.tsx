@@ -1,3 +1,4 @@
+import { getLocationDisplayName } from '@/types/database';
 import type { TripLocation } from '@/types/database';
 
 interface TripRouteMapProps {
@@ -8,22 +9,29 @@ function buildGoogleMapsUrl(locations: TripLocation[]): string | null {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
   if (!apiKey) return null;
 
+  // Prefer lat/lng coords; fall back to display name (Google geocodes it)
   const points = locations
-    .filter(l => l.city?.latitude != null && l.city?.longitude != null)
-    .map(l => ({ lat: l.city!.latitude!, lng: l.city!.longitude! }));
+    .map(l => {
+      if (l.city?.latitude != null && l.city?.longitude != null) {
+        return `${l.city.latitude},${l.city.longitude}`;
+      }
+      const name = getLocationDisplayName(l);
+      return name !== 'Unknown location' ? name : null;
+    })
+    .filter(Boolean) as string[];
 
   if (points.length === 0) return null;
 
   let url = `https://maps.googleapis.com/maps/api/staticmap?size=600x180&scale=2&maptype=roadmap&key=${apiKey}`;
 
-  // Numbered purple markers for each stop
+  // Numbered purple markers
   points.forEach((p, i) => {
-    url += `&markers=${encodeURIComponent(`color:0xa855f7|label:${i + 1}|${p.lat},${p.lng}`)}`;
+    url += `&markers=${encodeURIComponent(`color:0xa855f7|label:${i + 1}|${p}`)}`;
   });
 
-  // Route line connecting stops
+  // Route line
   if (points.length >= 2) {
-    const pathCoords = points.map(p => `${p.lat},${p.lng}`).join('|');
+    const pathCoords = points.join('|');
     url += `&path=${encodeURIComponent(`color:0xa855f7cc|weight:3|${pathCoords}`)}`;
   }
 
