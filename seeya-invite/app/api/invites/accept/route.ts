@@ -1,8 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   // Get current user
   const {
@@ -27,8 +28,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get invite
-    const { data: invite, error: inviteError } = await supabase
+    // Get invite (admin client so RLS doesn't block reading the link)
+    const { data: invite, error: inviteError } = await adminSupabase
       .from('trip_invite_links')
       .select('id, trip_id, location_ids, usage_count, expires_at')
       .eq('code', code)
@@ -49,8 +50,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user is already a participant
-    const { data: existingParticipant } = await supabase
+    // Check if user is already a confirmed participant
+    const { data: existingParticipant } = await adminSupabase
       .from('trip_participants')
       .select('id, status')
       .eq('trip_id', invite.trip_id)
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
       .single();
 
     if (existingParticipant) {
-      if (existingParticipant.status === 'accepted') {
+      if (existingParticipant.status === 'confirmed') {
         return NextResponse.json({
           success: true,
           message: 'Already a member of this trip',
@@ -66,12 +67,10 @@ export async function POST(request: Request) {
         });
       }
 
-      // Update existing participant to accepted
-      const { error: updateError } = await supabase
+      // Update existing participant record to confirmed
+      const { error: updateError } = await adminSupabase
         .from('trip_participants')
-        .update({
-          status: 'confirmed',
-        })
+        .update({ status: 'confirmed' })
         .eq('id', existingParticipant.id);
 
       if (updateError) {
@@ -82,8 +81,8 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      // Create new participant
-      const { error: insertError } = await supabase
+      // Insert new participant — uses admin client to bypass RLS
+      const { error: insertError } = await adminSupabase
         .from('trip_participants')
         .insert({
           trip_id: invite.trip_id,
@@ -102,7 +101,7 @@ export async function POST(request: Request) {
     }
 
     // Increment usage count
-    await supabase
+    await adminSupabase
       .from('trip_invite_links')
       .update({ usage_count: invite.usage_count + 1 })
       .eq('id', invite.id);
