@@ -7,18 +7,30 @@ export async function GET(request: NextRequest) {
   const locs = request.nextUrl.searchParams.getAll('loc');
   if (locs.length === 0) return new Response('No locations', { status: 400 });
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seeya-tawny.vercel.app';
+
+  // Build URL — do NOT encodeURIComponent the whole marker string;
+  // Google parses pipe-delimited values after standard query decoding
   let url = `https://maps.googleapis.com/maps/api/staticmap?size=600x180&scale=2&maptype=roadmap&key=${apiKey}`;
 
   locs.forEach((p, i) => {
-    url += `&markers=${encodeURIComponent(`color:0xa855f7|label:${i + 1}|${p}`)}`;
+    url += `&markers=color:0xa855f7|label:${i + 1}|${encodeURIComponent(p)}`;
   });
 
   if (locs.length >= 2) {
-    url += `&path=${encodeURIComponent(`color:0xa855f7cc|weight:3|${locs.join('|')}`)}`;
+    const pathCoords = locs.map(p => encodeURIComponent(p)).join('|');
+    url += `&path=color:0xa855f7cc|weight:3|${pathCoords}`;
   }
 
-  const res = await fetch(url);
-  if (!res.ok) return new Response('Map fetch failed', { status: res.status });
+  const res = await fetch(url, {
+    headers: { Referer: siteUrl },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error('[maps/static] Google error', res.status, body);
+    return new Response('Map fetch failed', { status: res.status });
+  }
 
   const buffer = await res.arrayBuffer();
   return new Response(buffer, {
