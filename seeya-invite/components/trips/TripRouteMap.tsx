@@ -20,7 +20,7 @@ function buildSrc(locations: TripLocation[]): string | null {
     .filter(Boolean) as string[];
 
   if (points.length === 0) return null;
-  return `/api/maps/static?${points.map(p => `loc=${encodeURIComponent(p)}`).join('&')}`;
+  return `/api/maps/static?v=3&${points.map(p => `loc=${encodeURIComponent(p)}`).join('&')}`;
 }
 
 export function TripRouteMap({ locations }: TripRouteMapProps) {

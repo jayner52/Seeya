@@ -365,8 +365,8 @@ export default function TripDetailPage() {
 
           {/* Map fills full height of content area */}
           {trip.locations.length > 0 && (
-            <div className="w-64 flex-shrink-0 pr-4 pb-4 self-stretch">
-              <div className="h-full min-h-[130px] rounded-2xl overflow-hidden">
+            <div className="w-80 flex-shrink-0 pr-4 pb-4 self-stretch">
+              <div className="h-full min-h-[160px] rounded-2xl overflow-hidden">
                 <TripRouteMap locations={trip.locations} />
               </div>
             </div>
