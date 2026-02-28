@@ -366,22 +366,32 @@ export default function TripDetailPage() {
           </div>
 
           {/* Travelers */}
-          <div className="mt-6 flex items-center gap-4">
+          <div className="mt-6 flex items-center gap-3">
             <StackedAvatars
               participants={acceptedParticipants}
               maxVisible={5}
               size="md"
             />
-            <span className="text-white/80 text-sm">
-              {totalTravelers}{' '}
-              {totalTravelers === 1 ? 'traveler' : 'travelers'}
-            </span>
+            <div>
+              <div className="text-white text-sm font-medium">
+                {acceptedParticipants.length > 0
+                  ? acceptedParticipants
+                      .map(p => p.user?.full_name?.split(' ')[0] || 'Traveler')
+                      .join(', ')
+                  : 'Just you'}
+              </div>
+              <div className="text-white/60 text-xs">
+                {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'}
+              </div>
+            </div>
           </div>
 
           {/* Route Map */}
-          <div className="mt-4 rounded-2xl overflow-hidden" style={{ height: 160 }}>
-            <TripRouteMap locations={trip.locations} />
-          </div>
+          {trip.locations.length > 0 && (
+            <div className="mt-4 rounded-2xl overflow-hidden" style={{ height: 160 }}>
+              <TripRouteMap locations={trip.locations} />
+            </div>
+          )}
         </div>
       </div>
 
