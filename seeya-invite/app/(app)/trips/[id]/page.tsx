@@ -19,6 +19,7 @@ import {
   AddTripBitSheet,
   AIQuickAddSheet,
 } from '@/components/trips';
+import { PublishItineraryModal } from '@/components/trips/PublishItineraryModal';
 import type { TripTab } from '@/components/trips';
 import { formatDateRange, getDaysUntil } from '@/lib/utils/date';
 import {
@@ -30,6 +31,7 @@ import {
   Sparkles,
   Download,
   Printer,
+  Globe,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
 import type { TripBitAttachment } from '@/types/database';
@@ -54,6 +56,7 @@ export default function TripDetailPage() {
   const [editingAttachments, setEditingAttachments] = useState<TripBitAttachment[]>([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showAISheet, setShowAISheet] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   const fetchTrip = useCallback(async () => {
     const supabase = createClient();
@@ -272,6 +275,16 @@ export default function TripDetailPage() {
                         <Settings size={16} />
                         <span>Edit Trip</span>
                       </Link>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowPublishModal(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
+                      >
+                        <Globe size={16} className="text-seeya-purple" />
+                        <span>Publish Itinerary</span>
+                      </button>
                       <div className="border-t border-gray-100 my-1" />
                       <button
                         onClick={() => {
@@ -441,6 +454,16 @@ export default function TripDetailPage() {
           fetchTrip(); // Refresh data
         }}
       />
+
+      {/* Publish Itinerary Modal */}
+      {showPublishModal && (
+        <PublishItineraryModal
+          tripId={tripId}
+          tripBits={tripbits}
+          tripDestination={firstLocation ? (firstLocation.city?.name || firstLocation.name || '') : ''}
+          onClose={() => setShowPublishModal(false)}
+        />
+      )}
     </div>
   );
 }

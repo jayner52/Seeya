@@ -9,3 +9,4 @@ export { PopularDestinationsSection } from './PopularDestinationsSection';
 export { TrendingWanderlistSection } from './TrendingWanderlistSection';
 export { ExploreAISection } from './ExploreAISection';
 export { AddToTripModal } from './AddToTripModal';
+export { FeaturedItinerariesSection } from './FeaturedItinerariesSection';

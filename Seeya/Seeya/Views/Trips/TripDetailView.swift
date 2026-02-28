@@ -41,6 +41,9 @@ struct TripDetailView: View {
     // Rate & Share
     @State private var tripBitToRate: TripBit?
 
+    // Publish Itinerary
+    @State private var showPublishSheet = false
+
     // Calendar Export
     @State private var calendarExportURL: URL?
     @State private var itinerarySummaryURL: URL?
@@ -162,6 +165,14 @@ struct TripDetailView: View {
                     if isOwner {
                         Section {
                             Button {
+                                showPublishSheet = true
+                            } label: {
+                                Label("Publish Itinerary", systemImage: "globe")
+                            }
+                        }
+
+                        Section {
+                            Button {
                                 showEditSheet = true
                             } label: {
                                 Label("Edit Trip", systemImage: "pencil")
@@ -276,6 +287,12 @@ struct TripDetailView: View {
             if let url = itinerarySummaryURL {
                 ShareSheet(activityItems: [url])
             }
+        }
+        .sheet(isPresented: $showPublishSheet) {
+            PublishItinerarySheet(
+                trip: currentTrip,
+                tripBits: tripPackViewModel?.tripBits ?? []
+            )
         }
         .alert("Export Error", isPresented: $showExportError) {
             Button("OK", role: .cancel) {}

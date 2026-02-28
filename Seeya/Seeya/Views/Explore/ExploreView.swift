@@ -11,6 +11,9 @@ struct ExploreView: View {
                     // Header
                     headerSection
 
+                    // Featured Itineraries Section
+                    FeaturedItinerariesSection()
+
                     // AI Recommendations Section (New!)
                     ExploreAISection()
 

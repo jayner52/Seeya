@@ -10,6 +10,7 @@ import {
   TrendingWanderlistSection,
   ExploreAISection,
   AddToTripModal,
+  FeaturedItinerariesSection,
 } from '@/components/explore';
 import { Sparkles, Check } from 'lucide-react';
 import type { AIRecommendation } from '@/types';
@@ -338,6 +339,7 @@ export default function ExplorePage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main content - AI Recommendations */}
         <div className="lg:col-span-2 space-y-6">
+          <FeaturedItinerariesSection />
           <ExploreAISection
             onAddToTrip={handleAddToTrip}
             addedIds={addedIds}

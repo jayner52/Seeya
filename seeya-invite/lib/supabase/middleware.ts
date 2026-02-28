@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 // Public routes that don't need auth checks
-const publicRoutes = ['/invite', '/', '/api'];
+const publicRoutes = ['/invite', '/itinerary', '/', '/api'];
 
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({
