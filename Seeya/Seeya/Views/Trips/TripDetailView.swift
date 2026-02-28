@@ -408,7 +408,7 @@ struct TripDetailView: View {
 
     private var participantsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Who's Going", action: isOwner ? { showInviteSheet = true } : nil)
+            SectionHeader(title: "Who's Going", action: isOwner ? { showInviteSheet = true } : nil, actionIcon: "person.badge.plus")
 
             VStack(spacing: 0) {
                 // Owner
@@ -440,6 +440,20 @@ struct TripDetailView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding()
+                }
+
+                if isOwner {
+                    Divider()
+                    Button {
+                        showInviteSheet = true
+                    } label: {
+                        Label("Invite Travel Pals", systemImage: "person.badge.plus")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.seeyaPurple)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
                 }
             }
             .background(Color.seeyaCardBackground)

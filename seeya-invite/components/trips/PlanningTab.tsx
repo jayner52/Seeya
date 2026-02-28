@@ -20,6 +20,7 @@ interface PlanningTabProps {
   onAddTripBit: (category?: TripBitCategory) => void;
   onTripBitClick: (tripBit: TripBit) => void;
   onInviteClick: () => void;
+  onAIQuickAdd?: () => void;
   onTripBitAdded?: () => void;
 }
 
@@ -34,6 +35,7 @@ export function PlanningTab({
   onAddTripBit,
   onTripBitClick,
   onInviteClick,
+  onAIQuickAdd,
   onTripBitAdded,
 }: PlanningTabProps) {
   const [rateShareBit, setRateShareBit] = useState<TripBit | null>(null);
@@ -59,6 +61,7 @@ export function PlanningTab({
       <TripPackSection
         tripBits={tripBits}
         onAddClick={onAddTripBit}
+        onAIQuickAdd={onAIQuickAdd}
         onTripBitClick={onTripBitClick}
         isPastTrip={isPastTrip}
         onRateShare={(tripBit) => setRateShareBit(tripBit)}
@@ -81,10 +84,12 @@ export function PlanningTab({
       />
 
       {/* Invite Link */}
-      <InviteSection
-        tripId={tripId}
-        existingCode={existingInviteCode}
-      />
+      <div id="invite-section">
+        <InviteSection
+          tripId={tripId}
+          existingCode={existingInviteCode}
+        />
+      </div>
 
       {/* Rate & Share Modal */}
       {rateShareBit && (

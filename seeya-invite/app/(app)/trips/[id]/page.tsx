@@ -185,9 +185,11 @@ export default function TripDetailPage() {
   };
 
   const handleInviteClick = () => {
-    // Switch to planning tab if on itinerary
     setActiveTab('planning');
-    // Scroll to invite section (optional enhancement)
+    // Scroll to invite section after tab switch renders
+    setTimeout(() => {
+      document.getElementById('invite-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   };
 
   const isOwner = trip?.user_id === user?.id;
@@ -401,6 +403,7 @@ export default function TripDetailPage() {
             onAddTripBit={handleAddTripBit}
             onTripBitClick={handleTripBitClick}
             onInviteClick={handleInviteClick}
+            onAIQuickAdd={() => setShowAISheet(true)}
             onTripBitAdded={fetchTrip}
           />
         ) : (
