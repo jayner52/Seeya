@@ -227,8 +227,13 @@ export default function TripDetailPage() {
   const acceptedParticipants = trip.participants.filter(
     (p) => p.status === 'confirmed'
   );
-  // Total travelers = owner (1) + confirmed participants (matching iOS behavior)
-  const totalTravelers = 1 + acceptedParticipants.length;
+  // Count travelers — owner is usually a confirmed participant; avoid double-counting
+  const ownerIsParticipant = trip.participants.some(
+    p => p.user_id === trip.user_id && p.status === 'confirmed'
+  );
+  const totalTravelers = ownerIsParticipant
+    ? acceptedParticipants.length
+    : 1 + acceptedParticipants.length;
   const firstLocation = trip.locations[0];
 
   return (
@@ -321,25 +326,20 @@ export default function TripDetailPage() {
             )}
           </div>
 
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-start gap-4">
+            {/* Left: trip info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <h1 className="text-2xl md:text-3xl font-display font-semibold">
                   {trip.name}
                 </h1>
                 {daysUntil !== null && daysUntil > 0 && (
-                  <Badge
-                    variant="default"
-                    className="bg-white/20 text-white border-0"
-                  >
+                  <Badge variant="default" className="bg-white/20 text-white border-0">
                     In {daysUntil} days
                   </Badge>
                 )}
                 {daysUntil !== null && daysUntil === 0 && (
-                  <Badge
-                    variant="default"
-                    className="bg-seeya-success text-white border-0"
-                  >
+                  <Badge variant="default" className="bg-seeya-success text-white border-0">
                     Today!
                   </Badge>
                 )}
@@ -349,49 +349,43 @@ export default function TripDetailPage() {
               {trip.locations.length > 0 && (
                 <div className="flex items-center gap-2 text-white/80 mb-1 flex-wrap">
                   <MapPin size={16} className="flex-shrink-0" />
-                  <span>
-                    {trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}
-                  </span>
+                  <span>{trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}</span>
                 </div>
               )}
 
               {/* Dates */}
               {dateRange && (
-                <div className="flex items-center gap-2 text-white/80">
+                <div className="flex items-center gap-2 text-white/80 mb-4">
                   <Calendar size={16} />
                   <span>{dateRange}</span>
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* Travelers */}
-          <div className="mt-6 flex items-center gap-3">
-            <StackedAvatars
-              participants={acceptedParticipants}
-              maxVisible={5}
-              size="md"
-            />
-            <div>
-              <div className="text-white text-sm font-medium">
-                {acceptedParticipants.length > 0
-                  ? acceptedParticipants
-                      .map(p => p.user?.full_name?.split(' ')[0] || 'Traveler')
-                      .join(', ')
-                  : 'Just you'}
-              </div>
-              <div className="text-white/60 text-xs">
-                {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'}
+              {/* Travelers */}
+              <div className="flex items-center gap-3">
+                <StackedAvatars participants={acceptedParticipants} maxVisible={5} size="md" />
+                <div>
+                  <div className="text-white text-sm font-medium">
+                    {acceptedParticipants.length > 0
+                      ? acceptedParticipants
+                          .map(p => p.user?.full_name?.split(' ')[0] || 'Traveler')
+                          .join(', ')
+                      : 'Just you'}
+                  </div>
+                  <div className="text-white/60 text-xs">
+                    {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Route Map */}
-          {trip.locations.length > 0 && (
-            <div className="mt-4 rounded-2xl overflow-hidden" style={{ height: 160 }}>
-              <TripRouteMap locations={trip.locations} />
-            </div>
-          )}
+            {/* Right: square map */}
+            {trip.locations.length > 0 && (
+              <div className="rounded-2xl overflow-hidden flex-shrink-0" style={{ width: 160, height: 160 }}>
+                <TripRouteMap locations={trip.locations} />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
