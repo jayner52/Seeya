@@ -240,152 +240,137 @@ export default function TripDetailPage() {
     <div className="min-h-screen">
       {/* Header */}
       <div className="bg-gradient-to-br from-seeya-purple to-purple-700 text-white">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <Link
-              href="/trips"
-              className="inline-flex items-center gap-2 text-white/80 hover:text-white"
-            >
-              <ArrowLeft size={20} />
-              <span>Back to Trips</span>
-            </Link>
+        {/* Nav row */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4">
+          <Link
+            href="/trips"
+            className="inline-flex items-center gap-2 text-white/80 hover:text-white"
+          >
+            <ArrowLeft size={20} />
+            <span>Back to Trips</span>
+          </Link>
 
-            {/* Menu */}
-            {isOwner && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <MoreHorizontal size={20} />
-                </button>
-                {showMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
+          {isOwner && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <MoreHorizontal size={20} />
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20">
+                    <button
+                      onClick={() => { setShowMenu(false); setShowAISheet(true); }}
+                      className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
+                    >
+                      <Sparkles size={16} className="text-seeya-purple" />
+                      <span>AI Quick Add</span>
+                    </button>
+                    <Link
+                      href={`/trips/${tripId}/edit`}
+                      className="flex items-center gap-2 px-4 py-2 text-seeya-text hover:bg-gray-50"
                       onClick={() => setShowMenu(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20">
-                      <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          setShowAISheet(true);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
-                      >
-                        <Sparkles size={16} className="text-seeya-purple" />
-                        <span>AI Quick Add</span>
-                      </button>
-                      <Link
-                        href={`/trips/${tripId}/edit`}
-                        className="flex items-center gap-2 px-4 py-2 text-seeya-text hover:bg-gray-50"
-                        onClick={() => setShowMenu(false)}
-                      >
-                        <Settings size={16} />
-                        <span>Edit Trip</span>
-                      </Link>
-                      <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          setShowPublishModal(true);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
-                      >
-                        <Globe size={16} className="text-seeya-purple" />
-                        <span>Publish Itinerary</span>
-                      </button>
-                      <div className="border-t border-gray-100 my-1" />
-                      <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          if (trip) {
-                            const ics = generateTripICS(trip, trip.locations, tripbits);
-                            const filename = generateTripFilename(trip.name, trip.start_date);
-                            downloadICS(ics, filename);
-                          }
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
-                      >
-                        <Download size={16} className="text-seeya-purple" />
-                        <span>Export Calendar (.ics)</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          printTripItinerary();
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
-                      >
-                        <Printer size={16} className="text-seeya-purple" />
-                        <span>Print Itinerary</span>
-                      </button>
-                    </div>
-                  </>
-                )}
+                    >
+                      <Settings size={16} />
+                      <span>Edit Trip</span>
+                    </Link>
+                    <button
+                      onClick={() => { setShowMenu(false); setShowPublishModal(true); }}
+                      className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
+                    >
+                      <Globe size={16} className="text-seeya-purple" />
+                      <span>Publish Itinerary</span>
+                    </button>
+                    <div className="border-t border-gray-100 my-1" />
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        if (trip) {
+                          const ics = generateTripICS(trip, trip.locations, tripbits);
+                          const filename = generateTripFilename(trip.name, trip.start_date);
+                          downloadICS(ics, filename);
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
+                    >
+                      <Download size={16} className="text-seeya-purple" />
+                      <span>Export Calendar (.ics)</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowMenu(false); printTripItinerary(); }}
+                      className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
+                    >
+                      <Printer size={16} className="text-seeya-purple" />
+                      <span>Print Itinerary</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Content row: info left, map right filling full height */}
+        <div className="flex items-stretch">
+          <div className="flex-1 min-w-0 px-6 pb-6">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <h1 className="text-2xl md:text-3xl font-display font-semibold">
+                {trip.name}
+              </h1>
+              {daysUntil !== null && daysUntil > 0 && (
+                <Badge variant="default" className="bg-white/20 text-white border-0">
+                  In {daysUntil} days
+                </Badge>
+              )}
+              {daysUntil !== null && daysUntil === 0 && (
+                <Badge variant="default" className="bg-seeya-success text-white border-0">
+                  Today!
+                </Badge>
+              )}
+            </div>
+
+            {trip.locations.length > 0 && (
+              <div className="flex items-center gap-2 text-white/80 mb-1 flex-wrap">
+                <MapPin size={16} className="flex-shrink-0" />
+                <span>{trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}</span>
               </div>
             )}
-          </div>
 
-          <div className="flex items-start gap-4">
-            {/* Left: trip info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h1 className="text-2xl md:text-3xl font-display font-semibold">
-                  {trip.name}
-                </h1>
-                {daysUntil !== null && daysUntil > 0 && (
-                  <Badge variant="default" className="bg-white/20 text-white border-0">
-                    In {daysUntil} days
-                  </Badge>
-                )}
-                {daysUntil !== null && daysUntil === 0 && (
-                  <Badge variant="default" className="bg-seeya-success text-white border-0">
-                    Today!
-                  </Badge>
-                )}
+            {dateRange && (
+              <div className="flex items-center gap-2 text-white/80 mb-4">
+                <Calendar size={16} />
+                <span>{dateRange}</span>
               </div>
+            )}
 
-              {/* Location */}
-              {trip.locations.length > 0 && (
-                <div className="flex items-center gap-2 text-white/80 mb-1 flex-wrap">
-                  <MapPin size={16} className="flex-shrink-0" />
-                  <span>{trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}</span>
+            <div className="flex items-center gap-3">
+              <StackedAvatars participants={acceptedParticipants} maxVisible={5} size="md" />
+              <div>
+                <div className="text-white text-sm font-medium">
+                  {acceptedParticipants.length > 0
+                    ? acceptedParticipants
+                        .map(p => p.user?.full_name?.split(' ')[0] || 'Traveler')
+                        .join(', ')
+                    : 'Just you'}
                 </div>
-              )}
-
-              {/* Dates */}
-              {dateRange && (
-                <div className="flex items-center gap-2 text-white/80 mb-4">
-                  <Calendar size={16} />
-                  <span>{dateRange}</span>
-                </div>
-              )}
-
-              {/* Travelers */}
-              <div className="flex items-center gap-3">
-                <StackedAvatars participants={acceptedParticipants} maxVisible={5} size="md" />
-                <div>
-                  <div className="text-white text-sm font-medium">
-                    {acceptedParticipants.length > 0
-                      ? acceptedParticipants
-                          .map(p => p.user?.full_name?.split(' ')[0] || 'Traveler')
-                          .join(', ')
-                      : 'Just you'}
-                  </div>
-                  <div className="text-white/60 text-xs">
-                    {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'}
-                  </div>
+                <div className="text-white/60 text-xs">
+                  {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'}
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Right: square map */}
-            {trip.locations.length > 0 && (
-              <div className="rounded-2xl overflow-hidden flex-shrink-0" style={{ width: 160, height: 160 }}>
+          {/* Map fills full height of content area */}
+          {trip.locations.length > 0 && (
+            <div className="w-52 flex-shrink-0 pr-4 pb-4 self-stretch">
+              <div className="h-full min-h-[160px] rounded-2xl overflow-hidden">
                 <TripRouteMap locations={trip.locations} />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
