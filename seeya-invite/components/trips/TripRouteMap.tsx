@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { getLocationDisplayName } from '@/types/database';
 import type { TripLocation } from '@/types/database';
 
@@ -24,12 +27,10 @@ function buildGoogleMapsUrl(locations: TripLocation[]): string | null {
 
   let url = `https://maps.googleapis.com/maps/api/staticmap?size=600x180&scale=2&maptype=roadmap&key=${apiKey}`;
 
-  // Numbered purple markers
   points.forEach((p, i) => {
     url += `&markers=${encodeURIComponent(`color:0xa855f7|label:${i + 1}|${p}`)}`;
   });
 
-  // Route line
   if (points.length >= 2) {
     const pathCoords = points.join('|');
     url += `&path=${encodeURIComponent(`color:0xa855f7cc|weight:3|${pathCoords}`)}`;
@@ -39,14 +40,33 @@ function buildGoogleMapsUrl(locations: TripLocation[]): string | null {
 }
 
 export function TripRouteMap({ locations }: TripRouteMapProps) {
+  const [imgError, setImgError] = useState(false);
   const url = buildGoogleMapsUrl(locations);
-  if (!url) return null;
+
+  if (!url) {
+    return (
+      <div className="w-full h-full bg-purple-900/30 rounded-2xl flex items-center justify-center">
+        <span className="text-white/50 text-xs">
+          {!process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY ? 'map: no api key' : 'map: no locations'}
+        </span>
+      </div>
+    );
+  }
+
+  if (imgError) {
+    return (
+      <div className="w-full h-full bg-purple-900/30 rounded-2xl flex items-center justify-center">
+        <span className="text-white/50 text-xs">map: image failed to load</span>
+      </div>
+    );
+  }
 
   return (
     <img
       src={url}
       alt="Trip route map"
       className="w-full h-full object-cover"
+      onError={() => setImgError(true)}
     />
   );
 }
