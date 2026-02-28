@@ -41,7 +41,8 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
     setError(null);
     // Use server-side OAuth to properly handle PKCE
-    window.location.href = `/api/auth/login?next=${encodeURIComponent(redirect)}`;
+    const next = inviteCode ? `/invite/${inviteCode}/accept` : redirect;
+    window.location.href = `/api/auth/login?next=${encodeURIComponent(next)}`;
   };
 
   const {
@@ -54,7 +55,10 @@ export default function SignupPage() {
 
   const onSubmit = async (data: SignupFormData) => {
     setError(null);
-    const result = await signUp(data.email, data.password, data.fullName);
+    const emailRedirectTo = inviteCode
+      ? `${window.location.origin}/invite/${inviteCode}/accept`
+      : undefined;
+    const result = await signUp(data.email, data.password, data.fullName, emailRedirectTo);
 
     if (result.error) {
       setError(result.error);

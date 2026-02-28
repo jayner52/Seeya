@@ -12,7 +12,8 @@ interface AuthState {
   signUp: (
     email: string,
     password: string,
-    fullName: string
+    fullName: string,
+    emailRedirectTo?: string
   ) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -109,7 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return {};
   },
 
-  signUp: async (email: string, password: string, fullName: string) => {
+  signUp: async (email: string, password: string, fullName: string, emailRedirectTo?: string) => {
     const supabase = createClient();
 
     const { data, error } = await supabase.auth.signUp({
@@ -119,6 +120,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         data: {
           full_name: fullName,
         },
+        ...(emailRedirectTo ? { emailRedirectTo } : {}),
       },
     });
 

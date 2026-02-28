@@ -36,7 +36,8 @@ export default function LoginPage() {
     setError(null);
     setShowLoginHelp(false);
     // Use server-side OAuth to properly handle PKCE
-    window.location.href = `/api/auth/login?next=${encodeURIComponent(redirect)}`;
+    const next = inviteCode ? `/invite/${inviteCode}/accept` : redirect;
+    window.location.href = `/api/auth/login?next=${encodeURIComponent(next)}`;
   };
 
   const {
