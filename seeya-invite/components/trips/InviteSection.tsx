@@ -93,8 +93,8 @@ export function InviteSection({ tripId, existingCode, className }: InviteSection
       const supabase = createClient();
       const code = generateCode();
 
-      // Only include location_ids if not all locations are selected
-      const locationIds = selectedLocationIds.size === locations.length
+      // Only include location_ids if the trip has locations and not all are selected
+      const locationIds = locations.length === 0 || selectedLocationIds.size === locations.length
         ? null
         : Array.from(selectedLocationIds);
 
@@ -388,7 +388,7 @@ export function InviteSection({ tripId, existingCode, className }: InviteSection
               leftIcon={<Link2 size={16} />}
               onClick={generateInviteLink}
               isLoading={isGenerating}
-              disabled={selectedLocationIds.size === 0}
+              disabled={locations.length > 0 && selectedLocationIds.size === 0}
               className="w-full"
             >
               Generate Invite Link

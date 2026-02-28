@@ -18,6 +18,7 @@ import {
   ItineraryTab,
   AddTripBitSheet,
   AIQuickAddSheet,
+  InviteSection,
 } from '@/components/trips';
 import { PublishItineraryModal } from '@/components/trips/PublishItineraryModal';
 import type { TripTab } from '@/components/trips';
@@ -32,6 +33,7 @@ import {
   Download,
   Printer,
   Globe,
+  X,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
 import type { TripBitAttachment } from '@/types/database';
@@ -57,6 +59,7 @@ export default function TripDetailPage() {
   const [showMenu, setShowMenu] = useState(false);
   const [showAISheet, setShowAISheet] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const fetchTrip = useCallback(async () => {
     const supabase = createClient();
@@ -185,11 +188,7 @@ export default function TripDetailPage() {
   };
 
   const handleInviteClick = () => {
-    setActiveTab('planning');
-    // Scroll to invite section after tab switch renders
-    setTimeout(() => {
-      document.getElementById('invite-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
+    setShowInviteModal(true);
   };
 
   const isOwner = trip?.user_id === user?.id;
@@ -466,6 +465,33 @@ export default function TripDetailPage() {
           tripDestination={firstLocation ? (firstLocation.city?.name || firstLocation.name || '') : ''}
           onClose={() => setShowPublishModal(false)}
         />
+      )}
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowInviteModal(false)}
+          />
+          <div className="relative w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[85vh] overflow-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-lg font-semibold text-seeya-text">Invite Friends</h2>
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-seeya-text-secondary" />
+              </button>
+            </div>
+            <div className="p-6">
+              <InviteSection
+                tripId={tripId}
+                existingCode={inviteLink?.code}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
