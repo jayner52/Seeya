@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 
 // MARK: - Public Itinerary View
 
