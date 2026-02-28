@@ -36,21 +36,90 @@ export const tripVibes: TripVibe[] = [
   { id: 'backpacking', name: 'Backpacking', icon: 'Backpack', adjectives: ['Backpacking', 'Explorer', 'Wandering', 'Discovery'] },
 ];
 
+// Country → continent lookup (common travel destinations)
+const COUNTRY_TO_CONTINENT: Record<string, string> = {
+  // Asia
+  Japan: 'Asia', China: 'Asia', 'South Korea': 'Asia', Korea: 'Asia',
+  Thailand: 'Asia', Vietnam: 'Asia', Indonesia: 'Asia', Philippines: 'Asia',
+  Malaysia: 'Asia', Singapore: 'Asia', India: 'Asia', Nepal: 'Asia',
+  'Sri Lanka': 'Asia', Cambodia: 'Asia', Myanmar: 'Asia', Laos: 'Asia',
+  Taiwan: 'Asia', 'Hong Kong': 'Asia', Macao: 'Asia', Macau: 'Asia',
+  Mongolia: 'Asia', Bangladesh: 'Asia', Pakistan: 'Asia', Afghanistan: 'Asia',
+  // Middle East
+  UAE: 'Middle East', 'United Arab Emirates': 'Middle East',
+  Qatar: 'Middle East', 'Saudi Arabia': 'Middle East', Israel: 'Middle East',
+  Jordan: 'Middle East', Turkey: 'Middle East', Lebanon: 'Middle East',
+  Oman: 'Middle East', Bahrain: 'Middle East', Kuwait: 'Middle East', Iran: 'Middle East',
+  // Europe
+  France: 'Europe', Italy: 'Europe', Spain: 'Europe', Portugal: 'Europe',
+  Germany: 'Europe', 'United Kingdom': 'Europe', UK: 'Europe',
+  Netherlands: 'Europe', Belgium: 'Europe', Switzerland: 'Europe',
+  Austria: 'Europe', Greece: 'Europe', Croatia: 'Europe',
+  'Czech Republic': 'Europe', Czechia: 'Europe', Poland: 'Europe',
+  Hungary: 'Europe', Romania: 'Europe', Sweden: 'Europe', Norway: 'Europe',
+  Denmark: 'Europe', Finland: 'Europe', Ireland: 'Europe', Scotland: 'Europe',
+  Iceland: 'Europe', Slovakia: 'Europe', Slovenia: 'Europe', Serbia: 'Europe',
+  Bulgaria: 'Europe', Albania: 'Europe', Montenegro: 'Europe',
+  'Bosnia and Herzegovina': 'Europe', 'North Macedonia': 'Europe',
+  Malta: 'Europe', Luxembourg: 'Europe', Monaco: 'Europe', Andorra: 'Europe',
+  Liechtenstein: 'Europe', 'San Marino': 'Europe', Estonia: 'Europe',
+  Latvia: 'Europe', Lithuania: 'Europe', Ukraine: 'Europe', Belarus: 'Europe',
+  // North America
+  'United States': 'North America', USA: 'North America',
+  Canada: 'North America', Mexico: 'North America',
+  // Caribbean
+  Cuba: 'Caribbean', Jamaica: 'Caribbean', Bahamas: 'Caribbean',
+  'Dominican Republic': 'Caribbean', 'Puerto Rico': 'Caribbean',
+  Barbados: 'Caribbean', 'Trinidad and Tobago': 'Caribbean',
+  'Cayman Islands': 'Caribbean', 'Turks and Caicos Islands': 'Caribbean',
+  Aruba: 'Caribbean', Martinique: 'Caribbean', Guadeloupe: 'Caribbean',
+  'Saint Lucia': 'Caribbean', Grenada: 'Caribbean', Antigua: 'Caribbean',
+  // Central America
+  'Costa Rica': 'Central America', Panama: 'Central America',
+  Guatemala: 'Central America', Honduras: 'Central America',
+  Nicaragua: 'Central America', 'El Salvador': 'Central America',
+  Belize: 'Central America',
+  // South America
+  Brazil: 'South America', Argentina: 'South America', Chile: 'South America',
+  Colombia: 'South America', Peru: 'South America', Ecuador: 'South America',
+  Bolivia: 'South America', Uruguay: 'South America', Paraguay: 'South America',
+  Venezuela: 'South America',
+  // Africa
+  'South Africa': 'Africa', Egypt: 'Africa', Morocco: 'Africa',
+  Kenya: 'Africa', Tanzania: 'Africa', Ethiopia: 'Africa', Ghana: 'Africa',
+  Nigeria: 'Africa', Senegal: 'Africa', Tunisia: 'Africa', Rwanda: 'Africa',
+  Uganda: 'Africa', Zimbabwe: 'Africa', Zambia: 'Africa', Mozambique: 'Africa',
+  // Oceania
+  Australia: 'Oceania', 'New Zealand': 'Oceania', Fiji: 'Oceania',
+  'Papua New Guinea': 'Oceania', Tahiti: 'Oceania', 'French Polynesia': 'Oceania',
+  Maldives: 'Oceania', Seychelles: 'Oceania', Vanuatu: 'Oceania',
+};
+
+// Continent → friendly adjective label for name generation
+const CONTINENT_LABELS: Record<string, string> = {
+  Asia: 'Asian',
+  Europe: 'European',
+  'North America': 'American',
+  'South America': 'South American',
+  Africa: 'African',
+  Oceania: 'Pacific',
+  'Middle East': 'Middle Eastern',
+  Caribbean: 'Caribbean',
+  'Central America': 'Central American',
+};
+
+export function getContinent(country: string): string | undefined {
+  return COUNTRY_TO_CONTINENT[country];
+}
+
 // Generate trip name suggestions
 export function generateTripNameSuggestions(
-  destinations: string[],
+  destinations: { name: string; country?: string; continent?: string }[],
   selectedVibes: TripVibe[],
   startDate?: Date | null,
   count: number = 4
 ): string[] {
   const suggestions: string[] = [];
-
-  if (destinations.length === 0) {
-    return ['My Trip', 'New Adventure', 'Upcoming Trip', 'The Great Escape'];
-  }
-
-  const primaryCity = destinations[0];
-  const shortCity = primaryCity.split(',')[0].trim();
 
   const getSeason = (date: Date): string => {
     const month = date.getMonth() + 1;
@@ -60,24 +129,56 @@ export function generateTripNameSuggestions(
     return 'Winter';
   };
 
+  if (destinations.length === 0) {
+    return ['My Trip', 'New Adventure', 'Upcoming Trip', 'The Great Escape'];
+  }
+
+  const shortCity = destinations[0].name.split(',')[0].trim();
+
+  // ── Multi-destination logic ──────────────────────────────────────────────
+  if (destinations.length > 1) {
+    const countries = Array.from(new Set(destinations.map(d => d.country).filter(Boolean))) as string[];
+    const continents = Array.from(new Set(destinations.map(d => d.continent).filter(Boolean))) as string[];
+    const cities = destinations.map(d => d.name.split(',')[0].trim());
+
+    if (countries.length === 1) {
+      // All same country — e.g., Tokyo + Osaka → "Japan Explorer"
+      suggestions.push(`${countries[0]} Explorer`, `Discovering ${countries[0]}`);
+      if (cities.length === 2) suggestions.push(`${cities[0]} & ${cities[1]}`);
+      if (startDate) suggestions.push(`${getSeason(startDate)} in ${countries[0]}`);
+    } else if (continents.length === 1 && countries.length >= 2) {
+      // Same continent, multiple countries — e.g., Paris + Rome → "European Escape"
+      const regionLabel = CONTINENT_LABELS[continents[0]] ?? continents[0];
+      suggestions.push(`${regionLabel} Escape`, `${regionLabel} Adventure`);
+      if (countries.length === 2) suggestions.push(`${countries[0]} & ${countries[1]}`);
+      if (cities.length === 2) suggestions.push(`${cities[0]} & ${cities[1]}`);
+    } else {
+      // Multiple continents — e.g., Tokyo + Paris → "World Tour"
+      suggestions.push('World Tour', 'Global Getaway');
+      if (cities.length === 2) suggestions.push(`${cities[0]} & ${cities[1]}`);
+      suggestions.push(`${shortCity} & Beyond`);
+    }
+
+    // Return early if we already have enough multi-destination suggestions
+    const unique = Array.from(new Set(suggestions));
+    if (unique.length >= count) return unique.slice(0, count);
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
+  // Single-city (or fill remaining slots for multi-dest)
   if (selectedVibes.length === 0) {
-    // No vibes selected - generic but fun names
     suggestions.push(`${shortCity} Getaway`);
     suggestions.push(`The ${shortCity} Trip`);
     if (startDate) {
-      const season = getSeason(startDate);
-      suggestions.push(`${season} in ${shortCity}`);
+      suggestions.push(`${getSeason(startDate)} in ${shortCity}`);
     }
     suggestions.push(`${shortCity} Adventures`);
     if (destinations.length > 1) {
       suggestions.push(`${shortCity} & Beyond`);
     }
   } else if (selectedVibes.length === 1) {
-    // Single vibe - targeted names
-    const vibe = selectedVibes[0];
-    suggestions.push(...generateSingleVibeNames(vibe, shortCity, startDate));
+    suggestions.push(...generateSingleVibeNames(selectedVibes[0], shortCity, startDate));
   } else {
-    // Multiple vibes - creative combinations
     suggestions.push(...generateMultiVibeNames(selectedVibes, shortCity, startDate));
   }
 

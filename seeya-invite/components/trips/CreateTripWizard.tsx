@@ -36,8 +36,9 @@ import {
   Lock,
   EyeOff,
   Globe,
+  AlertTriangle,
 } from 'lucide-react';
-import { tripVibes, generateTripNameSuggestions, type TripVibe } from '@/lib/tripVibes';
+import { tripVibes, generateTripNameSuggestions, getContinent, type TripVibe } from '@/lib/tripVibes';
 import type { Profile, VisibilityLevel } from '@/types/database';
 import { VISIBILITY_OPTIONS } from '@/types/database';
 
@@ -99,6 +100,8 @@ interface Destination {
   placeId?: string;
   startDate?: string;
   endDate?: string;
+  country?: string;
+  continent?: string;
 }
 
 interface CreateTripWizardProps {
@@ -131,6 +134,9 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
   const [tripDescription, setTripDescription] = useState('');
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [isGeneratingNames, setIsGeneratingNames] = useState(false);
+  const [coverCity, setCoverCity] = useState<string>('');
+  const [coverPhotos, setCoverPhotos] = useState<Record<string, string>>({});
+  const [isFetchingPhotos, setIsFetchingPhotos] = useState(false);
 
   // Step 4: Who
   const [friends, setFriends] = useState<Profile[]>([]);
@@ -182,13 +188,35 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
     fetchFriends();
   }, [user]);
 
+  // Fetch Unsplash cover photos for each destination
+  const fetchCoverPhotos = useCallback(async () => {
+    if (isFetchingPhotos || destinations.length === 0) return;
+    setIsFetchingPhotos(true);
+    const photos: Record<string, string> = {};
+    await Promise.all(
+      destinations.slice(0, 4).map(async (dest) => {
+        const city = dest.name.split(',')[0].trim();
+        try {
+          const res = await fetch(`/api/unsplash/city-photo?city=${encodeURIComponent(city)}`);
+          const data = await res.json();
+          if (data.photoUrl) photos[city] = data.photoUrl;
+        } catch { /* ignore */ }
+      })
+    );
+    setCoverPhotos(photos);
+    if (!coverCity && destinations[0]) {
+      setCoverCity(destinations[0].name.split(',')[0].trim());
+    }
+    setIsFetchingPhotos(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destinations]);
+
   // Generate name suggestions when vibes or destinations change
   const updateNameSuggestions = useCallback(() => {
     const vibeList = tripVibes.filter((v) => selectedVibes.has(v.id));
-    const destNames = destinations.map((d) => d.name);
     const startDate = destinations[0]?.startDate ? new Date(destinations[0].startDate) : null;
 
-    const suggestions = generateTripNameSuggestions(destNames, vibeList, startDate, 4);
+    const suggestions = generateTripNameSuggestions(destinations, vibeList, startDate, 4);
     setNameSuggestions(suggestions);
 
     // Auto-fill first suggestion if name is empty
@@ -200,8 +228,11 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
   useEffect(() => {
     if (currentStep === 'name') {
       updateNameSuggestions();
+      if (Object.keys(coverPhotos).length === 0) {
+        fetchCoverPhotos();
+      }
     }
-  }, [currentStep, updateNameSuggestions]);
+  }, [currentStep, updateNameSuggestions, fetchCoverPhotos, coverPhotos]);
 
   // Places search effect
   useEffect(() => {
@@ -238,11 +269,13 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
   }, [newDestination]);
 
   // Add destination helper
-  const addDestination = (name: string, placeId?: string) => {
+  const addDestination = (name: string, placeId?: string, country?: string, continent?: string) => {
     const dest: Destination = {
       id: Date.now().toString(),
       name,
       placeId,
+      country,
+      continent,
     };
 
     if (dateMode === 'exact') {
@@ -258,6 +291,9 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
     setNewDestination('');
     setPlacePredictions([]);
     setShowPredictions(false);
+    // Clear cached photos so they refresh when user reaches name step
+    setCoverPhotos({});
+    setCoverCity('');
   };
 
   // Add destination from text input
@@ -266,29 +302,54 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
     addDestination(newDestination.trim());
   };
 
-  // Add destination from Places prediction
+  // Add destination from Places prediction — extract country from secondaryText
   const handleSelectPrediction = (prediction: PlacePrediction) => {
-    addDestination(prediction.description, prediction.placeId);
+    const parts = prediction.secondaryText.split(', ');
+    const country = parts[parts.length - 1]?.trim() || undefined;
+    const continent = country ? getContinent(country) : undefined;
+    addDestination(prediction.description, prediction.placeId, country, continent);
   };
 
   const handleRemoveDestination = (id: string) => {
     setDestinations(destinations.filter((d) => d.id !== id));
+    // Clear cached photos so they refresh when user reaches name step
+    setCoverPhotos({});
+    setCoverCity('');
   };
 
   const handleUpdateDestinationDate = (id: string, field: 'startDate' | 'endDate', value: string) => {
-    setDestinations(
-      destinations.map((d) => {
-        if (d.id !== id) return d;
-        const updated = { ...d, [field]: value };
-        // When start date changes, push end date to be at least 1 day after
-        if (field === 'startDate' && value && updated.endDate && updated.endDate <= value) {
-          const next = new Date(value);
-          next.setDate(next.getDate() + 1);
-          updated.endDate = next.toISOString().split('T')[0];
+    setDestinations(prev => {
+      const idx = prev.findIndex(d => d.id === id);
+      if (idx === -1) return prev;
+
+      const updated = [...prev];
+      const dest = { ...updated[idx], [field]: value };
+
+      // Within same stop: push end date if start date conflicts
+      if (field === 'startDate' && value && dest.endDate && dest.endDate <= value) {
+        const next = new Date(value);
+        next.setDate(next.getDate() + 1);
+        dest.endDate = next.toISOString().split('T')[0];
+      }
+      updated[idx] = dest;
+
+      // Cascade: when depart date changes, update next stop's arrive date
+      if (field === 'endDate' && value && idx + 1 < updated.length) {
+        const nextDest = { ...updated[idx + 1] };
+        if (!nextDest.startDate || nextDest.startDate < value) {
+          nextDest.startDate = value;
+          // Also push next stop's end date if it now conflicts
+          if (nextDest.endDate && nextDest.endDate <= value) {
+            const nextEnd = new Date(value);
+            nextEnd.setDate(nextEnd.getDate() + 1);
+            nextDest.endDate = nextEnd.toISOString().split('T')[0];
+          }
+          updated[idx + 1] = nextDest;
         }
-        return updated;
-      })
-    );
+      }
+
+      return updated;
+    });
   };
 
   // Navigation
@@ -362,6 +423,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
         p_start_date: startDate,
         p_end_date: endDate,
         p_visibility: visibility,
+        p_cover_photo_city: coverCity || destinations[0]?.name.split(',')[0].trim() || null,
         p_locations: destinations.map((dest, i) => ({
           custom_location: dest.name,
           order_index: i,
@@ -490,25 +552,34 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
             </div>
 
             {dateMode === 'exact' && (
-              <div className="px-4 pb-4 pt-2 border-t border-gray-100 grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-seeya-text-secondary">Arrive</label>
-                  <input
-                    type="date"
-                    value={dest.startDate || ''}
-                    onChange={(e) => handleUpdateDestinationDate(dest.id, 'startDate', e.target.value)}
-                    className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-seeya-text-secondary">Depart</label>
-                  <input
-                    type="date"
-                    value={dest.endDate || ''}
-                    min={dest.startDate || undefined}
-                    onChange={(e) => handleUpdateDestinationDate(dest.id, 'endDate', e.target.value)}
-                    className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
-                  />
+              <div className="border-t border-gray-100">
+                {index > 0 && dest.startDate && destinations[index - 1].endDate &&
+                  dest.startDate < destinations[index - 1].endDate! && (
+                  <div className="flex items-center gap-1 px-4 pt-2 text-xs text-amber-600">
+                    <AlertTriangle size={12} />
+                    <span>Overlaps previous stop</span>
+                  </div>
+                )}
+                <div className="px-4 pb-4 pt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-seeya-text-secondary">Arrive</label>
+                    <input
+                      type="date"
+                      value={dest.startDate || ''}
+                      onChange={(e) => handleUpdateDestinationDate(dest.id, 'startDate', e.target.value)}
+                      className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-seeya-text-secondary">Depart</label>
+                    <input
+                      type="date"
+                      value={dest.endDate || ''}
+                      min={dest.startDate || undefined}
+                      onChange={(e) => handleUpdateDestinationDate(dest.id, 'endDate', e.target.value)}
+                      className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -706,6 +777,51 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           ))}
         </div>
       </div>
+
+      {/* Cover Photo Picker */}
+      {destinations.length > 0 && (
+        <div>
+          <label className="block text-sm text-seeya-text-secondary mb-2">Cover Photo</label>
+          {isFetchingPhotos ? (
+            <div className="flex gap-2">
+              {destinations.slice(0, 4).map((_, i) => (
+                <div key={i} className="w-20 h-14 bg-gray-100 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : Object.keys(coverPhotos).length > 0 ? (
+            <div className="flex gap-2 flex-wrap">
+              {destinations.slice(0, 4).map((dest) => {
+                const city = dest.name.split(',')[0].trim();
+                const photo = coverPhotos[city];
+                if (!photo) return null;
+                const isSelected = coverCity === city;
+                return (
+                  <button
+                    key={city}
+                    type="button"
+                    onClick={() => setCoverCity(city)}
+                    className={cn(
+                      'relative w-20 h-14 rounded-lg overflow-hidden border-2 transition-all',
+                      isSelected ? 'border-seeya-purple' : 'border-transparent'
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo} alt={city} className="w-full h-full object-cover" />
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-seeya-purple/20 flex items-center justify-center">
+                        <Check size={16} className="text-white drop-shadow" />
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 py-0.5">
+                      <span className="text-white text-[10px] leading-tight block truncate">{city}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Description */}
       <div>
