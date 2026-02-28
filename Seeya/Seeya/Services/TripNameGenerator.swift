@@ -3,6 +3,19 @@ import Foundation
 /// Generates creative trip names based on destinations and trip type
 struct TripNameGenerator {
 
+    // Continent name → friendly adjective label
+    private static let continentLabels: [String: String] = [
+        "Asia": "Asian",
+        "Europe": "European",
+        "North America": "American",
+        "South America": "South American",
+        "Africa": "African",
+        "Oceania": "Pacific",
+        "Middle East": "Middle Eastern",
+        "Caribbean": "Caribbean",
+        "Central America": "Central American"
+    ]
+
     /// Predefined trip types with their vibes
     static let tripVibes: [TripVibe] = [
         // Event/Group Vibes
@@ -123,7 +136,43 @@ struct TripNameGenerator {
         }
 
         let primaryCity = cityNames[0]
-        let shortCity = primaryCity.components(separatedBy: ",").first ?? primaryCity
+        let shortCity = primaryCity.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? primaryCity
+
+        // ── Multi-destination logic ─────────────────────────────────────────
+        if destinations.count > 1 {
+            let countries = Array(Set(destinations.compactMap { $0.city?.country?.name }))
+            let continents = Array(Set(destinations.compactMap { $0.city?.country?.continent?.name }))
+            let cities = cityNames.map { $0.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? $0 }
+
+            if countries.count == 1 {
+                // All same country — e.g., Tokyo + Osaka → "Japan Explorer"
+                suggestions.append("\(countries[0]) Explorer")
+                suggestions.append("Discovering \(countries[0])")
+                if cities.count == 2 { suggestions.append("\(cities[0]) & \(cities[1])") }
+                if let date = startDate {
+                    suggestions.append("\(getSeason(from: date)) in \(countries[0])")
+                }
+            } else if continents.count == 1 && countries.count >= 2 {
+                // Same continent, multiple countries — e.g., Paris + Rome → "European Escape"
+                let regionLabel = continentLabels[continents[0]] ?? continents[0]
+                suggestions.append("\(regionLabel) Escape")
+                suggestions.append("\(regionLabel) Adventure")
+                if countries.count == 2 { suggestions.append("\(countries[0]) & \(countries[1])") }
+                if cities.count == 2 { suggestions.append("\(cities[0]) & \(cities[1])") }
+            } else {
+                // Multiple continents — e.g., Tokyo + Paris → "World Tour"
+                suggestions.append("World Tour")
+                suggestions.append("Global Getaway")
+                if cities.count == 2 { suggestions.append("\(cities[0]) & \(cities[1])") }
+                suggestions.append("\(shortCity) & Beyond")
+            }
+
+            // Return early if enough multi-destination suggestions
+            var unique: [String] = []
+            for s in suggestions where !unique.contains(s) { unique.append(s) }
+            if unique.count >= count { return Array(unique.prefix(count)) }
+        }
+        // ───────────────────────────────────────────────────────────────────
 
         // Generate creative names based on vibe combinations
         let vibeList = Array(vibes)

@@ -134,7 +134,7 @@ export default async function PublicItineraryPage({ params }: ItineraryPageProps
     byDay.get(key)!.push(item);
   }
   const undated = byDay.get(null) || [];
-  const days = [...byDay.entries()]
+  const days = Array.from(byDay.entries())
     .filter(([k]) => k !== null)
     .sort(([a], [b]) => (a as number) - (b as number));
 
@@ -211,7 +211,7 @@ export default async function PublicItineraryPage({ params }: ItineraryPageProps
                   <h2 className="font-semibold text-seeya-text">Day {dayNum}</h2>
                 </div>
                 <div className="divide-y divide-gray-50">
-                  {items.map((item) => (
+                  {(items as typeof itinerary.itinerary_items).map((item) => (
                     <div key={item.id} className="px-6 py-4 flex items-start gap-3">
                       <span className="text-xl mt-0.5">
                         {CATEGORY_ICONS[item.category] || '📌'}

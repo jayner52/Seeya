@@ -264,6 +264,7 @@ struct CreateTrip: Encodable {
     let isFlexible: Bool
     let visibility: VisibilityLevel
     let isLoggedPastTrip: Bool
+    let coverPhotoCity: String?
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -274,6 +275,7 @@ struct CreateTrip: Encodable {
         case isFlexible = "is_flexible"
         case visibility
         case isLoggedPastTrip = "is_logged_past_trip"
+        case coverPhotoCity = "cover_photo_city"
     }
 
     init(
@@ -284,7 +286,8 @@ struct CreateTrip: Encodable {
         endDate: Date?,
         isFlexible: Bool,
         visibility: VisibilityLevel,
-        isLoggedPastTrip: Bool = false
+        isLoggedPastTrip: Bool = false,
+        coverPhotoCity: String? = nil
     ) {
         self.userId = userId
         self.name = name
@@ -294,6 +297,7 @@ struct CreateTrip: Encodable {
         self.isFlexible = isFlexible
         self.visibility = visibility
         self.isLoggedPastTrip = isLoggedPastTrip
+        self.coverPhotoCity = coverPhotoCity
     }
 }
 

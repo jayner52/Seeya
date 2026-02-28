@@ -24,7 +24,7 @@ export async function GET() {
   }
 
   // Get creator profiles
-  const creatorIds = [...new Set(itineraries.map((i) => i.created_by))];
+  const creatorIds = Array.from(new Set(itineraries.map((i) => i.created_by)));
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, full_name, avatar_url')

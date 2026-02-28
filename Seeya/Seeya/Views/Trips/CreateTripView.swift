@@ -73,6 +73,9 @@ struct CreateTripView: View {
     @State private var tripDescription = ""
     @State private var nameSuggestions: [String] = []
     @State private var isGeneratingNames = false
+    @State private var coverCity = ""
+    @State private var coverPhotos: [String: URL] = [:]
+    @State private var isFetchingCoverPhotos = false
 
     // Step 4: Who
     @State private var selectedFriends: Set<UUID> = []
@@ -211,6 +214,11 @@ struct CreateTripView: View {
                         dateMode: dateMode,
                         onRemove: {
                             destinations.removeAll { $0.id == destination.id }
+                            coverPhotos = [:]
+                            coverCity = ""
+                        },
+                        onEndDateChange: { newEnd in
+                            cascadeEndDate(from: index, endDate: newEnd)
                         }
                     )
                 }
@@ -243,6 +251,8 @@ struct CreateTripView: View {
                                 endDate: endDate
                             )
                             destinations.append(destination)
+                            coverPhotos = [:]
+                            coverCity = ""
                         }
                     )
                 }
@@ -580,6 +590,79 @@ struct CreateTripView: View {
                 }
             }
 
+            // Cover Photo Picker
+            if !destinations.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Cover Photo")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    if isFetchingCoverPhotos {
+                        HStack(spacing: 8) {
+                            ForEach(0..<min(destinations.count, 4), id: \.self) { _ in
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 80, height: 56)
+                            }
+                        }
+                    } else if !coverPhotos.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(Array(destinations.prefix(4).enumerated()), id: \.offset) { _, dest in
+                                    let cityName = dest.city?.name
+                                        ?? dest.customLocation?.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces)
+                                        ?? ""
+                                    if let photoURL = coverPhotos[cityName] {
+                                        Button {
+                                            coverCity = cityName
+                                        } label: {
+                                            ZStack(alignment: .bottomLeading) {
+                                                AsyncImage(url: photoURL) { image in
+                                                    image.resizable().scaledToFill()
+                                                } placeholder: {
+                                                    Color.gray.opacity(0.2)
+                                                }
+                                                .frame(width: 80, height: 56)
+                                                .clipped()
+
+                                                LinearGradient(
+                                                    colors: [.clear, .black.opacity(0.5)],
+                                                    startPoint: .center,
+                                                    endPoint: .bottom
+                                                )
+
+                                                Text(cityName)
+                                                    .font(.system(size: 9, weight: .medium))
+                                                    .foregroundStyle(.white)
+                                                    .padding(.horizontal, 4)
+                                                    .padding(.bottom, 4)
+                                                    .lineLimit(1)
+                                            }
+                                            .frame(width: 80, height: 56)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(coverCity == cityName ? Color.seeyaPurple : Color.clear, lineWidth: 2)
+                                            )
+                                            .overlay(alignment: .topTrailing) {
+                                                if coverCity == cityName {
+                                                    Image(systemName: "checkmark.circle.fill")
+                                                        .symbolRenderingMode(.palette)
+                                                        .foregroundStyle(.white, Color.seeyaPurple)
+                                                        .font(.caption)
+                                                        .padding(4)
+                                                }
+                                            }
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Description
             VStack(alignment: .leading, spacing: 8) {
                 Text("Description (optional)")
@@ -741,6 +824,52 @@ struct CreateTripView: View {
                 }
                 // Generate AI names in background
                 generateAINames()
+                // Fetch cover photos if not already loaded
+                if coverPhotos.isEmpty { fetchCoverPhotos() }
+            }
+        }
+    }
+
+    private func cascadeEndDate(from index: Int, endDate: Date) {
+        let nextIndex = index + 1
+        guard nextIndex < destinations.count else { return }
+        if destinations[nextIndex].startDate == nil || destinations[nextIndex].startDate! < endDate {
+            destinations[nextIndex].startDate = endDate
+            if let nextEnd = destinations[nextIndex].endDate, nextEnd <= endDate {
+                destinations[nextIndex].endDate = Calendar.current.date(byAdding: .day, value: 1, to: endDate)
+            }
+        }
+    }
+
+    private func fetchCoverPhotos() {
+        guard !destinations.isEmpty else { return }
+        isFetchingCoverPhotos = true
+        let dests = Array(destinations.prefix(4))
+        Task {
+            var photos: [String: URL] = [:]
+            await withTaskGroup(of: (String, URL?).self) { group in
+                for dest in dests {
+                    let cityName = dest.city?.name
+                        ?? dest.customLocation?.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces)
+                        ?? ""
+                    guard !cityName.isEmpty else { continue }
+                    group.addTask {
+                        let photo = await UnsplashService.shared.fetchCityPhoto(query: cityName)
+                        return (cityName, photo?.url)
+                    }
+                }
+                for await (cityName, url) in group {
+                    if let url { photos[cityName] = url }
+                }
+            }
+            await MainActor.run {
+                coverPhotos = photos
+                if coverCity.isEmpty, let first = dests.first {
+                    coverCity = first.city?.name
+                        ?? first.customLocation?.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces)
+                        ?? ""
+                }
+                isFetchingCoverPhotos = false
             }
         }
     }
@@ -828,7 +957,8 @@ struct CreateTripView: View {
                 endDate: tripEndDate,
                 isFlexible: isFlexible,
                 visibility: visibility,
-                destinations: destinations
+                destinations: destinations,
+                coverPhotoCity: coverCity.isEmpty ? nil : coverCity
             )
 
             if let trip = trip {
@@ -1077,6 +1207,7 @@ struct DestinationRowWithDates: View {
     let previousEndDate: Date?
     let dateMode: DateMode
     let onRemove: () -> Void
+    var onEndDateChange: ((Date) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1115,6 +1246,19 @@ struct DestinationRowWithDates: View {
                     Divider()
                         .padding(.horizontal, 16)
 
+                    // Overlap warning
+                    if index > 1, let prevEnd = previousEndDate,
+                       let start = destination.startDate, start < prevEnd {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                            Text("Overlaps previous stop")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 16)
+                    }
+
                     HStack(spacing: 12) {
                         // Start Date
                         VStack(alignment: .leading, spacing: 4) {
@@ -1144,7 +1288,10 @@ struct DestinationRowWithDates: View {
                                 "",
                                 selection: Binding(
                                     get: { destination.endDate ?? (destination.startDate ?? Date()) },
-                                    set: { destination.endDate = $0 }
+                                    set: { newDate in
+                                        destination.endDate = newDate
+                                        onEndDateChange?(newDate)
+                                    }
                                 ),
                                 in: (destination.startDate ?? Date())...,
                                 displayedComponents: .date

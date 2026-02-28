@@ -307,7 +307,8 @@ final class TripsViewModel {
         endDate: Date?,
         isFlexible: Bool,
         visibility: VisibilityLevel,
-        destinations: [TripDestination]
+        destinations: [TripDestination],
+        coverPhotoCity: String? = nil
     ) async -> Trip? {
         guard let userId = await getCurrentUserId() else {
             errorMessage = "Not authenticated"
@@ -333,7 +334,8 @@ final class TripsViewModel {
                 startDate: startDate,
                 endDate: endDate,
                 isFlexible: isFlexible,
-                visibility: visibility
+                visibility: visibility,
+                coverPhotoCity: coverPhotoCity
             )
 
             print("📝 [TripsViewModel] Creating trip: \(name)")
