@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Card, Button } from '@/components/ui';
 import { Link2, Copy, Check, RefreshCw, Share2, MapPin, ChevronDown, ChevronRight, Plane, Home, Car, Activity, Utensils, FileText } from 'lucide-react';
 import type { TripLocation, TripBit, TripBitCategory } from '@/types/database';
+import { getLocationDisplayName } from '@/types/database';
 
 interface InviteSectionProps {
   tripId: string;
@@ -54,18 +55,32 @@ export function InviteSection({ tripId, existingCode, className }: InviteSection
     async function fetchTripData() {
       const supabase = createClient();
 
-      // Fetch locations
-      const { data: locationData } = await supabase
+      // Fetch locations - two-step to avoid broken PostgREST embedded join
+      const { data: locationsRaw } = await supabase
         .from('trip_locations')
-        .select('*, city:cities(*)')
+        .select('*')
         .eq('trip_id', tripId)
         .order('order_index');
 
-      if (locationData) {
-        setLocations(locationData);
-        // Select all locations by default
-        setSelectedLocationIds(new Set(locationData.map(l => l.id)));
+      let locationData = locationsRaw || [];
+
+      const cityIds = locationData.filter(l => l.city_id).map(l => l.city_id);
+      if (cityIds.length > 0) {
+        const { data: cities } = await supabase
+          .from('cities')
+          .select('id, name, country_code')
+          .in('id', cityIds);
+        if (cities) {
+          const cityMap = new Map(cities.map((c: any) => [c.id, c]));
+          locationData = locationData.map(l => ({
+            ...l,
+            city: l.city_id ? cityMap.get(l.city_id) : undefined,
+          }));
+        }
       }
+
+      setLocations(locationData);
+      setSelectedLocationIds(new Set(locationData.map(l => l.id)));
 
       // Fetch tripbits
       const { data: tripbitData } = await supabase
@@ -207,8 +222,6 @@ export function InviteSection({ tripId, existingCode, className }: InviteSection
   const getSelectedTripbitCount = (locationId: string) =>
     getTripbitsForLocation(locationId).filter(t => selectedTripbitIds.has(t.id)).length;
 
-  const getLocationDisplayName = (location: TripLocation) =>
-    location.name || location.city?.name || 'Unknown location';
 
   return (
     <div className={className}>

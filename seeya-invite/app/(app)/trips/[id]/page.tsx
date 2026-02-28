@@ -21,6 +21,7 @@ import {
   InviteSection,
 } from '@/components/trips';
 import { PublishItineraryModal } from '@/components/trips/PublishItineraryModal';
+import { TripRouteMap } from '@/components/trips/TripRouteMap';
 import type { TripTab } from '@/components/trips';
 import { formatDateRange, getDaysUntil } from '@/lib/utils/date';
 import {
@@ -94,7 +95,7 @@ export default function TripDetailPage() {
       if (cityIds.length > 0) {
         const { data: cities } = await supabase
           .from('cities')
-          .select('id, name, country:countries (name, code, continent)')
+          .select('id, name, latitude, longitude, country:countries (name, code, continent)')
           .in('id', cityIds);
 
         // Attach city data to locations with flattened country info
@@ -102,6 +103,8 @@ export default function TripDetailPage() {
           const cityMap = new Map(cities.map((c: any) => [c.id, {
             id: c.id,
             name: c.name,
+            latitude: c.latitude,
+            longitude: c.longitude,
             country: c.country?.name,
             country_code: c.country?.code,
             continent: c.country?.continent,
@@ -343,13 +346,11 @@ export default function TripDetailPage() {
               </div>
 
               {/* Location */}
-              {firstLocation && (
-                <div className="flex items-center gap-2 text-white/80 mb-1">
-                  <MapPin size={16} />
+              {trip.locations.length > 0 && (
+                <div className="flex items-center gap-2 text-white/80 mb-1 flex-wrap">
+                  <MapPin size={16} className="flex-shrink-0" />
                   <span>
-                    {getLocationDisplayName(firstLocation)}
-                    {trip.locations.length > 1 &&
-                      ` +${trip.locations.length - 1} more`}
+                    {trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}
                   </span>
                 </div>
               )}
@@ -375,6 +376,11 @@ export default function TripDetailPage() {
               {totalTravelers}{' '}
               {totalTravelers === 1 ? 'traveler' : 'travelers'}
             </span>
+          </div>
+
+          {/* Route Map */}
+          <div className="mt-4 rounded-2xl overflow-hidden" style={{ height: 160 }}>
+            <TripRouteMap locations={trip.locations} />
           </div>
         </div>
       </div>

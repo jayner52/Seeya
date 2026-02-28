@@ -120,68 +120,23 @@ export async function validateInviteCode(
 
 export async function acceptInvite(
   code: string,
-  userId: string
+  _userId: string  // kept for API compat; server infers user from session cookie
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = createClient();
-
   try {
-    // Get the invite
-    const { data: invite, error: inviteError } = await supabase
-      .from('trip_invite_links')
-      .select('id, trip_id, location_ids, usage_count')
-      .eq('code', code)
-      .single();
+    const res = await fetch('/api/invites/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
 
-    if (inviteError || !invite) {
-      return { success: false, error: 'Invite not found' };
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || 'Failed to join trip' };
     }
-
-    // Check if user is already a participant
-    const { data: existingParticipant } = await supabase
-      .from('trip_participants')
-      .select('id, status')
-      .eq('trip_id', invite.trip_id)
-      .eq('user_id', userId)
-      .single();
-
-    if (existingParticipant) {
-      if (existingParticipant.status === 'confirmed') {
-        return { success: true }; // Already a member
-      }
-      // Update existing participant to accepted
-      const { error: updateError } = await supabase
-        .from('trip_participants')
-        .update({ status: 'confirmed' })
-        .eq('id', existingParticipant.id);
-
-      if (updateError) {
-        return { success: false, error: 'Failed to accept invite' };
-      }
-    } else {
-      // Create new participant
-      const { error: insertError } = await supabase
-        .from('trip_participants')
-        .insert({
-          trip_id: invite.trip_id,
-          user_id: userId,
-          role: 'member',
-          status: 'confirmed',
-        });
-
-      if (insertError) {
-        return { success: false, error: 'Failed to join trip' };
-      }
-    }
-
-    // Increment usage count
-    await supabase
-      .from('trip_invite_links')
-      .update({ usage_count: invite.usage_count + 1 })
-      .eq('id', invite.id);
 
     return { success: true };
-  } catch (err) {
-    console.error('Error accepting invite:', err);
+  } catch {
     return { success: false, error: 'Failed to accept invite' };
   }
 }
