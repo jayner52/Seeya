@@ -1,9 +1,8 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const adminSupabase = createAdminClient();
 
   // Get current user
   const {
@@ -28,8 +27,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get invite (admin client so RLS doesn't block reading the link)
-    const { data: invite, error: inviteError } = await adminSupabase
+    // Get invite — RLS policy allows authenticated users to read invite links
+    const { data: invite, error: inviteError } = await supabase
       .from('trip_invite_links')
       .select('id, trip_id, location_ids, usage_count, expires_at')
       .eq('code', code)
@@ -50,8 +49,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user is already a confirmed participant
-    const { data: existingParticipant } = await adminSupabase
+    // Check if user is already a participant (RLS allows reading own records)
+    const { data: existingParticipant } = await supabase
       .from('trip_participants')
       .select('id, status')
       .eq('trip_id', invite.trip_id)
@@ -67,8 +66,8 @@ export async function POST(request: Request) {
         });
       }
 
-      // Update existing participant record to confirmed
-      const { error: updateError } = await adminSupabase
+      // Update pending → confirmed (RLS allows updating own record)
+      const { error: updateError } = await supabase
         .from('trip_participants')
         .update({ status: 'confirmed' })
         .eq('id', existingParticipant.id);
@@ -81,8 +80,8 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      // Insert new participant — uses admin client to bypass RLS
-      const { error: insertError } = await adminSupabase
+      // Insert new participant (RLS allows self-insert)
+      const { error: insertError } = await supabase
         .from('trip_participants')
         .insert({
           trip_id: invite.trip_id,
@@ -101,9 +100,9 @@ export async function POST(request: Request) {
     }
 
     // Increment usage count
-    await adminSupabase
+    await supabase
       .from('trip_invite_links')
-      .update({ usage_count: invite.usage_count + 1 })
+      .update({ usage_count: (invite.usage_count ?? 0) + 1 })
       .eq('id', invite.id);
 
     return NextResponse.json({
