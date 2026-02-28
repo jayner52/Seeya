@@ -215,11 +215,13 @@ export async function POST(request: Request) {
 
     if (!openRouterResponse.ok) {
       const errorData = await openRouterResponse.text();
-      console.error('OpenRouter API error:', errorData);
-      return NextResponse.json(
-        { error: 'Failed to parse booking information' },
-        { status: 502 }
-      );
+      console.error('OpenRouter API error:', openRouterResponse.status, errorData);
+      let userMessage = 'Failed to parse booking information';
+      try {
+        const errJson = JSON.parse(errorData);
+        if (errJson?.error?.message) userMessage = errJson.error.message;
+      } catch {}
+      return NextResponse.json({ error: userMessage }, { status: 502 });
     }
 
     const aiResponse = await openRouterResponse.json();

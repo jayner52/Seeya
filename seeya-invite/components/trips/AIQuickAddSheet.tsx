@@ -154,11 +154,23 @@ export function AIQuickAddSheet({
       let requestBody: { type: string; content?: string; imageBase64?: string };
 
       if (inputMode === 'upload' && selectedImage) {
-        // Convert image to base64
-        const base64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(selectedImage);
+        // Compress image to JPEG ≤ 1MB before sending
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const img = new Image();
+          const objectUrl = URL.createObjectURL(selectedImage);
+          img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            const MAX = 1200;
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext('2d')!;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          };
+          img.onerror = reject;
+          img.src = objectUrl;
         });
 
         requestBody = { type: 'image', imageBase64: base64 };
