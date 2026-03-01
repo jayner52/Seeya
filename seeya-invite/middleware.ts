@@ -13,9 +13,10 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - .well-known (universal links)
-     * - api (API routes - handled separately)
-     * - invite (public invite pages)
+     *
+     * NOTE: invite and api routes ARE included so Supabase can process
+     * session cookies on those routes (required for server-side auth).
      */
-    '/((?!_next/static|_next/image|favicon.ico|.well-known|api|invite).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.well-known).*)',
   ],
 };

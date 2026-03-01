@@ -22,7 +22,7 @@ export default function AuthLayout({
 
       {/* Footer */}
       <footer className="p-6 text-center">
-        <p className="text-white/60 text-sm">
+        <p className="text-white/60 text-sm" suppressHydrationWarning>
           &copy; {new Date().getFullYear()} Seeya. All rights reserved.
         </p>
       </footer>
