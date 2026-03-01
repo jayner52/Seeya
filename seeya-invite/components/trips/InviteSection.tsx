@@ -47,7 +47,7 @@ export function InviteSection({ tripId, existingCode, className }: InviteSection
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const inviteUrl = inviteCode
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${inviteCode}`
+    ? `${process.env.NEXT_PUBLIC_SITE_URL || 'https://seeya-tawny.vercel.app'}/invite/${inviteCode}`
     : null;
 
   // Fetch locations and tripbits
