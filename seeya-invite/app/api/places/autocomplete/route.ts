@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(GOOGLE_PLACES_API_URL);
     url.searchParams.set('input', query);
-    url.searchParams.set('types', '(cities)');
+    url.searchParams.set('types', 'geocode');
     url.searchParams.set('key', apiKey);
 
     const response = await fetch(url.toString());

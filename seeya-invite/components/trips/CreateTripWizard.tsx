@@ -37,6 +37,8 @@ import {
   EyeOff,
   Globe,
   AlertTriangle,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { tripVibes, generateTripNameSuggestions, getContinent, type TripVibe } from '@/lib/tripVibes';
 import type { Profile, VisibilityLevel } from '@/types/database';
@@ -124,7 +126,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
   const [showPredictions, setShowPredictions] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const [dateMode, setDateMode] = useState<DateMode>('exact');
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
 
   // Step 2: Vibe
   const [selectedVibes, setSelectedVibes] = useState<Set<string>>(new Set());
@@ -317,6 +319,19 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
     setCoverCity('');
   };
 
+  const moveDestination = (id: string, direction: 'up' | 'down') => {
+    setDestinations(prev => {
+      const idx = prev.findIndex(d => d.id === id);
+      if (idx === -1) return prev;
+      if (direction === 'up' && idx === 0) return prev;
+      if (direction === 'down' && idx === prev.length - 1) return prev;
+      const next = [...prev];
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next;
+    });
+  };
+
   const handleUpdateDestinationDate = (id: string, field: 'startDate' | 'endDate', value: string) => {
     setDestinations(prev => {
       const idx = prev.findIndex(d => d.id === id);
@@ -408,11 +423,13 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           if (!d.endDate) return max;
           return !max || d.endDate > max ? d.endDate : max;
         }, null as string | null);
-      } else if (dateMode === 'flexible' && selectedMonth) {
-        const [year, month] = selectedMonth.split('-').map(Number);
-        startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const lastDay = new Date(year, month, 0).getDate();
-        endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+      } else if (dateMode === 'flexible' && selectedMonths.size > 0) {
+        const sorted = Array.from(selectedMonths).sort();
+        const [firstYear, firstMonth] = sorted[0].split('-').map(Number);
+        const [lastYear, lastMonth] = sorted[sorted.length - 1].split('-').map(Number);
+        startDate = `${firstYear}-${String(firstMonth).padStart(2, '0')}-01`;
+        const lastDay = new Date(lastYear, lastMonth, 0).getDate();
+        endDate = `${lastYear}-${String(lastMonth).padStart(2, '0')}-${lastDay}`;
       }
 
       // Single SECURITY DEFINER RPC call — creates trip, participant, locations,
@@ -498,21 +515,27 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
       {/* Flexible Month Picker */}
       {dateMode === 'flexible' && (
         <div className="p-4 bg-white rounded-xl border border-gray-200">
-          <p className="text-sm text-seeya-text-secondary mb-3">Pick a month</p>
+          <p className="text-sm text-seeya-text-secondary mb-3">Pick one or more months</p>
           <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: 12 }, (_, i) => {
               const date = new Date();
               date.setMonth(i);
               const monthKey = `${date.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
               const monthName = date.toLocaleString('default', { month: 'short' });
+              const isSelected = selectedMonths.has(monthKey);
               return (
                 <button
                   key={monthKey}
                   type="button"
-                  onClick={() => setSelectedMonth(selectedMonth === monthKey ? null : monthKey)}
+                  onClick={() => {
+                    const next = new Set(selectedMonths);
+                    if (isSelected) next.delete(monthKey);
+                    else next.add(monthKey);
+                    setSelectedMonths(next);
+                  }}
                   className={cn(
                     'py-2 px-1 rounded-lg text-sm font-medium transition-all',
-                    selectedMonth === monthKey
+                    isSelected
                       ? 'bg-black text-white'
                       : 'bg-gray-50 text-seeya-text hover:bg-gray-100'
                   )}
@@ -542,6 +565,26 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
                 <p className="text-xs text-seeya-text-secondary">Stop {index + 1}</p>
                 <p className="font-medium text-seeya-text">{dest.name}</p>
               </div>
+              {destinations.length > 1 && (
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => moveDestination(dest.id, 'up')}
+                    disabled={index === 0}
+                    className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-20"
+                  >
+                    <ChevronUp size={14} className="text-seeya-text-secondary" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveDestination(dest.id, 'down')}
+                    disabled={index === destinations.length - 1}
+                    className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-20"
+                  >
+                    <ChevronDown size={14} className="text-seeya-text-secondary" />
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => handleRemoveDestination(dest.id)}
@@ -592,7 +635,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
             <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder={destinations.length === 0 ? 'Search for a city...' : 'Add another stop...'}
+              placeholder={destinations.length === 0 ? 'Search for a city or country...' : 'Add another stop...'}
               value={newDestination}
               onChange={(e) => setNewDestination(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddDestination()}
