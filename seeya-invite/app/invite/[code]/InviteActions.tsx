@@ -63,17 +63,18 @@ export function InviteActions({
   }, [deepLinkUrl]);
 
   const handleAcceptOnWeb = async () => {
+    // Wait for auth store to finish initializing before deciding to redirect
+    if (authLoading) return;
+
     if (!isAuthenticated) {
       router.push(`/login?invite=${code}`);
       return;
     }
 
-    if (!user) return;
-
     setAcceptStatus('loading');
     setError(null);
 
-    const result = await acceptInvite(code, user.id);
+    const result = await acceptInvite(code, user?.id ?? '');
 
     if (result.error) {
       setAcceptStatus('error');

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card } from '@/components/ui';
 import { acceptInvite } from '@/lib/api/invites';
-import { useAuthStore } from '@/stores/authStore';
 import { Check, Loader2, AlertCircle } from 'lucide-react';
 
 interface AcceptInviteFormProps {
@@ -19,32 +18,31 @@ export function AcceptInviteForm({
   tripName,
 }: AcceptInviteFormProps) {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
   const [status, setStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
   const [error, setError] = useState<string | null>(null);
 
   const handleAccept = async () => {
-    if (!user) {
-      router.push(`/login?invite=${code}`);
-      return;
-    }
-
     setStatus('loading');
     setError(null);
 
-    const result = await acceptInvite(code, user.id);
+    // The server already verified the user is authenticated before rendering
+    // this form. The API uses cookie-based auth — no client-side user check needed.
+    const result = await acceptInvite(code, '');
 
-    if (result.error) {
+    if (!result.success) {
+      // If session expired, send them back to login
+      if (result.error === 'Unauthorized') {
+        router.push(`/login?invite=${code}`);
+        return;
+      }
       setStatus('error');
-      setError(result.error);
+      setError(result.error || 'Failed to join trip');
       return;
     }
 
     setStatus('success');
-
-    // Redirect to trip after a brief delay
     setTimeout(() => {
       router.push(`/trips/${tripId}`);
     }, 1500);
@@ -101,12 +99,6 @@ export function AcceptInviteForm({
           'Accept Invitation'
         )}
       </Button>
-
-      {!user && (
-        <p className="mt-4 text-sm text-seeya-text-secondary">
-          You&apos;ll need to sign in or create an account first
-        </p>
-      )}
     </Card>
   );
 }
