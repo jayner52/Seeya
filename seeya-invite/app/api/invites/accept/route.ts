@@ -16,6 +16,11 @@ export async function POST(request: Request) {
     );
   }
 
+  // Ensure the user has a profile row — new email signups can slip through
+  // without one if the handle_new_user trigger fails (e.g. username collision).
+  // This RPC is a no-op if the profile already exists.
+  await supabase.rpc('ensure_profile_exists');
+
   try {
     const body = await request.json();
     const { code } = body;
