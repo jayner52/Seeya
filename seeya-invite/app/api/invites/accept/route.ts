@@ -91,7 +91,6 @@ export async function POST(request: Request) {
         .insert({
           trip_id: invite.trip_id,
           user_id: user.id,
-          role: 'member',
           status: 'pending',
         })
         .select('id')
