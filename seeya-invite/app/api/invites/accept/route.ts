@@ -80,20 +80,36 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      // Insert new participant (RLS allows self-insert)
-      const { error: insertError } = await supabase
+      // Insert as pending first (mirrors iOS pattern: pending → confirmed)
+      const { data: newParticipant, error: insertError } = await supabase
         .from('trip_participants')
         .insert({
           trip_id: invite.trip_id,
           user_id: user.id,
           role: 'member',
-          status: 'confirmed',
-        });
+          status: 'pending',
+        })
+        .select('id')
+        .single();
 
       if (insertError) {
         console.error('Error inserting participant:', insertError);
         return NextResponse.json(
-          { error: 'Failed to join trip', success: false },
+          { error: insertError.message || 'Failed to join trip', success: false },
+          { status: 500 }
+        );
+      }
+
+      // Update to confirmed
+      const { error: updateError } = await supabase
+        .from('trip_participants')
+        .update({ status: 'confirmed' })
+        .eq('id', newParticipant.id);
+
+      if (updateError) {
+        console.error('Error confirming participant:', updateError);
+        return NextResponse.json(
+          { error: updateError.message || 'Failed to confirm join', success: false },
           { status: 500 }
         );
       }

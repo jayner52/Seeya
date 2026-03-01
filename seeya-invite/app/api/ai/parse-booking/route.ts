@@ -131,7 +131,12 @@ export async function POST(request: Request) {
       );
     }
 
-    let messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>;
+    type ContentPart =
+      | { type: 'text'; text: string }
+      | { type: 'image_url'; image_url: { url: string } }
+      | { type: 'document'; source: { type: string; media_type: string; data: string } };
+
+    let messages: Array<{ role: string; content: string | ContentPart[] }>;
 
     if (type === 'image' && imageBase64) {
       // Image parsing with vision model
@@ -153,6 +158,32 @@ export async function POST(request: Request) {
               text: 'Extract the booking information from this image.',
             },
           ],
+        },
+      ];
+    } else if (type === 'pdf' && imageBase64) {
+      // Extract text from PDF, then send as plain text
+      const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+      const pdfBuffer = Buffer.from(base64Data, 'base64');
+      let pdfText: string;
+      try {
+        // Dynamic import avoids module-level filesystem access that breaks Next.js routes
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pdfParseModule = await import('pdf-parse') as any;
+        const pdfParse = pdfParseModule.default ?? pdfParseModule;
+        const parsed = await pdfParse(pdfBuffer);
+        pdfText = parsed.text?.trim();
+        if (!pdfText) throw new Error('PDF appears to be empty or image-only');
+      } catch (err) {
+        return NextResponse.json(
+          { error: `Could not read PDF text: ${err instanceof Error ? err.message : 'unknown error'}` },
+          { status: 422 }
+        );
+      }
+      messages = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: `Extract travel booking information from this PDF document text:\n\n---\n${pdfText}\n---\n\nReturn the extracted data as JSON.`,
         },
       ];
     } else if (type === 'text' && content) {
@@ -195,7 +226,7 @@ export async function POST(request: Request) {
     }
 
     // Call OpenRouter API
-    const model = type === 'image' ? 'anthropic/claude-3.5-sonnet' : 'anthropic/claude-3.5-haiku';
+    const model = type === 'text' ? 'anthropic/claude-3.5-haiku' : 'anthropic/claude-3.5-sonnet';
 
     const openRouterResponse = await fetch(OPENROUTER_API_URL, {
       method: 'POST',

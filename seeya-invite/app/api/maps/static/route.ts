@@ -9,9 +9,15 @@ export async function GET(request: NextRequest) {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seeya-tawny.vercel.app';
 
+  const center = request.nextUrl.searchParams.get('center');
+  const zoom = request.nextUrl.searchParams.get('zoom');
+
   // Build URL — do NOT encodeURIComponent the whole marker string;
   // Google parses pipe-delimited values after standard query decoding
   let url = `https://maps.googleapis.com/maps/api/staticmap?size=640x320&scale=2&maptype=roadmap&key=${apiKey}`;
+
+  if (center) url += `&center=${encodeURIComponent(center)}`;
+  if (zoom) url += `&zoom=${zoom}`;
 
   locs.forEach((p, i) => {
     url += `&markers=color:0xa855f7|label:${i + 1}|${encodeURIComponent(p)}`;

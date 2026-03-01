@@ -128,7 +128,7 @@ struct TripCard: View {
                                 Text(flag)
                                     .font(SeeyaTypography.headlineLarge)
                             }
-                            Text(trip.destination)
+                            Text(trip.allDestinations)
                                 .font(SeeyaTypography.headlineLarge)
                                 .lineLimit(1)
                         }

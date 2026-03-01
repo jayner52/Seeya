@@ -481,6 +481,14 @@ final class InviteViewModel {
         }
     }
 
+    // MARK: - Load Invite from Manually Entered Code
+
+    /// Fetches an invite by code entered by the user (e.g. from the EnterInviteCodeSheet).
+    /// Populates `pendingInviteLink` and `pendingInviteTrip` on success.
+    func loadInviteFromCode(_ code: String) async -> Bool {
+        return await fetchInviteLinkDetails(code: code)
+    }
+
     // MARK: - Accept Invite from Link
 
     func fetchInviteLinkDetails(code: String) async -> Bool {

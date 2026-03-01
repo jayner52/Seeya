@@ -4,6 +4,7 @@ struct TripsView: View {
     @State private var viewModel = TripsViewModel()
     @State private var showCreateTrip = false
     @State private var showLogPastTrip = false
+    @State private var showEnterCodeSheet = false
     @State private var selectedTrip: Trip?
     @Binding var tripIdToOpen: UUID?
 
@@ -53,6 +54,12 @@ struct TripsView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
                         Button {
+                            showEnterCodeSheet = true
+                        } label: {
+                            Image(systemName: "link.badge.plus")
+                        }
+
+                        Button {
                             showLogPastTrip = true
                         } label: {
                             Image(systemName: "clock.arrow.circlepath")
@@ -68,6 +75,11 @@ struct TripsView: View {
             }
             .refreshable {
                 await viewModel.fetchTrips()
+            }
+            .sheet(isPresented: $showEnterCodeSheet) {
+                EnterInviteCodeSheet {
+                    Task { await viewModel.fetchTrips() }
+                }
             }
             .sheet(isPresented: $showCreateTrip, onDismiss: {
                 Task {
@@ -116,6 +128,15 @@ struct TripsView: View {
                 showLogPastTrip = true
             } label: {
                 Label("Log a Past Trip", systemImage: "clock.arrow.circlepath")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(Color.seeyaPurple)
+            }
+
+            Button {
+                showEnterCodeSheet = true
+            } label: {
+                Label("Have an invite code?", systemImage: "link.badge.plus")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(Color.seeyaPurple)

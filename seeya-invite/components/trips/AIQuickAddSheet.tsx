@@ -131,13 +131,16 @@ export function AIQuickAddSheet({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    const isPDF = file?.type === 'application/pdf' || file?.name.toLowerCase().endsWith('.pdf');
+    if (file && (file.type.startsWith('image/') || isPDF)) {
       setSelectedImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (!isPDF) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
     }
   }, []);
 
@@ -154,6 +157,21 @@ export function AIQuickAddSheet({
       let requestBody: { type: string; content?: string; imageBase64?: string };
 
       if (inputMode === 'upload' && selectedImage) {
+        const isPDF = selectedImage.type === 'application/pdf' || selectedImage.name.toLowerCase().endsWith('.pdf');
+
+        if (isPDF) {
+          // Read PDF as base64 and send as document type
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result as string;
+              resolve(dataUrl); // keep full data URL; server strips prefix
+            };
+            reader.onerror = () => reject(new Error('Failed to read PDF file'));
+            reader.readAsDataURL(selectedImage);
+          });
+          requestBody = { type: 'pdf', imageBase64: base64 };
+        } else {
         // Compress image to JPEG ≤ 1MB before sending
         const base64 = await new Promise<string>((resolve, reject) => {
           const img = new Image();
@@ -169,11 +187,15 @@ export function AIQuickAddSheet({
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             resolve(canvas.toDataURL('image/jpeg', 0.85));
           };
-          img.onerror = reject;
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error(`Could not load image "${selectedImage.name}" (${selectedImage.type || 'unknown type'}). Try a PNG or JPEG screenshot.`));
+          };
           img.src = objectUrl;
         });
 
         requestBody = { type: 'image', imageBase64: base64 };
+        }
       } else if (inputMode === 'text' && pastedText.trim()) {
         requestBody = { type: 'text', content: pastedText };
       } else {
@@ -187,8 +209,14 @@ export function AIQuickAddSheet({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to analyze content');
+        let errorMsg = `Server error ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch {
+          errorMsg = await response.text().catch(() => errorMsg);
+        }
+        throw new Error(errorMsg);
       }
 
       const result: ParsedResult = await response.json();
@@ -405,14 +433,24 @@ export function AIQuickAddSheet({
                     </p>
                   </div>
 
-                  {imagePreview ? (
+                  {selectedImage ? (
                     <div className="space-y-3">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imagePreview}
-                        alt="Selected"
-                        className="w-full max-h-64 object-contain rounded-lg border-2 border-seeya-purple"
-                      />
+                      {selectedImage.type === 'application/pdf' || selectedImage.name.toLowerCase().endsWith('.pdf') ? (
+                        <div className="flex items-center gap-3 p-4 border-2 border-seeya-purple rounded-lg bg-purple-50">
+                          <FileText size={32} className="text-seeya-purple flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-seeya-text text-sm truncate">{selectedImage.name}</p>
+                            <p className="text-xs text-seeya-text-secondary">PDF Document</p>
+                          </div>
+                        </div>
+                      ) : imagePreview ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={imagePreview}
+                          alt="Selected"
+                          className="w-full max-h-64 object-contain rounded-lg border-2 border-seeya-purple"
+                        />
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => {

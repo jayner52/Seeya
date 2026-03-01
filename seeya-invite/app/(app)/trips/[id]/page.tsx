@@ -239,18 +239,76 @@ export default function TripDetailPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-br from-seeya-purple to-purple-700 text-white">
-        {/* Nav row */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4">
+      <div className="bg-gradient-to-br from-seeya-purple to-purple-700 text-white flex">
+        {/* Left column: nav + trip info */}
+        <div className="flex-1 min-w-0 flex flex-col px-6 pt-6 pb-6">
           <Link
             href="/trips"
-            className="inline-flex items-center gap-2 text-white/80 hover:text-white"
+            className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4 self-start"
           >
             <ArrowLeft size={20} />
             <span>Back to Trips</span>
           </Link>
 
-          {isOwner && (
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <h1 className="text-2xl md:text-3xl font-display font-semibold">
+              {trip.name}
+            </h1>
+            {daysUntil !== null && daysUntil > 0 && (
+              <Badge variant="default" className="bg-white/20 text-white border-0">
+                In {daysUntil} days
+              </Badge>
+            )}
+            {daysUntil !== null && daysUntil === 0 && (
+              <Badge variant="default" className="bg-seeya-success text-white border-0">
+                Today!
+              </Badge>
+            )}
+          </div>
+
+          {trip.locations.length > 0 && (
+            <div className="flex items-center gap-2 text-white/80 mb-1 flex-wrap">
+              <MapPin size={16} className="flex-shrink-0" />
+              <span>{trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}</span>
+            </div>
+          )}
+
+          {dateRange && (
+            <div className="flex items-center gap-2 text-white/80 mb-4">
+              <Calendar size={16} />
+              <span>{dateRange}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 mt-auto">
+            <StackedAvatars participants={acceptedParticipants} maxVisible={5} size="md" />
+            <div>
+              <div className="text-white text-sm font-medium">
+                {acceptedParticipants.length > 0
+                  ? acceptedParticipants
+                      .map(p => p.user?.full_name?.split(' ')[0] || 'Traveler')
+                      .join(', ')
+                  : 'Just you'}
+              </div>
+              <div className="text-white/60 text-xs">
+                {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Map column — fills full height of header, scales with container */}
+        {trip.locations.length > 0 && (
+          <div className="relative w-[45%] min-w-0">
+            <div className="absolute inset-0 my-2 rounded-2xl overflow-hidden">
+              <TripRouteMap locations={trip.locations} />
+            </div>
+          </div>
+        )}
+
+        {/* ... menu button column */}
+        {isOwner && (
+          <div className="flex-shrink-0 px-3 pt-4 flex flex-col">
             <div className="relative">
               <button
                 onClick={() => setShowMenu(!showMenu)}
@@ -310,68 +368,8 @@ export default function TripDetailPage() {
                 </>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Content row: info left, map right filling full height */}
-        <div className="flex items-stretch">
-          <div className="flex-1 min-w-0 px-6 pb-6">
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <h1 className="text-2xl md:text-3xl font-display font-semibold">
-                {trip.name}
-              </h1>
-              {daysUntil !== null && daysUntil > 0 && (
-                <Badge variant="default" className="bg-white/20 text-white border-0">
-                  In {daysUntil} days
-                </Badge>
-              )}
-              {daysUntil !== null && daysUntil === 0 && (
-                <Badge variant="default" className="bg-seeya-success text-white border-0">
-                  Today!
-                </Badge>
-              )}
-            </div>
-
-            {trip.locations.length > 0 && (
-              <div className="flex items-center gap-2 text-white/80 mb-1 flex-wrap">
-                <MapPin size={16} className="flex-shrink-0" />
-                <span>{trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}</span>
-              </div>
-            )}
-
-            {dateRange && (
-              <div className="flex items-center gap-2 text-white/80 mb-4">
-                <Calendar size={16} />
-                <span>{dateRange}</span>
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              <StackedAvatars participants={acceptedParticipants} maxVisible={5} size="md" />
-              <div>
-                <div className="text-white text-sm font-medium">
-                  {acceptedParticipants.length > 0
-                    ? acceptedParticipants
-                        .map(p => p.user?.full_name?.split(' ')[0] || 'Traveler')
-                        .join(', ')
-                    : 'Just you'}
-                </div>
-                <div className="text-white/60 text-xs">
-                  {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'}
-                </div>
-              </div>
-            </div>
           </div>
-
-          {/* Map fills full height of content area */}
-          {trip.locations.length > 0 && (
-            <div className="w-80 flex-shrink-0 pr-4 pb-4 self-stretch">
-              <div className="h-full min-h-[160px] rounded-2xl overflow-hidden">
-                <TripRouteMap locations={trip.locations} />
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Tab Navigation */}
