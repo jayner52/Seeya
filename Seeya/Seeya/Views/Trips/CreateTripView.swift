@@ -62,7 +62,7 @@ struct CreateTripView: View {
     // Step 1: Where & When
     @State private var destinations: [TripsViewModel.TripDestination] = []
     @State private var dateMode: DateMode = .exact
-    @State private var selectedMonth: Date? = nil
+    @State private var selectedMonths: Set<Date> = []
     @State private var hasInitializedDate = false
 
     // Step 2: Vibe
@@ -212,11 +212,18 @@ struct CreateTripView: View {
                         index: index + 1,
                         previousEndDate: index > 0 ? destinations[index - 1].endDate : nil,
                         dateMode: dateMode,
+                        showMoveButtons: destinations.count > 1,
                         onRemove: {
                             destinations.removeAll { $0.id == destination.id }
                             coverPhotos = [:]
                             coverCity = ""
                         },
+                        onMoveUp: index > 0 ? {
+                            destinations.swapAt(index, index - 1)
+                        } : nil,
+                        onMoveDown: index < destinations.count - 1 ? {
+                            destinations.swapAt(index, index + 1)
+                        } : nil,
                         onEndDateChange: { newEnd in
                             cascadeEndDate(from: index, endDate: newEnd)
                         }
@@ -229,7 +236,7 @@ struct CreateTripView: View {
                 } label: {
                     CityAutocompleteField(
                         viewModel: viewModel,
-                        placeholder: destinations.isEmpty ? "Search for a city..." : "Add another stop...",
+                        placeholder: destinations.isEmpty ? "Search for a city or country..." : "Add another stop...",
                         onSelect: { city, customLocation in
                             var startDate: Date? = nil
                             var endDate: Date? = nil
@@ -316,7 +323,7 @@ struct CreateTripView: View {
 
     private var monthPickerGrid: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Pick a month")
+            Text("Pick one or more months")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -346,17 +353,14 @@ struct CreateTripView: View {
     }
 
     private func isMonthSelected(_ month: Date) -> Bool {
-        guard let selected = selectedMonth else { return false }
-        let cal = Calendar.current
-        return cal.component(.month, from: selected) == cal.component(.month, from: month) &&
-               cal.component(.year, from: selected) == cal.component(.year, from: month)
+        selectedMonths.contains(month)
     }
 
     private func selectMonth(_ month: Date) {
-        if isMonthSelected(month) {
-            selectedMonth = nil
+        if selectedMonths.contains(month) {
+            selectedMonths.remove(month)
         } else {
-            selectedMonth = month
+            selectedMonths.insert(month)
         }
     }
 
@@ -406,12 +410,15 @@ struct CreateTripView: View {
             }
             return "Select dates"
         case .flexible:
-            if let month = selectedMonth {
-                let formatter = DateFormatter()
+            if selectedMonths.isEmpty { return "Select a month" }
+            let formatter = DateFormatter()
+            let sorted = selectedMonths.sorted()
+            if sorted.count == 1 {
                 formatter.dateFormat = "MMMM yyyy"
-                return formatter.string(from: month)
+                return formatter.string(from: sorted[0])
             }
-            return "Select a month"
+            formatter.dateFormat = "MMM"
+            return sorted.map { formatter.string(from: $0) }.joined(separator: ", ")
         case .tbd:
             return "Dates TBD"
         }
@@ -454,6 +461,20 @@ struct CreateTripView: View {
 
     private var tripEndDate: Date? {
         destinations.compactMap { $0.endDate }.max()
+    }
+
+    private var flexibleStartDate: Date? {
+        guard !selectedMonths.isEmpty else { return nil }
+        return selectedMonths.sorted().first
+    }
+
+    private var flexibleEndDate: Date? {
+        guard !selectedMonths.isEmpty else { return nil }
+        guard let lastMonth = selectedMonths.sorted().last else { return nil }
+        let cal = Calendar.current
+        guard let firstOfNext = cal.date(byAdding: .month, value: 1, to: lastMonth),
+              let lastDay = cal.date(byAdding: .day, value: -1, to: firstOfNext) else { return nil }
+        return lastDay
     }
 
     // MARK: - Step 2: Vibe
@@ -901,10 +922,10 @@ struct CreateTripView: View {
                 let vibeNames = selectedVibes.map { $0.name }
 
                 var month: String? = nil
-                if let selectedMonth = selectedMonth {
+                if let firstMonth = selectedMonths.sorted().first {
                     let formatter = DateFormatter()
                     formatter.dateFormat = "MMMM"
-                    month = formatter.string(from: selectedMonth)
+                    month = formatter.string(from: firstMonth)
                 } else if let startDate = tripStartDate {
                     let formatter = DateFormatter()
                     formatter.dateFormat = "MMMM"
@@ -947,14 +968,14 @@ struct CreateTripView: View {
             print("[CreateTripView] Date mode: \(dateMode)")
             print("[CreateTripView] Start date: \(String(describing: tripStartDate))")
             print("[CreateTripView] End date: \(String(describing: tripEndDate))")
-            print("[CreateTripView] Selected month: \(String(describing: selectedMonth))")
+            print("[CreateTripView] Selected months: \(selectedMonths)")
             print("[CreateTripView] Visibility: \(visibility)")
 
             let trip = await viewModel.createTrip(
                 name: tripName.trimmingCharacters(in: .whitespaces),
                 description: tripDescription.isEmpty ? nil : tripDescription,
-                startDate: tripStartDate,
-                endDate: tripEndDate,
+                startDate: dateMode == .flexible ? flexibleStartDate : tripStartDate,
+                endDate: dateMode == .flexible ? flexibleEndDate : tripEndDate,
                 isFlexible: isFlexible,
                 visibility: visibility,
                 destinations: destinations,
@@ -1133,7 +1154,7 @@ struct CityAutocompleteField: View {
             await MainActor.run { isSearching = true }
 
             do {
-                let results = try await PlacesService.shared.autocomplete(query: query)
+                let results = try await PlacesService.shared.autocompleteRegions(query: query)
                 guard !Task.isCancelled else { return }
 
                 await MainActor.run {
@@ -1206,7 +1227,10 @@ struct DestinationRowWithDates: View {
     let index: Int
     let previousEndDate: Date?
     let dateMode: DateMode
+    var showMoveButtons: Bool = false
     let onRemove: () -> Void
+    var onMoveUp: (() -> Void)? = nil
+    var onMoveDown: (() -> Void)? = nil
     var onEndDateChange: ((Date) -> Void)? = nil
 
     var body: some View {
@@ -1230,6 +1254,29 @@ struct DestinationRowWithDates: View {
                 }
 
                 Spacer()
+
+                // Reorder buttons
+                if showMoveButtons {
+                    VStack(spacing: 2) {
+                        Button {
+                            onMoveUp?()
+                        } label: {
+                            Image(systemName: "chevron.up")
+                                .font(.caption2)
+                                .foregroundStyle(onMoveUp != nil ? Color.secondary : Color.secondary.opacity(0.3))
+                        }
+                        .disabled(onMoveUp == nil)
+
+                        Button {
+                            onMoveDown?()
+                        } label: {
+                            Image(systemName: "chevron.down")
+                                .font(.caption2)
+                                .foregroundStyle(onMoveDown != nil ? Color.secondary : Color.secondary.opacity(0.3))
+                        }
+                        .disabled(onMoveDown == nil)
+                    }
+                }
 
                 // Remove button
                 Button(action: onRemove) {
