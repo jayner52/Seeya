@@ -40,11 +40,7 @@ struct TripInviteLink: Codable, Identifiable, Sendable {
     /// When app is installed: Opens via Universal Links
     /// When app is not installed: Shows web fallback with App Store link
     var shareableUrl: String {
-        // TODO: Replace with your actual domain once configured
-        // Options:
-        // - Production: "https://seeya.app/invite/\(code)"
-        // - Vercel default: "https://seeya-invite.vercel.app/invite/\(code)"
-        "https://seeya-invite.vercel.app/invite/\(code)"
+        "https://seeya-tawny.vercel.app/invite/\(code)"
     }
 
     /// Legacy deep link URL for direct app opening (fallback)
