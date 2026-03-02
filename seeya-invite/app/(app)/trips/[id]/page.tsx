@@ -397,6 +397,9 @@ export default function TripDetailPage() {
             onInviteClick={handleInviteClick}
             onAIQuickAdd={() => setShowAISheet(true)}
             onTripBitAdded={fetchTrip}
+            isOwner={isOwner}
+            ownerUserId={trip.user_id}
+            onParticipantsChanged={fetchTrip}
           />
         ) : (
           <ItineraryTab

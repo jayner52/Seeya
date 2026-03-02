@@ -22,6 +22,9 @@ interface PlanningTabProps {
   onInviteClick: () => void;
   onAIQuickAdd?: () => void;
   onTripBitAdded?: () => void;
+  isOwner?: boolean;
+  ownerUserId?: string;
+  onParticipantsChanged?: () => void;
 }
 
 export function PlanningTab({
@@ -37,6 +40,9 @@ export function PlanningTab({
   onInviteClick,
   onAIQuickAdd,
   onTripBitAdded,
+  isOwner,
+  ownerUserId,
+  onParticipantsChanged,
 }: PlanningTabProps) {
   const [rateShareBit, setRateShareBit] = useState<TripBit | null>(null);
 
@@ -55,6 +61,10 @@ export function PlanningTab({
       <ParticipantsSection
         participants={participants}
         onInviteClick={onInviteClick}
+        isOwner={isOwner}
+        ownerUserId={ownerUserId}
+        tripId={tripId}
+        onParticipantsChanged={onParticipantsChanged}
       />
 
       {/* Trip Pack */}

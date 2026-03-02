@@ -1,14 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
-import { Card, Avatar, Button, Badge } from '@/components/ui';
-import { UserPlus, Crown, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Card, Avatar, Button } from '@/components/ui';
+import { UserPlus, Crown, CheckCircle2, Clock, XCircle, MoreHorizontal, Loader2 } from 'lucide-react';
 import type { TripParticipant } from '@/types/database';
 
 interface ParticipantsSectionProps {
   participants: TripParticipant[];
   onInviteClick?: () => void;
   className?: string;
+  isOwner?: boolean;
+  ownerUserId?: string;
+  tripId?: string;
+  onParticipantsChanged?: () => void;
 }
 
 const statusConfig = {
@@ -22,9 +27,39 @@ export function ParticipantsSection({
   participants,
   onInviteClick,
   className,
+  isOwner,
+  ownerUserId,
+  tripId,
+  onParticipantsChanged,
 }: ParticipantsSectionProps) {
-  const acceptedCount = participants.filter((p) => p.status === 'confirmed').length;
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const confirmedCount = participants.filter((p) => p.status === 'confirmed').length;
   const pendingCount = participants.filter((p) => p.status === 'invited').length;
+  const maybeCount = participants.filter((p) => p.status === 'maybe').length;
+
+  async function handleChangeStatus(participantId: string, newStatus: string) {
+    setLoadingId(participantId);
+    setMenuOpenId(null);
+    await fetch(`/api/trips/${tripId}/participants/${participantId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    setLoadingId(null);
+    onParticipantsChanged?.();
+  }
+
+  async function handleRemove(participantId: string) {
+    setLoadingId(participantId);
+    setMenuOpenId(null);
+    await fetch(`/api/trips/${tripId}/participants/${participantId}`, {
+      method: 'DELETE',
+    });
+    setLoadingId(null);
+    onParticipantsChanged?.();
+  }
 
   return (
     <div className={className}>
@@ -32,7 +67,8 @@ export function ParticipantsSection({
         <div>
           <h3 className="text-lg font-semibold text-seeya-text">Travelers</h3>
           <p className="text-sm text-seeya-text-secondary">
-            {acceptedCount} confirmed
+            {confirmedCount} confirmed
+            {maybeCount > 0 && `, ${maybeCount} maybe`}
             {pendingCount > 0 && `, ${pendingCount} pending`}
           </p>
         </div>
@@ -49,14 +85,15 @@ export function ParticipantsSection({
       <Card variant="outline" padding="none">
         <div className="divide-y divide-gray-100">
           {participants.map((participant) => {
-            const status = statusConfig[participant.status];
+            const statusKey = participant.status as keyof typeof statusConfig;
+            const status = statusConfig[statusKey] ?? statusConfig.invited;
             const StatusIcon = status.icon;
+            const isThisOwner = participant.user_id === ownerUserId;
+            const canManage = isOwner && !isThisOwner && tripId;
+            const isLoading = loadingId === participant.id;
 
             return (
-              <div
-                key={participant.id}
-                className="flex items-center gap-3 p-4"
-              >
+              <div key={participant.id} className="flex items-center gap-3 p-4">
                 <Avatar
                   name={participant.user?.full_name || 'Unknown'}
                   avatarUrl={participant.user?.avatar_url}
@@ -67,7 +104,7 @@ export function ParticipantsSection({
                     <p className="font-medium text-seeya-text truncate">
                       {participant.user?.full_name || 'Unknown User'}
                     </p>
-                    {participant.role === 'owner' && (
+                    {isThisOwner && (
                       <Crown size={14} className="text-seeya-warning flex-shrink-0" />
                     )}
                   </div>
@@ -78,6 +115,65 @@ export function ParticipantsSection({
                     </span>
                   </div>
                 </div>
+
+                {/* Owner action menu */}
+                {canManage && (
+                  <div className="relative flex-shrink-0">
+                    {isLoading ? (
+                      <Loader2 size={18} className="animate-spin text-seeya-text-secondary" />
+                    ) : (
+                      <button
+                        onClick={() => setMenuOpenId(menuOpenId === participant.id ? null : participant.id)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-seeya-text-secondary"
+                      >
+                        <MoreHorizontal size={18} />
+                      </button>
+                    )}
+
+                    {menuOpenId === participant.id && (
+                      <>
+                        {/* Click-outside overlay */}
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setMenuOpenId(null)}
+                        />
+                        <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[160px]">
+                          {participant.status !== 'confirmed' && (
+                            <button
+                              onClick={() => handleChangeStatus(participant.id, 'confirmed')}
+                              className="w-full text-left px-4 py-2 text-sm text-seeya-text hover:bg-gray-50"
+                            >
+                              Mark Confirmed
+                            </button>
+                          )}
+                          {participant.status !== 'maybe' && (
+                            <button
+                              onClick={() => handleChangeStatus(participant.id, 'maybe')}
+                              className="w-full text-left px-4 py-2 text-sm text-seeya-text hover:bg-gray-50"
+                            >
+                              Mark Maybe
+                            </button>
+                          )}
+                          {participant.status !== 'invited' && (
+                            <button
+                              onClick={() => handleChangeStatus(participant.id, 'invited')}
+                              className="w-full text-left px-4 py-2 text-sm text-seeya-text hover:bg-gray-50"
+                            >
+                              Mark Pending
+                            </button>
+                          )}
+                          <div className="border-t border-gray-100 my-1" />
+                          <button
+                            onClick={() => handleRemove(participant.id)}
+                            className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
+                          >
+                            Remove from Trip
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
