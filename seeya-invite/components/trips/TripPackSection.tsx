@@ -347,7 +347,7 @@ export function TripPackSection({
             <Button
               variant="secondary"
               leftIcon={<Plus size={16} />}
-              onClick={() => onAddClick?.()}
+              onClick={() => onAddClick?.(activeCategory !== 'all' ? activeCategory as TripBitCategory : undefined)}
               className="flex-1"
             >
               Add Item
