@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { Card, Avatar, Button } from '@/components/ui';
 import { UserPlus, Crown, CheckCircle2, Clock, XCircle, MoreHorizontal, Loader2 } from 'lucide-react';
@@ -32,32 +32,52 @@ export function ParticipantsSection({
   tripId,
   onParticipantsChanged,
 }: ParticipantsSectionProps) {
+  const [localParticipants, setLocalParticipants] = useState(participants);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const confirmedCount = participants.filter((p) => p.status === 'confirmed').length;
-  const pendingCount = participants.filter((p) => p.status === 'invited').length;
-  const maybeCount = participants.filter((p) => p.status === 'maybe').length;
+  // Sync local state when parent refreshes participants
+  useEffect(() => {
+    setLocalParticipants(participants);
+  }, [participants]);
+
+  const confirmedCount = localParticipants.filter((p) => p.status === 'confirmed').length;
+  const pendingCount = localParticipants.filter((p) => p.status === 'invited').length;
+  const maybeCount = localParticipants.filter((p) => p.status === 'maybe').length;
 
   async function handleChangeStatus(participantId: string, newStatus: string) {
+    // Optimistic update
+    setLocalParticipants(prev =>
+      prev.map(p => p.id === participantId ? { ...p, status: newStatus as TripParticipant['status'] } : p)
+    );
     setLoadingId(participantId);
     setMenuOpenId(null);
-    await fetch(`/api/trips/${tripId}/participants/${participantId}`, {
+    const res = await fetch(`/api/trips/${tripId}/participants/${participantId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
     });
     setLoadingId(null);
+    if (!res.ok) {
+      setLocalParticipants(participants); // revert
+      return;
+    }
     onParticipantsChanged?.();
   }
 
   async function handleRemove(participantId: string) {
+    // Optimistic update
+    setLocalParticipants(prev => prev.filter(p => p.id !== participantId));
     setLoadingId(participantId);
     setMenuOpenId(null);
-    await fetch(`/api/trips/${tripId}/participants/${participantId}`, {
+    const res = await fetch(`/api/trips/${tripId}/participants/${participantId}`, {
       method: 'DELETE',
     });
     setLoadingId(null);
+    if (!res.ok) {
+      setLocalParticipants(participants); // revert
+      return;
+    }
     onParticipantsChanged?.();
   }
 
@@ -84,7 +104,7 @@ export function ParticipantsSection({
 
       <Card variant="outline" padding="none">
         <div className="divide-y divide-gray-100">
-          {participants.map((participant) => {
+          {localParticipants.map((participant) => {
             const statusKey = participant.status as keyof typeof statusConfig;
             const status = statusConfig[statusKey] ?? statusConfig.invited;
             const StatusIcon = status.icon;
@@ -179,7 +199,7 @@ export function ParticipantsSection({
           })}
         </div>
 
-        {participants.length === 0 && (
+        {localParticipants.length === 0 && (
           <div className="p-6 text-center text-seeya-text-secondary">
             <p className="mb-3">No travelers added yet</p>
             <Button
