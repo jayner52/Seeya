@@ -224,7 +224,7 @@ struct AddTripBitSheet: View {
 
     private var linkSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Link (optional)")
+            Text("Link")
                 .font(.subheadline)
                 .fontWeight(.medium)
 
@@ -232,7 +232,7 @@ struct AddTripBitSheet: View {
                 Image(systemName: "link")
                     .foregroundStyle(.secondary)
 
-                TextField("https://...", text: $link)
+                TextField("Paste a link — flight, reservation, photos...", text: $link)
                     .textContentType(.URL)
                     .autocapitalization(.none)
                     .keyboardType(.URL)
@@ -250,9 +250,52 @@ struct AddTripBitSheet: View {
             .background(Color(.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            Text("Paste a link and we'll auto-detect the category")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            // Category-specific link suggestions
+            if link.isEmpty, let category = selectedCategory,
+               let suggestions = linkSuggestions(for: category), !suggestions.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(suggestions, id: \.label) { suggestion in
+                            Button {
+                                link = suggestion.url
+                            } label: {
+                                Text(suggestion.label)
+                                    .font(.caption)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.seeyaPurple.opacity(0.1))
+                                    .foregroundStyle(Color.seeyaPurple)
+                                    .clipShape(Capsule())
+                                    .overlay(Capsule().stroke(Color.seeyaPurple.opacity(0.2), lineWidth: 1))
+                            }
+                        }
+                    }
+                }
+            }
+
+            if link.isEmpty {
+                Text("Paste a link — tap ✨ to auto-detect the category")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Link Suggestions
+
+    private func linkSuggestions(for category: TripBitCategory) -> [(label: String, url: String)]? {
+        switch category {
+        case .flight:      return [("Google Flights", "https://flights.google.com"), ("Kayak", "https://www.kayak.com"), ("Skyscanner", "https://www.skyscanner.com")]
+        case .stay:        return [("Airbnb", "https://www.airbnb.com"), ("Booking.com", "https://www.booking.com"), ("Hotels.com", "https://www.hotels.com")]
+        case .car:         return [("Turo", "https://turo.com"), ("Hertz", "https://www.hertz.com"), ("Enterprise", "https://www.enterprise.com")]
+        case .activity:    return [("Viator", "https://www.viator.com"), ("GetYourGuide", "https://www.getyourguide.com"), ("Eventbrite", "https://www.eventbrite.com")]
+        case .transport:   return [("Trainline", "https://www.thetrainline.com"), ("Rome2Rio", "https://www.rome2rio.com"), ("Omio", "https://www.omio.com")]
+        case .money:       return [("Splitwise", "https://www.splitwise.com"), ("Venmo", "https://venmo.com"), ("PayPal", "https://www.paypal.com")]
+        case .dining:      return [("OpenTable", "https://www.opentable.com"), ("Resy", "https://resy.com"), ("Yelp", "https://www.yelp.com")]
+        case .reservation: return [("OpenTable", "https://www.opentable.com"), ("Resy", "https://resy.com"), ("Google Maps", "https://maps.google.com")]
+        case .document:    return [("Google Drive", "https://drive.google.com"), ("Dropbox", "https://www.dropbox.com"), ("iCloud", "https://www.icloud.com")]
+        case .photos:      return [("Google Photos", "https://photos.google.com"), ("iCloud", "https://www.icloud.com/photos"), ("Dropbox", "https://www.dropbox.com")]
+        default:           return nil
         }
     }
 

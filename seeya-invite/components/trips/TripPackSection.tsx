@@ -297,7 +297,7 @@ export function TripPackSection({
 
           {/* Add button */}
           <button
-            onClick={() => onAddClick?.()}
+            onClick={() => onAddClick?.(activeCategory !== 'all' ? activeCategory as TripBitCategory : undefined)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-seeya-text-secondary hover:text-seeya-purple"
             title="Add item"
           >

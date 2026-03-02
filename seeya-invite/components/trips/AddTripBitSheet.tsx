@@ -26,6 +26,7 @@ import {
   Upload,
   Trash2,
 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { TripBit, TripBitCategory, TripParticipant, TripBitAttachment } from '@/types/database';
 import {
   FlightFields,
@@ -67,6 +68,40 @@ const categories: { id: TripBitCategory; label: string; icon: typeof Plane; colo
   { id: 'other', label: 'Other', icon: MoreHorizontal, color: 'bg-gray-100 text-gray-600' },
 ];
 
+// ─── Link suggestions per category ──────────────────────────────────────────
+
+const LINK_SUGGESTIONS: Partial<Record<TripBitCategory, { label: string; url: string }[]>> = {
+  flight:      [{ label: 'Google Flights', url: 'https://flights.google.com' }, { label: 'Kayak', url: 'https://www.kayak.com' }, { label: 'Skyscanner', url: 'https://www.skyscanner.com' }],
+  stay:        [{ label: 'Airbnb', url: 'https://www.airbnb.com' }, { label: 'Booking.com', url: 'https://www.booking.com' }, { label: 'Hotels.com', url: 'https://www.hotels.com' }],
+  car:         [{ label: 'Turo', url: 'https://turo.com' }, { label: 'Hertz', url: 'https://www.hertz.com' }, { label: 'Enterprise', url: 'https://www.enterprise.com' }],
+  activity:    [{ label: 'Viator', url: 'https://www.viator.com' }, { label: 'GetYourGuide', url: 'https://www.getyourguide.com' }, { label: 'Eventbrite', url: 'https://www.eventbrite.com' }],
+  transport:   [{ label: 'Trainline', url: 'https://www.thetrainline.com' }, { label: 'Rome2Rio', url: 'https://www.rome2rio.com' }, { label: 'Omio', url: 'https://www.omio.com' }],
+  money:       [{ label: 'Splitwise', url: 'https://www.splitwise.com' }, { label: 'Venmo', url: 'https://venmo.com' }, { label: 'PayPal', url: 'https://www.paypal.com' }],
+  dining:      [{ label: 'OpenTable', url: 'https://www.opentable.com' }, { label: 'Resy', url: 'https://resy.com' }, { label: 'Yelp', url: 'https://www.yelp.com' }],
+  reservation: [{ label: 'OpenTable', url: 'https://www.opentable.com' }, { label: 'Resy', url: 'https://resy.com' }, { label: 'Google Maps', url: 'https://maps.google.com' }],
+  document:    [{ label: 'Google Drive', url: 'https://drive.google.com' }, { label: 'Dropbox', url: 'https://www.dropbox.com' }, { label: 'iCloud', url: 'https://www.icloud.com' }],
+  photos:      [{ label: 'Google Photos', url: 'https://photos.google.com' }, { label: 'iCloud', url: 'https://www.icloud.com/photos' }, { label: 'Dropbox', url: 'https://www.dropbox.com' }],
+  other:       [{ label: 'Google Drive', url: 'https://drive.google.com' }, { label: 'Dropbox', url: 'https://www.dropbox.com' }],
+};
+
+function detectCategoryFromUrl(urlString: string): TripBitCategory | null {
+  try {
+    const h = new URL(urlString).hostname.toLowerCase().replace(/^www\./, '');
+    if (/airbnb|booking\.com|hotels\.com|marriott|hilton|hyatt|hoteltonight/.test(h)) return 'stay';
+    if (/opentable|resy\.com|yelp\.com/.test(h)) return 'dining';
+    if (/photos\.google|icloud\.com|dropbox\.com|flickr/.test(h)) return 'photos';
+    if (/viator|getyourguide|eventbrite|ticketmaster/.test(h)) return 'activity';
+    if (/thetrainline|rome2rio|omio|eurail/.test(h)) return 'transport';
+    if (/hertz|enterprise\.com|avis|budget\.com|turo|sixt/.test(h)) return 'car';
+    if (/splitwise|venmo\.com|paypal|revolut|wise\.com/.test(h)) return 'money';
+    if (/drive\.google|docs\.google|onedrive|sharepoint/.test(h)) return 'document';
+    if (/flights\.google|skyscanner|kayak/.test(h)) return 'flight';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function AddTripBitSheet({
   tripId,
   participants,
@@ -103,6 +138,7 @@ export function AddTripBitSheet({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [attachmentsToDelete, setAttachmentsToDelete] = useState<string[]>([]);
+  const [detecting, setDetecting] = useState(false);
 
   // Helper to convert status from DB to form
   const getFormStatus = (dbStatus?: string | null): 'confirmed' | 'pending' | 'cancelled' => {
@@ -538,7 +574,60 @@ export function AddTripBitSheet({
             </div>
           )}
 
-          {/* 1. Category Grid */}
+          {/* 1. Link Field — link-first approach */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-seeya-text">Link</label>
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200 focus-within:border-seeya-purple focus-within:ring-2 focus-within:ring-seeya-purple/20">
+              <Link2 size={16} className="text-seeya-text-secondary flex-shrink-0" />
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Paste a link — flight, reservation, photos..."
+                className="flex-1 bg-transparent text-sm outline-none"
+                autoFocus={!isEditMode}
+              />
+              {url && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const detected = detectCategoryFromUrl(url);
+                    if (detected) {
+                      setDetecting(true);
+                      setCategory(detected);
+                      setTimeout(() => setDetecting(false), 1200);
+                    }
+                  }}
+                  className="flex-shrink-0 p-1 rounded-md hover:bg-gray-200 transition-colors"
+                  title="Auto-detect category"
+                >
+                  <Sparkles size={15} className={cn('transition-colors', detecting ? 'text-seeya-purple animate-pulse' : 'text-seeya-text-secondary')} />
+                </button>
+              )}
+            </div>
+            {/* Category-specific suggestions */}
+            {!url && LINK_SUGGESTIONS[category] && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {LINK_SUGGESTIONS[category]!.map((s) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    onClick={() => setUrl(s.url)}
+                    className="text-xs px-2.5 py-1 rounded-full bg-seeya-purple/10 text-seeya-purple border border-seeya-purple/20 hover:bg-seeya-purple/20 transition-colors"
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!url && (
+              <p className="text-xs text-seeya-text-secondary">
+                Paste a link — tap ✨ to auto-detect the category
+              </p>
+            )}
+          </div>
+
+          {/* 2. Category Grid */}
           <div>
             <label className="block text-sm font-medium text-seeya-text mb-3">
               Category
@@ -556,7 +645,8 @@ export function AddTripBitSheet({
                       'flex flex-col items-center gap-2 p-3 rounded-xl transition-all',
                       isSelected
                         ? 'bg-purple-100 ring-2 ring-seeya-purple'
-                        : 'bg-gray-50 hover:bg-gray-100'
+                        : 'bg-gray-50 hover:bg-gray-100',
+                      detecting && isSelected ? 'ring-seeya-purple scale-105' : ''
                     )}
                   >
                     <div className={cn('w-10 h-10 rounded-full flex items-center justify-center', cat.color)}>
@@ -567,24 +657,6 @@ export function AddTripBitSheet({
                 );
               })}
             </div>
-          </div>
-
-          {/* 2. Link Field */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-seeya-text">Link (optional)</label>
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 focus-within:border-seeya-purple focus-within:ring-2 focus-within:ring-seeya-purple/20">
-              <Link2 size={16} className="text-seeya-text-secondary flex-shrink-0" />
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://..."
-                className="flex-1 bg-transparent text-sm outline-none"
-              />
-            </div>
-            <p className="text-xs text-seeya-text-secondary">
-              Paste a link and we&apos;ll auto-detect the category
-            </p>
           </div>
 
           {/* 3. Title */}
