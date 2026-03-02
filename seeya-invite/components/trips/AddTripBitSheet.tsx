@@ -185,12 +185,12 @@ export function AddTripBitSheet({
     }
   }, [tripBit, isOpen]);
 
-  // Reset category when initialCategory changes (only in add mode)
+  // Reset category whenever the sheet opens (add mode only)
   useEffect(() => {
-    if (initialCategory && !tripBit) {
-      setCategory(initialCategory);
+    if (isOpen && !tripBit) {
+      setCategory(initialCategory || 'activity');
     }
-  }, [initialCategory, tripBit]);
+  }, [isOpen, initialCategory, tripBit]);
 
   const resetForm = () => {
     setCategory(initialCategory || 'activity');

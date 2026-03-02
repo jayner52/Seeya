@@ -172,6 +172,8 @@ export default function TripDetailPage() {
   }, [fetchTrip]);
 
   const handleAddTripBit = (category?: TripBitCategory) => {
+    setEditingTripBit(null);
+    setEditingAttachments([]);
     setAddSheetCategory(category);
     setShowAddSheet(true);
   };
