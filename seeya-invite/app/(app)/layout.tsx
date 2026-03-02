@@ -44,7 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
     const { count } = await supabase
       .from('notifications')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'exact' })
       .eq('user_id', user.id)
       .eq('is_read', false);
     setUnreadNotifications(count || 0);
