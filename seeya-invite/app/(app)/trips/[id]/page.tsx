@@ -416,6 +416,7 @@ export default function TripDetailPage() {
 
       {/* Add/Edit Trip Bit Sheet */}
       <AddTripBitSheet
+        key={editingTripBit ? `edit-${editingTripBit.id}` : `add-${addSheetCategory ?? 'none'}`}
         tripId={tripId}
         participants={trip.participants}
         initialCategory={addSheetCategory}
