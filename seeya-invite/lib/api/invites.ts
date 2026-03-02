@@ -122,21 +122,33 @@ export async function acceptInvite(
   code: string,
   _userId: string  // kept for API compat; server infers user from session cookie
 ): Promise<{ success: boolean; tripId?: string; isNewUser?: boolean; error?: string }> {
+  return respondToInvite(code, 'accept');
+}
+
+export async function respondToInvite(
+  code: string,
+  response: 'accept' | 'maybe' | 'decline'
+): Promise<{ success: boolean; tripId?: string; isNewUser?: boolean; declined?: boolean; error?: string }> {
   try {
-    const res = await fetch('/api/invites/accept', {
+    const res = await fetch('/api/invites/respond', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, response }),
     });
 
     const data = await res.json();
 
     if (!res.ok || !data.success) {
-      return { success: false, error: data.error || 'Failed to join trip' };
+      return { success: false, error: data.error || 'Failed to respond to invite' };
     }
 
-    return { success: true, tripId: data.tripId, isNewUser: data.isNewUser };
+    return {
+      success: true,
+      tripId: data.tripId,
+      isNewUser: data.isNewUser,
+      declined: data.declined,
+    };
   } catch {
-    return { success: false, error: 'Failed to accept invite' };
+    return { success: false, error: 'Failed to respond to invite' };
   }
 }

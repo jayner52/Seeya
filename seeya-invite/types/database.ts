@@ -55,7 +55,7 @@ export interface TripParticipant {
   trip_id: string;
   user_id: string;
   role: 'owner' | 'admin' | 'member';
-  status: 'invited' | 'confirmed' | 'declined';
+  status: 'invited' | 'confirmed' | 'declined' | 'maybe';
   created_at: string;
   user?: Profile;
 }

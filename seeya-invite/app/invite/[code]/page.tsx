@@ -18,7 +18,7 @@ async function getInviteData(code: string) {
   // Get invite
   const { data: invite, error: inviteError } = await supabase
     .from('trip_invite_links')
-    .select('id, trip_id, code, expires_at, location_ids')
+    .select('id, trip_id, code, expires_at, location_ids, created_by')
     .eq('code', code)
     .single();
 
@@ -97,6 +97,17 @@ async function getInviteData(code: string) {
     .eq('trip_id', trip.id)
     .eq('status', 'confirmed');
 
+  // Fetch the inviter's profile
+  let inviter: { id: string; full_name: string | null; avatar_url: string | null } | null = null;
+  if (invite.created_by) {
+    const { data: inviterProfile } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .eq('id', invite.created_by)
+      .single();
+    inviter = inviterProfile;
+  }
+
   const tripWithDetails: TripWithDetails = {
     ...trip,
     locations: (locations || []).map(transformLocation),
@@ -107,6 +118,7 @@ async function getInviteData(code: string) {
     valid: true,
     invite,
     trip: tripWithDetails,
+    inviter,
   };
 }
 
@@ -197,7 +209,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           </div>
 
           {/* Trip Preview */}
-          <TripPreview trip={data.trip!} />
+          <TripPreview trip={data.trip!} inviter={data.inviter} />
 
           {/* Actions */}
           <InviteActions

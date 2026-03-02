@@ -12,7 +12,7 @@ export default function OnboardingWelcomePage() {
   const searchParams = useSearchParams();
   const { profile } = useAuthStore();
 
-  const next = searchParams.get('next');
+  const next = searchParams?.get('next') ?? null;
   const firstName = profile?.full_name?.split(' ')[0] || 'Traveler';
 
   useEffect(() => {

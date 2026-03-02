@@ -2,24 +2,32 @@
 
 import { Card, Avatar, StackedAvatars, Badge } from '@/components/ui';
 import { formatDateRange, getDaysUntil } from '@/lib/utils/date';
+import { getLocationDisplayName } from '@/types/database';
 import type { TripWithDetails } from '@/types';
 import {
-  MapPin,
   Calendar,
   Users,
   Plane,
-  Clock,
   ChevronRight,
+  UserCircle,
 } from 'lucide-react';
+
+interface InviterProfile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
 
 interface TripPreviewProps {
   trip: TripWithDetails;
+  inviter?: InviterProfile | null;
   showParticipants?: boolean;
   showLocations?: boolean;
 }
 
 export function TripPreview({
   trip,
+  inviter,
   showParticipants = true,
   showLocations = true,
 }: TripPreviewProps) {
@@ -79,7 +87,7 @@ export function TripPreview({
                     <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-seeya-text-secondary">
                       {index + 1}
                     </div>
-                    <span className="font-medium">{location.name}</span>
+                    <span className="font-medium">{getLocationDisplayName(location)}</span>
                     {location.city && (
                       <span className="text-seeya-text-secondary text-sm">
                         {location.city.country}
@@ -130,6 +138,26 @@ export function TripPreview({
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Invited by */}
+        {inviter && (
+          <div className="flex items-center gap-3 text-seeya-text pt-2 border-t border-gray-100">
+            <div className="w-10 h-10 rounded-lg bg-seeya-purple/10 flex items-center justify-center flex-shrink-0">
+              <UserCircle className="text-seeya-purple" size={20} />
+            </div>
+            <div className="flex items-center gap-2 flex-1">
+              <Avatar
+                avatarUrl={inviter.avatar_url}
+                name={inviter.full_name || 'Someone'}
+                size="sm"
+              />
+              <div>
+                <p className="text-sm text-seeya-text-secondary">Invited by</p>
+                <p className="font-medium">{inviter.full_name || 'Someone'}</p>
               </div>
             </div>
           </div>

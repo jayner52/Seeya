@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
-import { acceptInvite } from '@/lib/api/invites';
+import { respondToInvite } from '@/lib/api/invites';
 import {
   Smartphone,
   Globe,
@@ -12,6 +12,8 @@ import {
   Loader2,
   Copy,
   CheckCircle,
+  HelpCircle,
+  X,
 } from 'lucide-react';
 
 interface InviteActionsProps {
@@ -29,9 +31,8 @@ export function InviteActions({
 }: InviteActionsProps) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const [acceptStatus, setAcceptStatus] = useState<
-    'idle' | 'loading' | 'success' | 'error'
-  >('idle');
+  const [actionLoading, setActionLoading] = useState<'accept' | 'maybe' | 'decline' | null>(null);
+  const [acceptStatus, setAcceptStatus] = useState<'idle' | 'success' | 'declined' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [attemptedDeepLink, setAttemptedDeepLink] = useState(false);
@@ -41,18 +42,15 @@ export function InviteActions({
   // Try to open app on mount
   useEffect(() => {
     const attemptAppOpen = () => {
-      // Create a hidden iframe to attempt deep link
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       iframe.src = deepLinkUrl;
       document.body.appendChild(iframe);
 
-      // Also try window.location as fallback
       setTimeout(() => {
         window.location.href = deepLinkUrl;
       }, 100);
 
-      // Mark that we attempted the deep link
       setTimeout(() => {
         setAttemptedDeepLink(true);
         document.body.removeChild(iframe);
@@ -62,8 +60,7 @@ export function InviteActions({
     attemptAppOpen();
   }, [deepLinkUrl]);
 
-  const handleAcceptOnWeb = async () => {
-    // Wait for auth store to finish initializing before deciding to redirect
+  const handleRespond = async (response: 'accept' | 'maybe' | 'decline') => {
     if (authLoading) return;
 
     if (!isAuthenticated) {
@@ -71,26 +68,30 @@ export function InviteActions({
       return;
     }
 
-    setAcceptStatus('loading');
+    setActionLoading(response);
     setError(null);
 
-    const result = await acceptInvite(code, user?.id ?? '');
+    const result = await respondToInvite(code, response);
 
-    if (result.error) {
-      setAcceptStatus('error');
-      setError(result.error);
+    setActionLoading(null);
+
+    if (!result.success) {
+      setError(result.error ?? 'Something went wrong. Please try again.');
       return;
     }
 
-    // New users go through onboarding first, then land on the trip
+    if (response === 'decline') {
+      setAcceptStatus('declined');
+      return;
+    }
+
+    // accept or maybe — new users go through onboarding first
     if (result.isNewUser && result.tripId) {
       router.push(`/onboarding/welcome?next=${encodeURIComponent(`/trips/${result.tripId}`)}`);
       return;
     }
 
     setAcceptStatus('success');
-
-    // Redirect to trip after a brief delay
     setTimeout(() => {
       router.push(`/trips/${result.tripId ?? tripId}`);
     }, 1500);
@@ -125,6 +126,32 @@ export function InviteActions({
     );
   }
 
+  if (acceptStatus === 'declined') {
+    return (
+      <Card variant="elevated" padding="lg" className="text-center">
+        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <X className="text-gray-500" size={32} />
+        </div>
+        <h2 className="text-xl font-semibold text-seeya-text mb-2">
+          Invitation Declined
+        </h2>
+        <p className="text-seeya-text-secondary mb-6">
+          You&apos;ve declined the invitation to &ldquo;{tripName}&rdquo;. You can always ask your friend to send a new invite.
+        </p>
+        <Button
+          variant="outline"
+          size="md"
+          onClick={() => {
+            setAcceptStatus('idle');
+            setError(null);
+          }}
+        >
+          Changed your mind?
+        </Button>
+      </Card>
+    );
+  }
+
   if (!attemptedDeepLink) {
     return (
       <Card variant="elevated" padding="lg" className="text-center">
@@ -146,49 +173,89 @@ export function InviteActions({
           </div>
         )}
 
-        {/* Accept on Web */}
-        <Button
-          variant="purple"
-          size="lg"
-          className="w-full"
-          onClick={handleAcceptOnWeb}
-          disabled={acceptStatus === 'loading' || authLoading}
-          leftIcon={
-            acceptStatus === 'loading' ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <Globe size={20} />
-            )
-          }
-        >
-          {acceptStatus === 'loading'
-            ? 'Joining...'
-            : isAuthenticated
-              ? 'Accept & View on Web'
-              : 'Sign in to Accept'}
-        </Button>
+        {/* Response buttons */}
+        <div className="space-y-3">
+          {/* Accept */}
+          <Button
+            variant="purple"
+            size="lg"
+            className="w-full"
+            onClick={() => handleRespond('accept')}
+            disabled={actionLoading !== null || authLoading}
+            leftIcon={
+              actionLoading === 'accept' ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                <Globe size={20} />
+              )
+            }
+          >
+            {actionLoading === 'accept'
+              ? 'Joining...'
+              : isAuthenticated
+                ? 'Accept'
+                : 'Sign in to Accept'}
+          </Button>
 
-        {/* Download App */}
-        <a href={appStoreUrl} className="block">
+          {/* Maybe */}
           <Button
             variant="outline"
             size="lg"
             className="w-full"
-            leftIcon={<Smartphone size={20} />}
+            onClick={() => handleRespond('maybe')}
+            disabled={actionLoading !== null || authLoading}
+            leftIcon={
+              actionLoading === 'maybe' ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                <HelpCircle size={20} />
+              )
+            }
           >
-            Download the App
+            {actionLoading === 'maybe' ? 'Saving...' : 'Maybe'}
           </Button>
-        </a>
 
-        {/* Try app again */}
-        <Button
-          variant="ghost"
-          size="md"
-          className="w-full"
-          onClick={handleTryAppAgain}
-        >
-          Try Opening App Again
-        </Button>
+          {/* Decline */}
+          <Button
+            variant="ghost"
+            size="md"
+            className="w-full text-seeya-text-secondary hover:text-red-500"
+            onClick={() => handleRespond('decline')}
+            disabled={actionLoading !== null || authLoading}
+            leftIcon={
+              actionLoading === 'decline' ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <X size={16} />
+              )
+            }
+          >
+            {actionLoading === 'decline' ? 'Declining...' : 'Decline'}
+          </Button>
+        </div>
+
+        {/* Download App */}
+        <div className="pt-4 border-t border-gray-100">
+          <a href={appStoreUrl} className="block mb-3">
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              leftIcon={<Smartphone size={20} />}
+            >
+              Download the App
+            </Button>
+          </a>
+
+          <Button
+            variant="ghost"
+            size="md"
+            className="w-full"
+            onClick={handleTryAppAgain}
+          >
+            Try Opening App Again
+          </Button>
+        </div>
 
         {/* Manual code entry */}
         <div className="pt-4 border-t border-gray-100">

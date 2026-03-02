@@ -15,6 +15,7 @@ const statusConfig = {
   confirmed: { label: 'Confirmed', icon: CheckCircle2, color: 'text-seeya-success' },
   invited: { label: 'Pending', icon: Clock, color: 'text-seeya-warning' },
   declined: { label: 'Declined', icon: XCircle, color: 'text-seeya-error' },
+  maybe: { label: 'Maybe', icon: Clock, color: 'text-seeya-text-secondary' },
 };
 
 export function ParticipantsSection({
