@@ -121,19 +121,10 @@ export default async function AcceptInvitePage({ params }: AcceptPageProps) {
         .update({ status: 'confirmed', responded_at: new Date().toISOString() })
         .eq('id', existingP.id);
     } else {
-      // Insert then confirm
-      const { data: newP } = await supabase
+      // Insert directly as confirmed — single step, avoids double trigger fires
+      await supabase
         .from('trip_participants')
-        .insert({ trip_id: tripId, user_id: user.id, status: 'pending' })
-        .select('id')
-        .single();
-
-      if (newP) {
-        await supabase
-          .from('trip_participants')
-          .update({ status: 'confirmed', responded_at: new Date().toISOString() })
-          .eq('id', newP.id);
-      }
+        .insert({ trip_id: tripId, user_id: user.id, status: 'confirmed' });
     }
 
     // Increment invite usage count
