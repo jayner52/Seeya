@@ -1,16 +1,25 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, Button } from '@/components/ui';
 import { StepIndicator } from '@/components/onboarding';
-import { Plane, MapPin, Users, Sparkles, Hand } from 'lucide-react';
+import { Plane, MapPin, Users, Hand } from 'lucide-react';
 
 export default function OnboardingWelcomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { profile } = useAuthStore();
 
+  const next = searchParams.get('next');
   const firstName = profile?.full_name?.split(' ')[0] || 'Traveler';
+
+  useEffect(() => {
+    if (next) {
+      sessionStorage.setItem('onboarding_next', next);
+    }
+  }, [next]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-seeya-purple to-purple-700 p-6 flex items-center justify-center">
@@ -27,7 +36,9 @@ export default function OnboardingWelcomePage() {
             Welcome, {firstName}!
           </h1>
           <p className="text-seeya-text-secondary mb-8">
-            Let&apos;s set up your travel profile. This will only take a minute.
+            {next
+              ? "You've been added to a trip! Let's set up your Seeya profile first."
+              : "Let's set up your travel profile. This will only take a minute."}
           </p>
 
           {/* Features preview */}
@@ -71,7 +82,7 @@ export default function OnboardingWelcomePage() {
           </Button>
 
           <button
-            onClick={() => router.push('/trips')}
+            onClick={() => router.push(next || '/trips')}
             className="mt-4 text-sm text-seeya-text-secondary hover:text-seeya-text"
           >
             Skip for now

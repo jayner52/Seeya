@@ -121,7 +121,7 @@ export async function validateInviteCode(
 export async function acceptInvite(
   code: string,
   _userId: string  // kept for API compat; server infers user from session cookie
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; tripId?: string; isNewUser?: boolean; error?: string }> {
   try {
     const res = await fetch('/api/invites/accept', {
       method: 'POST',
@@ -135,7 +135,7 @@ export async function acceptInvite(
       return { success: false, error: data.error || 'Failed to join trip' };
     }
 
-    return { success: true };
+    return { success: true, tripId: data.tripId, isNewUser: data.isNewUser };
   } catch {
     return { success: false, error: 'Failed to accept invite' };
   }

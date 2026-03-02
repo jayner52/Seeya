@@ -109,10 +109,18 @@ export async function POST(request: Request) {
       .update({ usage_count: (invite.usage_count ?? 0) + 1 })
       .eq('id', invite.id);
 
+    // Check if this is a new user who hasn't completed onboarding
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', user.id)
+      .single();
+
     return NextResponse.json({
       success: true,
       message: 'Successfully joined trip',
       tripId: invite.trip_id,
+      isNewUser: prof?.onboarding_completed === false,
     });
   } catch (error) {
     console.error('Error accepting invite:', error);

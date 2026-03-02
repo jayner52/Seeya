@@ -26,7 +26,9 @@ export default function OnboardingCompletePage() {
       .eq('id', user.id);
 
     await fetchProfile();
-    router.push('/trips');
+    const next = sessionStorage.getItem('onboarding_next');
+    sessionStorage.removeItem('onboarding_next');
+    router.push(next || '/trips');
   };
 
   return (

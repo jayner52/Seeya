@@ -133,6 +133,17 @@ export default async function AcceptInvitePage({ params }: AcceptPageProps) {
       .update({ usage_count: currentUsageCount + 1 })
       .eq('id', inviteId);
 
+    // New users go through onboarding first, then land on the trip
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', user.id)
+      .single();
+
+    if (prof?.onboarding_completed === false) {
+      redirect(`/onboarding/welcome?next=${encodeURIComponent(`/trips/${tripId}`)}`);
+    }
+
     redirect(`/trips/${tripId}`);
   }
 

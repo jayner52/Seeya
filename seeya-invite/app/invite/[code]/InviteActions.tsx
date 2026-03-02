@@ -82,11 +82,17 @@ export function InviteActions({
       return;
     }
 
+    // New users go through onboarding first, then land on the trip
+    if (result.isNewUser && result.tripId) {
+      router.push(`/onboarding/welcome?next=${encodeURIComponent(`/trips/${result.tripId}`)}`);
+      return;
+    }
+
     setAcceptStatus('success');
 
     // Redirect to trip after a brief delay
     setTimeout(() => {
-      router.push(`/trips/${tripId}`);
+      router.push(`/trips/${result.tripId ?? tripId}`);
     }, 1500);
   };
 
