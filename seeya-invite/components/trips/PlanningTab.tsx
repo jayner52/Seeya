@@ -11,6 +11,7 @@ import type { TripBit, TripParticipant, TripBitCategory, TripLocation } from '@/
 
 interface PlanningTabProps {
   tripId: string;
+  tripName?: string;
   tripBits: TripBit[];
   participants: TripParticipant[];
   existingInviteCode?: string | null;
@@ -29,6 +30,7 @@ interface PlanningTabProps {
 
 export function PlanningTab({
   tripId,
+  tripName,
   tripBits,
   participants,
   existingInviteCode,
@@ -98,6 +100,9 @@ export function PlanningTab({
         <InviteSection
           tripId={tripId}
           existingCode={existingInviteCode}
+          tripName={tripName}
+          startDate={startDate}
+          endDate={endDate}
         />
       </div>
 

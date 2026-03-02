@@ -388,6 +388,7 @@ export default function TripDetailPage() {
         {activeTab === 'planning' ? (
           <PlanningTab
             tripId={tripId}
+            tripName={trip.name}
             tripBits={tripbits}
             participants={trip.participants}
             existingInviteCode={inviteLink?.code}

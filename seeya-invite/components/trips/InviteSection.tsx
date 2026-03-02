@@ -12,6 +12,9 @@ interface InviteSectionProps {
   tripId: string;
   existingCode?: string | null;
   className?: string;
+  tripName?: string;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 // Category icon mapping
@@ -32,7 +35,12 @@ const CATEGORY_ICONS: Record<TripBitCategory, React.ReactNode> = {
   other: <FileText size={14} />,
 };
 
-export function InviteSection({ tripId, existingCode, className }: InviteSectionProps) {
+function formatShareDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export function InviteSection({ tripId, existingCode, className, tripName, startDate, endDate }: InviteSectionProps) {
   const { user } = useAuthStore();
   const [inviteCode, setInviteCode] = useState(existingCode || null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -136,11 +144,32 @@ export function InviteSection({ tripId, existingCode, className }: InviteSection
     }
   };
 
+  const buildShareText = () => {
+    const destinations = locations
+      .slice(0, 3)
+      .map(l => l.city?.name || (l as any).custom_name || '')
+      .filter(Boolean);
+    const destStr = destinations.length > 0 ? destinations.join(', ') : null;
+
+    const dateStr = startDate && endDate
+      ? `${formatShareDate(startDate)} – ${formatShareDate(endDate)}`
+      : startDate
+        ? `from ${formatShareDate(startDate)}`
+        : null;
+
+    const parts = [tripName, destStr, dateStr].filter(Boolean);
+    const description = parts.join(' · ');
+    return description
+      ? `You're invited to join ${description} on Seeya!`
+      : 'You\'re invited to join a trip on Seeya!';
+  };
+
   const copyToClipboard = async () => {
     if (!inviteUrl) return;
 
     try {
-      await navigator.clipboard.writeText(inviteUrl);
+      const text = `${buildShareText()}\n${inviteUrl}`;
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -154,8 +183,8 @@ export function InviteSection({ tripId, existingCode, className }: InviteSection
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join my trip on Seeya',
-          text: 'I\'d like to invite you to join my trip!',
+          title: tripName ? `Join ${tripName} on Seeya` : 'Join my trip on Seeya',
+          text: buildShareText(),
           url: inviteUrl,
         });
       } catch {

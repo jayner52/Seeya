@@ -10,31 +10,23 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id: tripId, participantId } = await params;
-
-  // Verify requester is trip owner
-  const { data: trip } = await supabase
-    .from('trips')
-    .select('user_id')
-    .eq('id', tripId)
-    .single();
-
-  if (!trip || trip.user_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
   const { status } = await request.json();
   const allowed = ['confirmed', 'maybe', 'invited'];
   if (!allowed.includes(status)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   }
 
-  const { error } = await supabase
-    .from('trip_participants')
-    .update({ status })
-    .eq('id', participantId)
-    .eq('trip_id', tripId);
+  // SECURITY DEFINER RPC verifies ownership and bypasses RLS
+  const { error } = await supabase.rpc('update_trip_participant_status', {
+    p_trip_id: tripId,
+    p_participant_id: participantId,
+    p_status: status,
+  });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    const status403 = error.message === 'Forbidden' ? 403 : 500;
+    return NextResponse.json({ error: error.message }, { status: status403 });
+  }
   return NextResponse.json({ success: true });
 }
 
@@ -46,35 +38,17 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
 
   const { id: tripId, participantId } = await params;
 
-  // Verify requester is trip owner
-  const { data: trip } = await supabase
-    .from('trips')
-    .select('user_id')
-    .eq('id', tripId)
-    .single();
+  // SECURITY DEFINER RPC verifies ownership and bypasses RLS
+  const { error } = await supabase.rpc('remove_trip_participant', {
+    p_trip_id: tripId,
+    p_participant_id: participantId,
+  });
 
-  if (!trip || trip.user_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (error) {
+    const statusCode = error.message === 'Forbidden' ? 403
+      : error.message === 'Cannot remove the trip owner' ? 400
+      : 500;
+    return NextResponse.json({ error: error.message }, { status: statusCode });
   }
-
-  // Prevent owner from removing themselves
-  const { data: participant } = await supabase
-    .from('trip_participants')
-    .select('user_id')
-    .eq('id', participantId)
-    .eq('trip_id', tripId)
-    .single();
-
-  if (participant?.user_id === user.id) {
-    return NextResponse.json({ error: 'Cannot remove the trip owner' }, { status: 400 });
-  }
-
-  const { error } = await supabase
-    .from('trip_participants')
-    .delete()
-    .eq('id', participantId)
-    .eq('trip_id', tripId);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
