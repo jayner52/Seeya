@@ -35,6 +35,7 @@ import {
   Printer,
   Globe,
   X,
+  ChevronDown,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
 import type { AIRecommendation } from '@/types';
@@ -43,6 +44,9 @@ import { mapCategoryToTripBitCategory, buildNotesFromRecommendation } from '@/li
 import { getLocationDisplayName } from '@/types/database';
 import { generateTripICS, downloadICS, generateTripFilename } from '@/lib/utils/calendarExport';
 import { printTripItinerary } from '@/lib/utils/pdfExport';
+import { CITY_COLORS } from '@/lib/utils/tripColors';
+import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils/cn';
 
 export default function TripDetailPage() {
   const params = useParams();
@@ -63,6 +67,7 @@ export default function TripDetailPage() {
   const [showAISheet, setShowAISheet] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showLocationDates, setShowLocationDates] = useState(false);
   const [recommendationPreset, setRecommendationPreset] = useState<{
     initialTitle: string;
     initialNotes: string;
@@ -301,9 +306,47 @@ export default function TripDetailPage() {
           </div>
 
           {trip.locations.length > 0 && (
-            <div className="flex items-center gap-2 text-white/80 mb-1 flex-wrap">
-              <MapPin size={16} className="flex-shrink-0" />
-              <span>{trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}</span>
+            <div className="mb-1">
+              <div className="relative">
+                <button
+                  onClick={() => setShowLocationDates(v => !v)}
+                  className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors text-left"
+                >
+                  <MapPin size={16} className="flex-shrink-0" />
+                  <span>{trip.locations.map(l => getLocationDisplayName(l)).join(' → ')}</span>
+                  {trip.locations.some(l => l.arrival_date) && (
+                    <ChevronDown size={14} className={cn('transition-transform', showLocationDates && 'rotate-180')} />
+                  )}
+                </button>
+
+                {showLocationDates && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowLocationDates(false)} />
+                    <div className="absolute left-0 top-full mt-2 z-20 bg-white rounded-xl shadow-xl p-3 min-w-[220px] flex flex-col gap-2.5">
+                      {trip.locations.map((loc, i) => {
+                        const color = CITY_COLORS[i % CITY_COLORS.length];
+                        return (
+                          <div key={loc.id} className="flex items-center gap-3">
+                            <div
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: color.hex }}
+                            />
+                            <div>
+                              <p className="text-sm font-medium text-seeya-text">{getLocationDisplayName(loc)}</p>
+                              {loc.arrival_date && loc.departure_date && (
+                                <p className="text-xs text-seeya-text-secondary">
+                                  {format(parseISO(loc.arrival_date), 'MMM d')} –{' '}
+                                  {format(parseISO(loc.departure_date), 'MMM d, yyyy')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
@@ -444,6 +487,7 @@ export default function TripDetailPage() {
             endDate={trip.end_date}
             onTripBitClick={handleTripBitClick}
             onAddClick={() => handleAddTripBit()}
+            locations={trip.locations}
           />
         )}
       </div>

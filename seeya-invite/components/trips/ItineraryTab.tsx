@@ -10,6 +10,8 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
+  MapPin,
+  Plane,
 } from 'lucide-react';
 import {
   format,
@@ -25,6 +27,9 @@ import {
   subMonths,
 } from 'date-fns';
 import type { TripBit } from '@/types/database';
+import type { TripLocation } from '@/types/database';
+import { getLocationDisplayName } from '@/types/database';
+import { CITY_COLORS, getLocationsForDate } from '@/lib/utils/tripColors';
 
 interface ItineraryTabProps {
   tripBits: TripBit[];
@@ -32,6 +37,7 @@ interface ItineraryTabProps {
   endDate: string | null;
   onTripBitClick: (tripBit: TripBit) => void;
   onAddClick: () => void;
+  locations?: TripLocation[];
 }
 
 type ViewMode = 'list' | 'calendar';
@@ -42,6 +48,7 @@ export function ItineraryTab({
   endDate,
   onTripBitClick,
   onAddClick,
+  locations,
 }: ItineraryTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [calendarMonth, setCalendarMonth] = useState(
@@ -98,111 +105,189 @@ export function ItineraryTab({
   }, [startDate, endDate, sortedDates]);
 
   // Render list view
-  const renderListView = () => (
-    <div className="space-y-6">
-      {tripDays.map((dateStr, index) => {
-        const bits = tripBitsByDate[dateStr] || [];
-        const date = parseISO(dateStr);
-        const isToday = isSameDay(date, new Date());
+  const renderListView = () => {
+    const locs = locations ?? [];
+    let lastBandKey: string | null = null;
 
-        return (
-          <div key={dateStr}>
-            {/* Date header */}
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className={cn(
-                  'w-12 h-12 rounded-xl flex flex-col items-center justify-center',
-                  isToday ? 'bg-seeya-purple text-white' : 'bg-gray-100'
-                )}
-              >
-                <span className="text-xs uppercase">
-                  {format(date, 'EEE')}
+    const rows: React.ReactNode[] = [];
+
+    tripDays.forEach((dateStr, index) => {
+      const bits = tripBitsByDate[dateStr] || [];
+      const date = parseISO(dateStr);
+      const isToday = isSameDay(date, new Date());
+      const dayLocs = getLocationsForDate(dateStr, locs);
+
+      if (dayLocs.length === 1) {
+        const loc = dayLocs[0];
+        const bandKey = loc.id;
+        if (bandKey !== lastBandKey) {
+          const colorIdx = locs.indexOf(loc) % CITY_COLORS.length;
+          const color = CITY_COLORS[colorIdx < 0 ? 0 : colorIdx];
+          rows.push(
+            <div key={`band-${loc.id}`} className="pt-6 pb-1">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1" style={{ backgroundColor: color.hex }} />
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white"
+                  style={{ backgroundColor: color.hex }}
+                >
+                  <MapPin size={10} />
+                  <span className="uppercase tracking-wide">{getLocationDisplayName(loc)}</span>
+                </div>
+                <span className="text-xs text-seeya-text-secondary whitespace-nowrap">
+                  {format(parseISO(loc.arrival_date!), 'MMM d')} – {format(parseISO(loc.departure_date!), 'MMM d')}
                 </span>
-                <span className="text-lg font-semibold">
-                  {format(date, 'd')}
-                </span>
-              </div>
-              <div>
-                <p className="font-medium text-seeya-text">
-                  {format(date, 'MMMM d, yyyy')}
-                </p>
-                <p className="text-sm text-seeya-text-secondary">
-                  Day {index + 1}
-                </p>
+                <div className="h-px flex-1" style={{ backgroundColor: color.hex }} />
               </div>
             </div>
-
-            {/* Items for this day */}
-            {bits.length > 0 ? (
-              <div className="ml-6 pl-6 border-l-2 border-gray-200 space-y-2">
-                {bits.map((bit) => (
-                  <TripBitCard
-                    key={bit.id}
-                    tripBit={bit}
-                    onClick={() => onTripBitClick(bit)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="ml-6 pl-6 border-l-2 border-gray-200">
-                <button
-                  onClick={onAddClick}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-seeya-text-secondary hover:border-seeya-purple hover:text-seeya-purple transition-colors"
-                >
-                  <Plus size={16} />
-                  <span>Add plans for this day</span>
-                </button>
-              </div>
-            )}
+          );
+          lastBandKey = bandKey;
+        }
+      } else if (dayLocs.length === 2) {
+        const [locA, locB] = dayLocs;
+        // Transition band between two cities
+        rows.push(
+          <div key={`travel-${dateStr}`} className="flex items-center gap-2 py-1.5 text-xs text-seeya-text-secondary">
+            <div className="h-px flex-1 bg-gray-200" />
+            <Plane size={11} />
+            <span>{getLocationDisplayName(locA)} → {getLocationDisplayName(locB)}</span>
+            <div className="h-px flex-1 bg-gray-200" />
           </div>
         );
-      })}
+        // After the day row, we'll render the arriving city band — set lastBandKey to locA so locB band renders after
+        lastBandKey = locA.id;
+      }
 
-      {/* Unscheduled items */}
-      {tripBitsByDate['unscheduled']?.length > 0 && (
-        <div>
+      rows.push(
+        <div key={dateStr}>
+          {/* Date header */}
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-100 text-seeya-text-secondary">
-              <Calendar size={20} />
+            <div
+              className={cn(
+                'w-12 h-12 rounded-xl flex flex-col items-center justify-center',
+                isToday ? 'bg-seeya-purple text-white' : 'bg-gray-100'
+              )}
+            >
+              <span className="text-xs uppercase">
+                {format(date, 'EEE')}
+              </span>
+              <span className="text-lg font-semibold">
+                {format(date, 'd')}
+              </span>
             </div>
             <div>
-              <p className="font-medium text-seeya-text">Unscheduled</p>
+              <p className="font-medium text-seeya-text">
+                {format(date, 'MMMM d, yyyy')}
+              </p>
               <p className="text-sm text-seeya-text-secondary">
-                Items without a date
+                Day {index + 1}
               </p>
             </div>
           </div>
-          <div className="ml-6 pl-6 border-l-2 border-gray-200 space-y-2">
-            {tripBitsByDate['unscheduled'].map((bit) => (
-              <TripBitCard
-                key={bit.id}
-                tripBit={bit}
-                onClick={() => onTripBitClick(bit)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
-      {tripBits.length === 0 && (
-        <Card variant="outline" padding="lg" className="text-center">
-          <p className="text-seeya-text-secondary mb-4">
-            No items in your itinerary yet
-          </p>
-          <Button
-            variant="purple"
-            leftIcon={<Plus size={16} />}
-            onClick={onAddClick}
-          >
-            Add Your First Item
-          </Button>
-        </Card>
-      )}
-    </div>
-  );
+          {/* Items for this day */}
+          {bits.length > 0 ? (
+            <div className="ml-6 pl-6 border-l-2 border-gray-200 space-y-2">
+              {bits.map((bit) => (
+                <TripBitCard
+                  key={bit.id}
+                  tripBit={bit}
+                  onClick={() => onTripBitClick(bit)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="ml-6 pl-6 border-l-2 border-gray-200">
+              <button
+                onClick={onAddClick}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-seeya-text-secondary hover:border-seeya-purple hover:text-seeya-purple transition-colors"
+              >
+                <Plus size={16} />
+                <span>Add plans for this day</span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+
+      // After the day row for a transition day, render the arriving city band
+      if (dayLocs.length === 2) {
+        const locB = dayLocs[1];
+        const colorIdx = locs.indexOf(locB) % CITY_COLORS.length;
+        const color = CITY_COLORS[colorIdx < 0 ? 0 : colorIdx];
+        rows.push(
+          <div key={`band-${locB.id}`} className="pt-6 pb-1">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1" style={{ backgroundColor: color.hex }} />
+              <div
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white"
+                style={{ backgroundColor: color.hex }}
+              >
+                <MapPin size={10} />
+                <span className="uppercase tracking-wide">{getLocationDisplayName(locB)}</span>
+              </div>
+              <span className="text-xs text-seeya-text-secondary whitespace-nowrap">
+                {format(parseISO(locB.arrival_date!), 'MMM d')} – {format(parseISO(locB.departure_date!), 'MMM d')}
+              </span>
+              <div className="h-px flex-1" style={{ backgroundColor: color.hex }} />
+            </div>
+          </div>
+        );
+        lastBandKey = locB.id;
+      }
+    });
+
+    return (
+      <div className="space-y-6">
+        {rows}
+
+        {/* Unscheduled items */}
+        {tripBitsByDate['unscheduled']?.length > 0 && (
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-100 text-seeya-text-secondary">
+                <Calendar size={20} />
+              </div>
+              <div>
+                <p className="font-medium text-seeya-text">Unscheduled</p>
+                <p className="text-sm text-seeya-text-secondary">
+                  Items without a date
+                </p>
+              </div>
+            </div>
+            <div className="ml-6 pl-6 border-l-2 border-gray-200 space-y-2">
+              {tripBitsByDate['unscheduled'].map((bit) => (
+                <TripBitCard
+                  key={bit.id}
+                  tripBit={bit}
+                  onClick={() => onTripBitClick(bit)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tripBits.length === 0 && (
+          <Card variant="outline" padding="lg" className="text-center">
+            <p className="text-seeya-text-secondary mb-4">
+              No items in your itinerary yet
+            </p>
+            <Button
+              variant="purple"
+              leftIcon={<Plus size={16} />}
+              onClick={onAddClick}
+            >
+              Add Your First Item
+            </Button>
+          </Card>
+        )}
+      </div>
+    );
+  };
 
   // Render calendar view
   const renderCalendarView = () => {
+    const locs = locations ?? [];
     const monthStart = startOfMonth(calendarMonth);
     const monthEnd = endOfMonth(calendarMonth);
     const calendarStart = startOfWeek(monthStart);
@@ -216,6 +301,21 @@ export function ItineraryTab({
 
     return (
       <div>
+        {/* City color legend */}
+        {locs.some(l => l.arrival_date) && (
+          <div className="flex flex-wrap gap-3 mb-3">
+            {locs.filter(l => l.arrival_date).map((loc, i) => (
+              <div key={loc.id} className="flex items-center gap-1.5 text-xs text-seeya-text">
+                <div
+                  className="w-3 h-3 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: CITY_COLORS[i % CITY_COLORS.length].hex }}
+                />
+                <span>{getLocationDisplayName(loc)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Calendar header */}
         <div className="flex items-center justify-between mb-4">
           <button
@@ -258,15 +358,38 @@ export function ItineraryTab({
               ? isWithinInterval(day, tripInterval)
               : false;
 
+            const dayLocs = getLocationsForDate(dateStr, locs);
+            let cellStyle: React.CSSProperties = {};
+            let borderColor: string | undefined;
+
+            if (dayLocs.length === 2) {
+              const idxA = locs.indexOf(dayLocs[0]);
+              const idxB = locs.indexOf(dayLocs[1]);
+              const colorA = CITY_COLORS[(idxA < 0 ? 0 : idxA) % CITY_COLORS.length];
+              const colorB = CITY_COLORS[(idxB < 0 ? 1 : idxB) % CITY_COLORS.length];
+              cellStyle = { background: `linear-gradient(135deg, ${colorA.light} 50%, ${colorB.light} 50%)` };
+              borderColor = colorA.hex;
+            } else if (dayLocs.length === 1) {
+              const idx = locs.indexOf(dayLocs[0]);
+              const color = CITY_COLORS[(idx < 0 ? 0 : idx) % CITY_COLORS.length];
+              cellStyle = { backgroundColor: color.light };
+              borderColor = color.hex;
+            }
+
             return (
               <div
                 key={dateStr}
                 className={cn(
                   'min-h-[80px] p-1 rounded-lg border transition-colors',
-                  isCurrentMonth ? 'bg-white' : 'bg-gray-50',
-                  inTripRange && 'bg-seeya-purple/5 border-seeya-purple/20',
-                  !inTripRange && 'border-gray-100'
+                  isCurrentMonth && !dayLocs.length ? 'bg-white' : '',
+                  !isCurrentMonth && !dayLocs.length ? 'bg-gray-50' : '',
+                  !dayLocs.length && inTripRange && 'bg-seeya-purple/5 border-seeya-purple/20',
+                  !dayLocs.length && !inTripRange && 'border-gray-100',
                 )}
+                style={{
+                  ...cellStyle,
+                  ...(borderColor ? { borderColor: `${borderColor}40` } : {}),
+                }}
               >
                 <div
                   className={cn(
