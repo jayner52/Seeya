@@ -444,6 +444,8 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
         p_locations: destinations.map((dest, i) => ({
           custom_location: dest.name,
           order_index: i,
+          arrival_date: dest.startDate || null,
+          departure_date: dest.endDate || null,
         })),
         p_invited_friends: Array.from(selectedFriends),
       });
