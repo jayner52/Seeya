@@ -452,11 +452,16 @@ export function AIRecommendationsSection({
 
   // Persist cache + selected location to localStorage whenever they change
   useEffect(() => {
-    if (Object.keys(cache).length > 0) {
-      try {
+    const hasData = Object.values(cache).some(
+      v => Array.isArray(v) && v.length > 0
+    );
+    try {
+      if (hasData) {
         localStorage.setItem(storageKey, JSON.stringify({ cache, locationId: selectedLocationId }));
-      } catch {}
-    }
+      } else {
+        localStorage.removeItem(storageKey);
+      }
+    } catch {}
   }, [cache, selectedLocationId, storageKey]);
 
   // Derived values
@@ -521,11 +526,7 @@ export function AIRecommendationsSection({
 
   const handleRefresh = () => {
     // Clear cache for current category and regenerate
-    setCache(prev => {
-      const next = { ...prev, [activeCategory]: undefined };
-      try { localStorage.setItem(storageKey, JSON.stringify({ cache: next, locationId: selectedLocationId })); } catch {}
-      return next;
-    });
+    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
     handleGenerate(activeCategory, true);
   };
 
@@ -535,21 +536,13 @@ export function AIRecommendationsSection({
 
   const handleApplyFilters = () => {
     // Clear cache so next generate uses new filters, but don't auto-generate
-    setCache(prev => {
-      const next = { ...prev, [activeCategory]: undefined };
-      try { localStorage.setItem(storageKey, JSON.stringify({ cache: next, locationId: selectedLocationId })); } catch {}
-      return next;
-    });
+    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
     setShowFilters(false);
   };
 
   const handleClearFilters = () => {
     setFilters(prev => ({ ...prev, [activeCategory]: {} }));
-    setCache(prev => {
-      const next = { ...prev, [activeCategory]: undefined };
-      try { localStorage.setItem(storageKey, JSON.stringify({ cache: next, locationId: selectedLocationId })); } catch {}
-      return next;
-    });
+    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
     setShowFilters(false);
   };
 
