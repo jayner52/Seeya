@@ -8,6 +8,7 @@ import { AIRecommendationsSection } from './AIRecommendationsSection';
 import { FriendRecommendationsSection } from './FriendRecommendationsSection';
 import { RateShareModal } from './RateShareModal';
 import type { TripBit, TripParticipant, TripBitCategory, TripLocation } from '@/types/database';
+import type { AIRecommendation } from '@/types';
 
 interface PlanningTabProps {
   tripId: string;
@@ -23,6 +24,11 @@ interface PlanningTabProps {
   onInviteClick: () => void;
   onAIQuickAdd?: () => void;
   onTripBitAdded?: () => void;
+  onAddRecommendation?: (
+    recommendation: AIRecommendation,
+    locationDateRange: { start: string; end: string; locationName?: string } | undefined,
+    onAdded: () => void
+  ) => void;
   isOwner?: boolean;
   ownerUserId?: string;
   onParticipantsChanged?: () => void;
@@ -42,6 +48,7 @@ export function PlanningTab({
   onInviteClick,
   onAIQuickAdd,
   onTripBitAdded,
+  onAddRecommendation,
   isOwner,
   ownerUserId,
   onParticipantsChanged,
@@ -93,6 +100,7 @@ export function PlanningTab({
         startDate={startDate}
         endDate={endDate}
         onTripBitAdded={onTripBitAdded}
+        onAddRecommendation={onAddRecommendation}
       />
 
       {/* Invite Link */}

@@ -43,10 +43,10 @@ export async function generateCategoryRecommendations(
 }
 
 // Map AI recommendation categories to TripBit categories
-function mapCategoryToTripBitCategory(category: RecommendationCategory): TripBitCategory {
+export function mapCategoryToTripBitCategory(category: RecommendationCategory): TripBitCategory {
   switch (category) {
     case 'restaurant':
-      return 'reservation';
+      return 'dining';
     case 'activity':
       return 'activity';
     case 'stay':
@@ -56,6 +56,16 @@ function mapCategoryToTripBitCategory(category: RecommendationCategory): TripBit
     default:
       return 'other';
   }
+}
+
+export function buildNotesFromRecommendation(recommendation: AIRecommendation): string {
+  const parts: string[] = [];
+  if (recommendation.description) parts.push(recommendation.description);
+  if (recommendation.address) parts.push(`📍 ${recommendation.address}`);
+  if (recommendation.tips) parts.push(`💡 ${recommendation.tips}`);
+  if (recommendation.estimatedCost) parts.push(`💰 ${recommendation.estimatedCost}`);
+  if (recommendation.bestTimeToVisit) parts.push(`🕐 Best time: ${recommendation.bestTimeToVisit}`);
+  return parts.join('\n\n');
 }
 
 export async function saveRecommendationAsTripBit(

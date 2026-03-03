@@ -37,7 +37,9 @@ import {
   X,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
+import type { AIRecommendation } from '@/types';
 import type { TripBitAttachment } from '@/types/database';
+import { mapCategoryToTripBitCategory, buildNotesFromRecommendation } from '@/lib/api/recommendations';
 import { getLocationDisplayName } from '@/types/database';
 import { generateTripICS, downloadICS, generateTripFilename } from '@/lib/utils/calendarExport';
 import { printTripItinerary } from '@/lib/utils/pdfExport';
@@ -61,6 +63,13 @@ export default function TripDetailPage() {
   const [showAISheet, setShowAISheet] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [recommendationPreset, setRecommendationPreset] = useState<{
+    initialTitle: string;
+    initialNotes: string;
+    initialCategory: TripBitCategory;
+    locationDateRange?: { start: string; end: string; locationName?: string };
+    onAdded: () => void;
+  } | null>(null);
 
   const fetchTrip = useCallback(async () => {
     const supabase = createClient();
@@ -178,17 +187,40 @@ export default function TripDetailPage() {
     setShowAddSheet(true);
   };
 
-  const handleTripBitClick = async (tripBit: TripBit) => {
-    // Fetch attachments for this trip bit
+  const handleTripBitClick = (tripBit: TripBit) => {
+    // Open immediately for instant feedback
+    setRecommendationPreset(null);
+    setEditingTripBit(tripBit);
+    setEditingAttachments([]);
+    setAddSheetCategory(undefined);
+    setShowAddSheet(true);
+
+    // Fetch attachments in background and update when ready
     const supabase = createClient();
-    const { data: attachments } = await supabase
+    supabase
       .from('trip_bit_attachments')
       .select('*')
-      .eq('trip_bit_id', tripBit.id);
+      .eq('trip_bit_id', tripBit.id)
+      .then(({ data }) => {
+        if (data && data.length > 0) setEditingAttachments(data);
+      });
+  };
 
-    setEditingTripBit(tripBit);
-    setEditingAttachments(attachments || []);
-    setAddSheetCategory(undefined);
+  const handleAddFromRecommendation = (
+    recommendation: AIRecommendation,
+    locationDateRange: { start: string; end: string; locationName?: string } | undefined,
+    onAdded: () => void
+  ) => {
+    setRecommendationPreset({
+      initialTitle: recommendation.title,
+      initialNotes: buildNotesFromRecommendation(recommendation),
+      initialCategory: mapCategoryToTripBitCategory(recommendation.category),
+      locationDateRange,
+      onAdded,
+    });
+    setEditingTripBit(null);
+    setEditingAttachments([]);
+    setAddSheetCategory(mapCategoryToTripBitCategory(recommendation.category));
     setShowAddSheet(true);
   };
 
@@ -400,6 +432,7 @@ export default function TripDetailPage() {
             onInviteClick={handleInviteClick}
             onAIQuickAdd={() => setShowAISheet(true)}
             onTripBitAdded={fetchTrip}
+            onAddRecommendation={handleAddFromRecommendation}
             isOwner={isOwner}
             ownerUserId={trip.user_id}
             onParticipantsChanged={fetchTrip}
@@ -424,24 +457,31 @@ export default function TripDetailPage() {
         tripBit={editingTripBit}
         existingAttachments={editingAttachments}
         isOpen={showAddSheet}
+        initialTitle={recommendationPreset?.initialTitle}
+        initialNotes={recommendationPreset?.initialNotes}
+        locationDateRange={recommendationPreset?.locationDateRange}
         onClose={() => {
           setShowAddSheet(false);
           setAddSheetCategory(undefined);
           setEditingTripBit(null);
           setEditingAttachments([]);
+          setRecommendationPreset(null);
         }}
         onSuccess={() => {
+          recommendationPreset?.onAdded();
           setShowAddSheet(false);
           setAddSheetCategory(undefined);
           setEditingTripBit(null);
           setEditingAttachments([]);
-          fetchTrip(); // Refresh data
+          setRecommendationPreset(null);
+          fetchTrip();
         }}
         onDelete={() => {
           setShowAddSheet(false);
           setEditingTripBit(null);
           setEditingAttachments([]);
-          fetchTrip(); // Refresh data
+          setRecommendationPreset(null);
+          fetchTrip();
         }}
       />
 

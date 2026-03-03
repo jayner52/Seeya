@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, Button, Spinner } from '@/components/ui';
@@ -15,8 +15,6 @@ import {
   Check,
   AlertCircle,
   RefreshCw,
-  DollarSign,
-  Clock,
   ChevronDown,
   SlidersHorizontal,
   X,
@@ -52,6 +50,11 @@ interface AIRecommendationsSectionProps {
   startDate?: string | null;
   endDate?: string | null;
   onTripBitAdded?: () => void;
+  onAddRecommendation?: (
+    recommendation: AIRecommendation,
+    locationDateRange: { start: string; end: string; locationName?: string } | undefined,
+    onAdded: () => void
+  ) => void;
 }
 
 // Category configuration
@@ -83,139 +86,113 @@ function RecommendationCard({
   isAdding: boolean;
   onAdd: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   const config = categoryConfig[recommendation.category] ?? categoryConfig['tip'];
   const Icon = config.icon;
-  const hasPhoto = !!recommendation.photoUrl;
-  const isTip = recommendation.category === 'tip';
+  const showPhoto = !!recommendation.photoUrl && !imgError;
 
   return (
     <Card variant="outline" padding="none" className="overflow-hidden">
-      {/* Photo or color bar */}
-      {hasPhoto ? (
-        <div className="relative h-40 bg-gray-100">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={recommendation.photoUrl}
-            alt={recommendation.title}
-            className="w-full h-full object-cover"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-          <div className={cn(
-            'absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 bg-white/90',
-            config.color
-          )}>
-            <Icon size={12} />
-            {config.label}
-          </div>
-        </div>
-      ) : (
-        <div className={cn('h-1.5', config.color.split(' ')[0])} />
-      )}
-
-      <div className="p-4">
-        {/* Title row */}
-        <div className={cn('mb-2', !hasPhoto && 'flex items-start gap-3')}>
-          {!hasPhoto && (
-            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', config.color)}>
-              <Icon size={20} />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <h4 className="font-semibold text-seeya-text">{recommendation.title}</h4>
-              {recommendation.googleMapsUrl && (
-                <a
-                  href={recommendation.googleMapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-seeya-text-secondary hover:text-seeya-purple shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ExternalLink size={14} />
-                </a>
-              )}
-            </div>
-
-            {/* Rating + address */}
-            {!isTip && (recommendation.rating || recommendation.address) && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                {recommendation.rating && (
-                  <div className="flex items-center gap-1">
-                    <Star size={13} className="text-yellow-500 fill-yellow-500" />
-                    <span className="text-sm font-medium text-seeya-text">{recommendation.rating}</span>
-                    {recommendation.userRatingsTotal != null && (
-                      <span className="text-xs text-seeya-text-secondary">
-                        ({Number(recommendation.userRatingsTotal).toLocaleString()})
-                      </span>
-                    )}
-                  </div>
-                )}
-                {recommendation.address && (
-                  <div className="flex items-center gap-1 text-xs text-seeya-text-secondary min-w-0">
-                    <MapPin size={11} className="shrink-0" />
-                    <span className="truncate">{recommendation.address}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <p className="text-sm text-seeya-text-secondary mt-1.5 line-clamp-2">
-              {recommendation.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Cost and time info */}
-        <div className="flex flex-wrap gap-3 mb-3">
-          {recommendation.estimatedCost && (
-            <div className="flex items-center gap-1 text-sm text-seeya-text-secondary">
-              <DollarSign size={14} />
-              <span>{recommendation.estimatedCost}</span>
-            </div>
-          )}
-          {recommendation.bestTimeToVisit && (
-            <div className="flex items-center gap-1 text-sm text-seeya-text-secondary">
-              <Clock size={14} />
-              <span>{recommendation.bestTimeToVisit}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Tips */}
-        {recommendation.tips && (
-          <div className="bg-gray-50 rounded-lg p-3 mb-3">
-            <p className="text-sm text-seeya-text-secondary">
-              <Lightbulb size={14} className="inline mr-1 text-seeya-primary" />
-              {recommendation.tips}
-            </p>
-          </div>
-        )}
-
-        {/* Add button */}
-        <button
-          onClick={onAdd}
-          disabled={isAdded || isAdding}
-          className={cn(
-            'w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors',
-            isAdded
-              ? 'bg-seeya-primary/20 text-yellow-700 cursor-default'
-              : 'bg-seeya-primary/10 text-seeya-text hover:bg-seeya-primary/20'
-          )}
-        >
-          {isAdding ? (
-            <Spinner size="sm" />
-          ) : isAdded ? (
+      <div className="flex flex-row gap-3 p-3">
+        {/* Photo or icon box — fixed 80×80 square */}
+        <div className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden relative">
+          {showPhoto ? (
             <>
-              <Check size={16} />
-              <span>Added to Trip</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={recommendation.photoUrl}
+                alt={recommendation.title}
+                className="w-full h-full object-cover"
+                onError={() => setImgError(true)}
+              />
+              <div className={cn(
+                'absolute top-1.5 left-1.5 p-1 rounded-md bg-white/90 flex items-center justify-center',
+                config.color
+              )}>
+                <Icon size={10} />
+              </div>
             </>
           ) : (
-            <>
-              <Plus size={16} />
-              <span>Add to Trip Pack</span>
-            </>
+            <div className={cn('w-full h-full flex items-center justify-center', config.color)}>
+              <Icon size={28} />
+            </div>
           )}
-        </button>
+        </div>
+
+        {/* Text content */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          {/* Title + external link */}
+          <div className="flex items-start justify-between gap-1">
+            <h4 className="font-semibold text-seeya-text text-sm leading-tight line-clamp-2">
+              {recommendation.title}
+            </h4>
+            {recommendation.googleMapsUrl && (
+              <a
+                href={recommendation.googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-seeya-text-secondary hover:text-seeya-purple shrink-0 mt-0.5"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink size={12} />
+              </a>
+            )}
+          </div>
+
+          {/* Rating + review count */}
+          {recommendation.rating && (
+            <div className="flex items-center gap-1">
+              <Star size={11} className="text-yellow-500 fill-yellow-500" />
+              <span className="text-xs font-medium text-seeya-text">{recommendation.rating}</span>
+              {recommendation.userRatingsTotal != null && (
+                <span className="text-xs text-seeya-text-secondary">
+                  ({Number(recommendation.userRatingsTotal).toLocaleString()})
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Cost · Best time on one line */}
+          {(recommendation.estimatedCost || recommendation.bestTimeToVisit) && (
+            <p className="text-xs text-seeya-text-secondary truncate">
+              {[recommendation.estimatedCost, recommendation.bestTimeToVisit].filter(Boolean).join(' · ')}
+            </p>
+          )}
+
+          {/* Address */}
+          {recommendation.address && (
+            <div className="flex items-center gap-1 text-xs text-seeya-text-secondary">
+              <MapPin size={10} className="shrink-0" />
+              <span className="truncate">{recommendation.address}</span>
+            </div>
+          )}
+
+          {/* Add button */}
+          <button
+            onClick={onAdd}
+            disabled={isAdded || isAdding}
+            className={cn(
+              'mt-auto w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              isAdded
+                ? 'bg-seeya-primary/20 text-yellow-700 cursor-default'
+                : 'bg-seeya-primary/10 text-seeya-text hover:bg-seeya-primary/20'
+            )}
+          >
+            {isAdding ? (
+              <Spinner size="sm" />
+            ) : isAdded ? (
+              <>
+                <Check size={13} />
+                <span>Added to Trip</span>
+              </>
+            ) : (
+              <>
+                <Plus size={13} />
+                <span>Add to Trip Pack</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </Card>
   );
@@ -413,6 +390,7 @@ export function AIRecommendationsSection({
   startDate,
   endDate,
   onTripBitAdded,
+  onAddRecommendation,
 }: AIRecommendationsSectionProps) {
   const { user } = useAuthStore();
 
@@ -425,8 +403,18 @@ export function AIRecommendationsSection({
   // Error state per category
   const [errors, setErrors] = useState<Partial<Record<RecommendationCategory, string>>>({});
 
-  // Cache recommendations per category
-  const [cache, setCache] = useState<CategoryCache>({});
+  // Cache recommendations per category — restored from localStorage on mount
+  const storageKey = `seeya-ai-recs-${tripId}`;
+  const [cache, setCache] = useState<CategoryCache>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.cache ?? {};
+      }
+    } catch {}
+    return {};
+  });
 
   // Filters per category
   const [filters, setFilters] = useState<{
@@ -448,11 +436,28 @@ export function AIRecommendationsSection({
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [addingId, setAddingId] = useState<string | null>(null);
 
-  // Multi-city support
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
-    locations.length > 0 ? locations[0].id : null
-  );
+  // Multi-city support — restore selected location from localStorage if valid
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const restoredId = parsed.locationId;
+        if (restoredId && locations.find(l => l.id === restoredId)) return restoredId;
+      }
+    } catch {}
+    return locations.length > 0 ? locations[0].id : null;
+  });
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+
+  // Persist cache + selected location to localStorage whenever they change
+  useEffect(() => {
+    if (Object.keys(cache).length > 0) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ cache, locationId: selectedLocationId }));
+      } catch {}
+    }
+  }, [cache, selectedLocationId, storageKey]);
 
   // Derived values
   const selectedLocation = locations.find(l => l.id === selectedLocationId);
@@ -516,7 +521,11 @@ export function AIRecommendationsSection({
 
   const handleRefresh = () => {
     // Clear cache for current category and regenerate
-    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
+    setCache(prev => {
+      const next = { ...prev, [activeCategory]: undefined };
+      try { localStorage.setItem(storageKey, JSON.stringify({ cache: next, locationId: selectedLocationId })); } catch {}
+      return next;
+    });
     handleGenerate(activeCategory, true);
   };
 
@@ -526,43 +535,66 @@ export function AIRecommendationsSection({
 
   const handleApplyFilters = () => {
     // Clear cache so next generate uses new filters, but don't auto-generate
-    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
+    setCache(prev => {
+      const next = { ...prev, [activeCategory]: undefined };
+      try { localStorage.setItem(storageKey, JSON.stringify({ cache: next, locationId: selectedLocationId })); } catch {}
+      return next;
+    });
     setShowFilters(false);
   };
 
   const handleClearFilters = () => {
-    setFilters(prev => ({
-      ...prev,
-      [activeCategory]: {},
-    }));
-    setCache(prev => ({ ...prev, [activeCategory]: undefined }));
+    setFilters(prev => ({ ...prev, [activeCategory]: {} }));
+    setCache(prev => {
+      const next = { ...prev, [activeCategory]: undefined };
+      try { localStorage.setItem(storageKey, JSON.stringify({ cache: next, locationId: selectedLocationId })); } catch {}
+      return next;
+    });
     setShowFilters(false);
   };
 
   const handleAddToTrip = async (recommendation: AIRecommendation) => {
     if (!user || addedIds.has(recommendation.id)) return;
 
-    setAddingId(recommendation.id);
+    const locationDateRange = selectedLocation?.arrival_date && selectedLocation?.departure_date
+      ? {
+          start: selectedLocation.arrival_date,
+          end: selectedLocation.departure_date,
+          locationName: destination,
+        }
+      : undefined;
 
-    const result = await saveRecommendationAsTripBit(tripId, user.id, recommendation);
-
-    if (result.success) {
-      setAddedIds(prev => new Set([...Array.from(prev), recommendation.id]));
-      onTripBitAdded?.();
-    } else {
-      console.error('Failed to add recommendation:', result.error);
+    if (onAddRecommendation) {
+      onAddRecommendation(recommendation, locationDateRange, () => {
+        setAddedIds(prev => new Set([...prev, recommendation.id]));
+        onTripBitAdded?.();
+      });
+      return;
     }
 
-    setAddingId(null);
+    // Fallback: direct insert (when sheet-based flow not wired up)
+    setAddingId(recommendation.id);
+    try {
+      const result = await saveRecommendationAsTripBit(tripId, user.id, recommendation);
+      if (result.success) {
+        setAddedIds(prev => new Set([...prev, recommendation.id]));
+        onTripBitAdded?.();
+      } else {
+        console.error('Failed to add recommendation:', result.error);
+      }
+    } finally {
+      setAddingId(null);
+    }
   };
 
   const handleLocationChange = (locationId: string) => {
     setSelectedLocationId(locationId);
     setShowLocationDropdown(false);
-    // Reset everything when location changes
+    // Reset everything when location changes and clear storage
     setCache({});
     setErrors({});
     setAddedIds(new Set());
+    try { localStorage.removeItem(storageKey); } catch {}
   };
 
   // Location dropdown component
@@ -838,7 +870,7 @@ export function AIRecommendationsSection({
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {currentRecommendations.map(recommendation => (
             <RecommendationCard
               key={recommendation.id}

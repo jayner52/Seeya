@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 
 interface AvatarProps {
@@ -26,7 +26,9 @@ export function Avatar({
   showBorder = false,
   className,
 }: AvatarProps) {
+  const [imgError, setImgError] = useState(false);
   const initials = getInitials(name);
+  const showImage = !!avatarUrl && !imgError;
 
   return (
     <div
@@ -37,13 +39,13 @@ export function Avatar({
         className
       )}
     >
-      {avatarUrl ? (
-        <Image
-          src={avatarUrl}
+      {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={avatarUrl!}
           alt={name}
-          fill
-          className="object-cover"
-          sizes={getSizePixels(size)}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
         />
       ) : (
         <div
@@ -128,13 +130,4 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-function getSizePixels(size: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): string {
-  const pixelSizes = {
-    xs: '24px',
-    sm: '32px',
-    md: '40px',
-    lg: '48px',
-    xl: '64px',
-  };
-  return pixelSizes[size];
-}
+

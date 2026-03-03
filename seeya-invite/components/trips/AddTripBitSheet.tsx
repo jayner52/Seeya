@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Link2,
   Calendar,
+  MapPin,
   Users,
   Check,
   Paperclip,
@@ -52,6 +53,10 @@ interface AddTripBitSheetProps {
   onClose: () => void;
   onSuccess: () => void;
   onDelete?: () => void; // Called after successful deletion
+  // Pre-population from recommendations
+  initialTitle?: string;
+  initialNotes?: string;
+  locationDateRange?: { start: string; end: string; locationName?: string } | null;
 }
 
 const categories: { id: TripBitCategory; label: string; icon: typeof Plane; color: string }[] = [
@@ -112,6 +117,9 @@ export function AddTripBitSheet({
   onClose,
   onSuccess,
   onDelete,
+  initialTitle,
+  initialNotes,
+  locationDateRange,
 }: AddTripBitSheetProps) {
   const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,6 +154,14 @@ export function AddTripBitSheet({
     if (dbStatus === 'cancelled') return 'cancelled';
     return 'pending';
   };
+
+  // Populate form from recommendation preset (add mode only)
+  useEffect(() => {
+    if (!tripBit && isOpen && (initialTitle || initialNotes)) {
+      if (initialTitle) setTitle(initialTitle);
+      if (initialNotes) setNotes(initialNotes);
+    }
+  }, [tripBit, isOpen, initialTitle, initialNotes]);
 
   // Populate form when tripBit changes (edit mode)
   useEffect(() => {
@@ -699,12 +715,29 @@ export function AddTripBitSheet({
               Dates (optional)
             </label>
 
+            {/* Location date range hint */}
+            {locationDateRange && !isEditMode && (
+              <div className="flex items-center gap-1.5 px-3 py-2 bg-seeya-primary/10 rounded-lg text-xs text-seeya-text-secondary">
+                <MapPin size={12} className="shrink-0 text-seeya-purple" />
+                <span>
+                  {locationDateRange.locationName
+                    ? `You're in ${locationDateRange.locationName}: `
+                    : 'At this location: '}
+                  {new Date(locationDateRange.start + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {' – '}
+                  {new Date(locationDateRange.end + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+            )}
+
             {/* Start */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-seeya-text-secondary w-12">Start</span>
               <input
                 type="date"
                 value={startDate}
+                min={locationDateRange && !isEditMode ? locationDateRange.start : undefined}
+                max={locationDateRange && !isEditMode ? locationDateRange.end : undefined}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none transition-all text-sm"
               />
@@ -722,6 +755,8 @@ export function AddTripBitSheet({
               <input
                 type="date"
                 value={endDate}
+                min={locationDateRange && !isEditMode ? locationDateRange.start : undefined}
+                max={locationDateRange && !isEditMode ? locationDateRange.end : undefined}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none transition-all text-sm"
               />

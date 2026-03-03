@@ -371,7 +371,6 @@ export function FriendRecommendationsSection({
         category: mapRecCategoryToTripBitCategory(rec.category),
         title: rec.title,
         notes: notesParts.join('\n\n') || null,
-        is_booked: false,
       });
 
       if (!error) {
