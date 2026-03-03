@@ -77,6 +77,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     } catch (error) {
       console.error('Auth initialization error:', error);
+      // getUser() makes a network request that can be aborted during navigation.
+      // Fall back to getSession() which reads from local storage and never aborts.
+      if (error instanceof Error && error.name === 'AbortError') {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            set({
+              user: {
+                id: session.user.id,
+                email: session.user.email!,
+                user_metadata: session.user.user_metadata,
+              },
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            await get().fetchProfile();
+            return;
+          }
+        } catch { /* ignore */ }
+      }
       set({ isLoading: false });
     }
   },
