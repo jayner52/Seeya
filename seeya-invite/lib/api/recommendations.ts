@@ -71,6 +71,9 @@ export async function saveRecommendationAsTripBit(
     if (recommendation.description) {
       notesParts.push(recommendation.description);
     }
+    if (recommendation.address) {
+      notesParts.push(`📍 ${recommendation.address}`);
+    }
     if (recommendation.tips) {
       notesParts.push(`Tip: ${recommendation.tips}`);
     }
@@ -87,8 +90,6 @@ export async function saveRecommendationAsTripBit(
       category: mapCategoryToTripBitCategory(recommendation.category),
       title: recommendation.title,
       notes: notesParts.join('\n\n'),
-      address: recommendation.address || null,
-      is_booked: false,
     });
 
     if (insertError) {
