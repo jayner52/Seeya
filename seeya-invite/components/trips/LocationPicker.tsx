@@ -120,37 +120,68 @@ export function LocationPicker({
           {locations.map((location, index) => (
             <div
               key={location.id}
-              className="flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-xl group"
+              className="p-3 bg-white border border-gray-200 rounded-xl group"
             >
-              <button
-                type="button"
-                className="cursor-grab text-gray-400 hover:text-gray-600"
-                title="Drag to reorder"
-              >
-                <GripVertical size={16} />
-              </button>
-              <div className="w-8 h-8 rounded-lg bg-seeya-purple/10 flex items-center justify-center">
-                <span className="text-sm font-medium text-seeya-purple">
-                  {index + 1}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-seeya-text truncate">
-                  {location.name}
-                </p>
-                {location.country && (
-                  <p className="text-sm text-seeya-text-secondary">
-                    {location.country}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="cursor-grab text-gray-400 hover:text-gray-600"
+                  title="Drag to reorder"
+                >
+                  <GripVertical size={16} />
+                </button>
+                <div className="w-8 h-8 rounded-lg bg-seeya-purple/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-medium text-seeya-purple">
+                    {index + 1}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-seeya-text truncate">
+                    {location.name}
                   </p>
-                )}
+                  {location.country && (
+                    <p className="text-sm text-seeya-text-secondary">
+                      {location.country}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeLocation(location.id)}
+                  className="p-1.5 text-gray-400 hover:text-seeya-error hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                >
+                  <X size={16} />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => removeLocation(location.id)}
-                className="p-1.5 text-gray-400 hover:text-seeya-error hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X size={16} />
-              </button>
+              {/* Per-location date range */}
+              <div className="mt-2 ml-10 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-seeya-text-secondary mb-1">Arrival</label>
+                  <input
+                    type="date"
+                    value={location.arrivalDate ?? ''}
+                    onChange={(e) => {
+                      onChange(locations.map(l =>
+                        l.id === location.id ? { ...l, arrivalDate: e.target.value || null } : l
+                      ));
+                    }}
+                    className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-seeya-text-secondary mb-1">Departure</label>
+                  <input
+                    type="date"
+                    value={location.departureDate ?? ''}
+                    onChange={(e) => {
+                      onChange(locations.map(l =>
+                        l.id === location.id ? { ...l, departureDate: e.target.value || null } : l
+                      ));
+                    }}
+                    className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
+                  />
+                </div>
+              </div>
             </div>
           ))}
         </div>

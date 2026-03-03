@@ -17,6 +17,8 @@ interface Location {
   name: string;
   cityId?: string;
   country?: string;
+  arrivalDate?: string | null;
+  departureDate?: string | null;
 }
 
 interface EditTripFormProps {
@@ -80,6 +82,8 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
             id: loc.id as string,
             name: (loc.custom_location as string) || (loc.name as string) || '',
             cityId: (loc.city_id as string) || undefined,
+            arrivalDate: (loc.arrival_date as string) || null,
+            departureDate: (loc.departure_date as string) || null,
           }))
         );
       }
@@ -132,6 +136,8 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
           custom_location: loc.name,  // Use custom_location to match iOS
           city_id: loc.cityId || null,
           order_index: index,
+          arrival_date: loc.arrivalDate || null,
+          departure_date: loc.departureDate || null,
         }));
 
         const { error: locationError } = await supabase
