@@ -559,7 +559,7 @@ export function AIRecommendationsSection({
 
     if (onAddRecommendation) {
       onAddRecommendation(recommendation, locationDateRange, () => {
-        setAddedIds(prev => new Set([...prev, recommendation.id]));
+        setAddedIds(prev => new Set(prev).add(recommendation.id));
         onTripBitAdded?.();
       });
       return;
@@ -570,7 +570,7 @@ export function AIRecommendationsSection({
     try {
       const result = await saveRecommendationAsTripBit(tripId, user.id, recommendation);
       if (result.success) {
-        setAddedIds(prev => new Set([...prev, recommendation.id]));
+        setAddedIds(prev => new Set(prev).add(recommendation.id));
         onTripBitAdded?.();
       } else {
         console.error('Failed to add recommendation:', result.error);
