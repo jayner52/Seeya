@@ -108,6 +108,57 @@ export function LocationPicker({
     onChange(locations.filter((loc) => loc.id !== id));
   };
 
+  const addDay = (date: string): string => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  const handleDateChange = (
+    idx: number,
+    field: 'arrivalDate' | 'departureDate',
+    value: string | null
+  ) => {
+    const updated = locations.map(l => ({ ...l }));
+    updated[idx] = { ...updated[idx], [field]: value || null };
+
+    // Departure must be after arrival for the same stop
+    if (field === 'arrivalDate' && value) {
+      const dep = updated[idx].departureDate;
+      if (dep && dep <= value) {
+        updated[idx].departureDate = addDay(value);
+      }
+    }
+
+    // Arrival must not be before previous stop's departure
+    if (field === 'arrivalDate' && value && idx > 0) {
+      const prevDep = updated[idx - 1].departureDate;
+      if (prevDep && value < prevDep) {
+        updated[idx].arrivalDate = prevDep;
+        // Re-check departure for this stop
+        const dep = updated[idx].departureDate;
+        if (dep && dep <= prevDep) {
+          updated[idx].departureDate = addDay(prevDep);
+        }
+      }
+    }
+
+    // When departure changes, cascade: next stop's arrival ← this departure
+    if (field === 'departureDate' && value && idx + 1 < updated.length) {
+      const nextArr = updated[idx + 1].arrivalDate;
+      if (!nextArr || nextArr < value) {
+        updated[idx + 1].arrivalDate = value;
+        // Also push next stop's departure if it now conflicts
+        const nextDep = updated[idx + 1].departureDate;
+        if (nextDep && nextDep <= value) {
+          updated[idx + 1].departureDate = addDay(value);
+        }
+      }
+    }
+
+    onChange(updated);
+  };
+
   return (
     <div className={cn('space-y-3', className)}>
       <label className="block text-sm font-medium text-seeya-text">
@@ -160,11 +211,7 @@ export function LocationPicker({
                   <input
                     type="date"
                     value={location.arrivalDate ?? ''}
-                    onChange={(e) => {
-                      onChange(locations.map(l =>
-                        l.id === location.id ? { ...l, arrivalDate: e.target.value || null } : l
-                      ));
-                    }}
+                    onChange={(e) => handleDateChange(index, 'arrivalDate', e.target.value)}
                     className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
                   />
                 </div>
@@ -173,11 +220,7 @@ export function LocationPicker({
                   <input
                     type="date"
                     value={location.departureDate ?? ''}
-                    onChange={(e) => {
-                      onChange(locations.map(l =>
-                        l.id === location.id ? { ...l, departureDate: e.target.value || null } : l
-                      ));
-                    }}
+                    onChange={(e) => handleDateChange(index, 'departureDate', e.target.value)}
                     className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
                   />
                 </div>
