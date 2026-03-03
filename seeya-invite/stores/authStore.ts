@@ -29,18 +29,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     const supabase = createClient();
 
-    try {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
+    // Set up auth state change listener first, before any async work,
+    // so SIGNED_IN / SIGNED_OUT events are never missed.
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'INITIAL_SESSION') return;
 
-      if (user && !error) {
+      if (event === 'SIGNED_IN' && session?.user) {
         set({
           user: {
-            id: user.id,
-            email: user.email!,
-            user_metadata: user.user_metadata,
+            id: session.user.id,
+            email: session.user.email!,
+            user_metadata: session.user.user_metadata,
+          },
+          isAuthenticated: true,
+          isLoading: false,
+        });
+        await get().fetchProfile();
+      } else if (event === 'SIGNED_OUT') {
+        set({ user: null, profile: null, isAuthenticated: false });
+      }
+    });
+
+    try {
+      // getSession() reads from local storage — no network call, never aborts.
+      // getUser() verifies the JWT server-side but throws AbortError on navigation.
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        set({
+          user: {
+            id: session.user.id,
+            email: session.user.email!,
+            user_metadata: session.user.user_metadata,
           },
           isAuthenticated: true,
           isLoading: false,
@@ -49,54 +69,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else {
         set({ isLoading: false });
       }
-
-      // Listen for auth changes
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        // Ignore INITIAL_SESSION - we already handled it above with getUser()
-        if (event === 'INITIAL_SESSION') {
-          return;
-        }
-
-        if (event === 'SIGNED_IN' && session?.user) {
-          set({
-            user: {
-              id: session.user.id,
-              email: session.user.email!,
-              user_metadata: session.user.user_metadata,
-            },
-            isAuthenticated: true,
-          });
-          await get().fetchProfile();
-        } else if (event === 'SIGNED_OUT') {
-          set({
-            user: null,
-            profile: null,
-            isAuthenticated: false,
-          });
-        }
-      });
     } catch (error) {
       console.error('Auth initialization error:', error);
-      // getUser() makes a network request that can be aborted during navigation.
-      // Fall back to getSession() which reads from local storage and never aborts.
-      if (error instanceof Error && error.name === 'AbortError') {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            set({
-              user: {
-                id: session.user.id,
-                email: session.user.email!,
-                user_metadata: session.user.user_metadata,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            await get().fetchProfile();
-            return;
-          }
-        } catch { /* ignore */ }
-      }
       set({ isLoading: false });
     }
   },
