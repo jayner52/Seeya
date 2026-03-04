@@ -20,6 +20,8 @@ interface AuthState {
   fetchProfile: () => Promise<void>;
 }
 
+let authInitialized = false;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
@@ -27,14 +29,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
 
   initialize: async () => {
+    if (authInitialized) return;
+    authInitialized = true;
+
     const supabase = createClient();
 
-    // Set up auth state change listener first, before any async work,
-    // so SIGNED_IN / SIGNED_OUT events are never missed.
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'INITIAL_SESSION') return;
-
-      if (event === 'SIGNED_IN' && session?.user) {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         set({
           user: {
             id: session.user.id,
@@ -44,35 +45,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true,
           isLoading: false,
         });
-        await get().fetchProfile();
+        // Fire-and-forget — never let fetchProfile() bubble an error
+        // back through _notifyAllSubscribers → signInWithPassword
+        get().fetchProfile().catch(() => {});
+      } else if (event === 'INITIAL_SESSION') {
+        set({ isLoading: false });
       } else if (event === 'SIGNED_OUT') {
         set({ user: null, profile: null, isAuthenticated: false });
       }
     });
-
-    try {
-      // getSession() reads from local storage — no network call, never aborts.
-      // getUser() verifies the JWT server-side but throws AbortError on navigation.
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        set({
-          user: {
-            id: session.user.id,
-            email: session.user.email!,
-            user_metadata: session.user.user_metadata,
-          },
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        await get().fetchProfile();
-      } else {
-        set({ isLoading: false });
-      }
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      set({ isLoading: false });
-    }
   },
 
   signIn: async (email: string, password: string) => {
@@ -98,7 +79,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       });
-      await get().fetchProfile();
+      // Fire-and-forget — don't let a profile fetch failure break sign-in
+      get().fetchProfile().catch(() => {});
     }
 
     return {};

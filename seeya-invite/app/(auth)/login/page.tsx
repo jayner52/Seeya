@@ -67,11 +67,10 @@ function LoginPageContent() {
         return;
       }
 
-      // Use full page reload to ensure cookies are properly sent to server
       if (inviteCode) {
-        window.location.href = `/invite/${inviteCode}/accept`;
+        router.push(`/invite/${inviteCode}/accept`);
       } else {
-        window.location.href = redirect;
+        router.push(redirect);
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
