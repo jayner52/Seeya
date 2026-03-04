@@ -18,7 +18,9 @@ const COUNTRY_TO_CONTINENT: Record<string, string> = {
   'Poland': 'Europe', 'Portugal': 'Europe', 'Romania': 'Europe', 'Russia': 'Europe',
   'San Marino': 'Europe', 'Serbia': 'Europe', 'Slovakia': 'Europe', 'Slovenia': 'Europe',
   'Spain': 'Europe', 'Sweden': 'Europe', 'Switzerland': 'Europe', 'Turkey': 'Europe',
+  'Türkiye': 'Europe',
   'Ukraine': 'Europe', 'United Kingdom': 'Europe', 'UK': 'Europe', 'Vatican City': 'Europe',
+  'England': 'Europe', 'Scotland': 'Europe', 'Wales': 'Europe', 'Northern Ireland': 'Europe',
 
   // Asia
   'Afghanistan': 'Asia', 'Bahrain': 'Asia', 'Bangladesh': 'Asia', 'Bhutan': 'Asia',
@@ -32,7 +34,7 @@ const COUNTRY_TO_CONTINENT: Record<string, string> = {
   'South Korea': 'Asia', 'Sri Lanka': 'Asia', 'Syria': 'Asia', 'Taiwan': 'Asia',
   'Tajikistan': 'Asia', 'Thailand': 'Asia', 'Timor-Leste': 'Asia', 'Turkmenistan': 'Asia',
   'United Arab Emirates': 'Asia', 'UAE': 'Asia', 'Uzbekistan': 'Asia', 'Vietnam': 'Asia',
-  'Yemen': 'Asia',
+  'Viet Nam': 'Asia', 'Yemen': 'Asia', 'Hong Kong': 'Asia', 'Macau': 'Asia',
 
   // North America
   'Antigua and Barbuda': 'North America', 'Bahamas': 'North America', 'Barbados': 'North America',
@@ -44,6 +46,7 @@ const COUNTRY_TO_CONTINENT: Record<string, string> = {
   'Saint Kitts and Nevis': 'North America', 'Saint Lucia': 'North America',
   'Saint Vincent and the Grenadines': 'North America', 'Trinidad and Tobago': 'North America',
   'United States': 'North America', 'USA': 'North America',
+  'Puerto Rico': 'North America', 'US Virgin Islands': 'North America',
 
   // South America
   'Argentina': 'South America', 'Bolivia': 'South America', 'Brazil': 'South America',
@@ -73,6 +76,7 @@ const COUNTRY_TO_CONTINENT: Record<string, string> = {
   'Micronesia': 'Oceania', 'Nauru': 'Oceania', 'New Zealand': 'Oceania', 'Palau': 'Oceania',
   'Papua New Guinea': 'Oceania', 'Samoa': 'Oceania', 'Solomon Islands': 'Oceania',
   'Tonga': 'Oceania', 'Tuvalu': 'Oceania', 'Vanuatu': 'Oceania',
+  'French Polynesia': 'Oceania', 'New Caledonia': 'Oceania', 'Guam': 'Oceania',
 
   // Antarctica
   'Antarctica': 'Antarctica',
@@ -89,4 +93,52 @@ export function getContinent(country: string): string {
     if (key.toLowerCase() === lower) return value;
   }
   return 'Other';
+}
+
+/**
+ * Determine country and continent from Google Places data or a plain place name.
+ * Tries multiple strategies: secondaryText → mainText → all description parts.
+ */
+export function determineCountryAndContinent(
+  mainText?: string,
+  secondaryText?: string,
+  description?: string,
+): { country: string | null; continent: string } {
+  // 1. Try extracting country from secondaryText (works for "Paris" → "Île-de-France, France")
+  if (secondaryText) {
+    const fromSecondary = extractCountryFromSecondaryText(secondaryText);
+    if (fromSecondary) {
+      const continent = getContinent(fromSecondary);
+      if (continent !== 'Other') return { country: fromSecondary, continent };
+    }
+  }
+
+  // 2. Check if mainText itself is a country/region (works for "Taiwan", "Japan", etc.)
+  if (mainText) {
+    const continent = getContinent(mainText);
+    if (continent !== 'Other') return { country: mainText, continent };
+  }
+
+  // 3. Check all parts of description from right to left (country is usually last)
+  const text = description || [mainText, secondaryText].filter(Boolean).join(', ');
+  if (text) {
+    const parts = text.split(', ');
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const part = parts[i].trim();
+      const continent = getContinent(part);
+      if (continent !== 'Other') return { country: part, continent };
+    }
+  }
+
+  return { country: null, continent: 'Other' };
+}
+
+/**
+ * Try to determine country and continent from just a place name string.
+ * Used for backfilling existing items and custom place entries.
+ */
+export function determineContinentFromPlaceName(
+  placeName: string,
+): { country: string | null; continent: string } {
+  return determineCountryAndContinent(undefined, undefined, placeName);
 }

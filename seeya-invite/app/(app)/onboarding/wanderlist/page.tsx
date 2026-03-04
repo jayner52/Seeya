@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Card, Button } from '@/components/ui';
 import { StepIndicator } from '@/components/onboarding';
 import { Sparkles, Search, MapPin, Plus, X, ArrowLeft } from 'lucide-react';
+import { determineCountryAndContinent } from '@/lib/countryContinent';
 
 interface PlacePrediction {
   placeId: string;
@@ -20,6 +21,7 @@ interface WanderlistItem {
   name: string;
   secondaryText: string;
   placeId?: string;
+  description?: string;
 }
 
 export default function OnboardingWanderlistPage() {
@@ -77,6 +79,7 @@ export default function OnboardingWanderlistPage() {
         name: place.mainText,
         secondaryText: place.secondaryText,
         placeId: place.placeId,
+        description: place.description,
       },
     ]);
     setQuery('');
@@ -107,13 +110,23 @@ export default function OnboardingWanderlistPage() {
     setIsSaving(true);
     const supabase = createClient();
 
-    // Save wanderlist items
+    // Save wanderlist items with country/continent
     if (wanderlist.length > 0) {
-      const inserts = wanderlist.map((item) => ({
-        user_id: user.id,
-        place_name: item.placeId ? `${item.name}, ${item.secondaryText}` : item.name,
-        place_id: item.placeId || null,
-      }));
+      const inserts = wanderlist.map((item) => {
+        const placeName = item.placeId ? `${item.name}, ${item.secondaryText}` : item.name;
+        const { country, continent } = determineCountryAndContinent(
+          item.name,
+          item.secondaryText,
+          item.description || placeName,
+        );
+        return {
+          user_id: user.id,
+          place_name: placeName,
+          place_id: item.placeId || null,
+          country: country ?? null,
+          continent,
+        };
+      });
 
       await supabase.from('wanderlist_items').insert(inserts);
     }

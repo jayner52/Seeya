@@ -13,6 +13,7 @@ import {
   FeaturedItinerariesSection,
 } from '@/components/explore';
 import { Sparkles, Check } from 'lucide-react';
+import { determineContinentFromPlaceName } from '@/lib/countryContinent';
 import type { AIRecommendation } from '@/types';
 
 interface TravelingFriend {
@@ -301,10 +302,14 @@ export default function ExplorePage() {
 
     const supabase = createClient();
 
+    const { country, continent } = determineContinentFromPlaceName(place.name);
+
     await supabase.from('wanderlist_items').insert({
       user_id: user.id,
       city_id: placeId.startsWith('temp-') ? null : placeId,
       place_name: place.name,
+      country: country ?? null,
+      continent,
     });
 
     // Update local state

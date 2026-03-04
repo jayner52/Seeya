@@ -17,6 +17,7 @@ import { Edit2, Users, ChevronRight, Settings } from 'lucide-react';
 import Link from 'next/link';
 import type { Trip, Profile } from '@/types/database';
 import { getPalColor } from '@/types/calendar';
+import { determineContinentFromPlaceName } from '@/lib/countryContinent';
 
 interface WanderlistItem {
   id: string;
@@ -160,16 +161,40 @@ export default function ProfilePage() {
       setStats((s) => ({ ...s, travelPalsCount: pals.length }));
     }
 
-    // Process wanderlist
+    // Process wanderlist — backfill missing continent from place_name
     if (wanderlistData) {
-      const items: WanderlistItem[] = wanderlistData.map((item: any) => ({
-        id: item.id,
-        placeName: item.place_name || 'Unknown',
-        notes: item.notes,
-        country: item.country ?? undefined,
-        continent: item.continent ?? undefined,
-      }));
+      const itemsToBackfill: { id: string; country: string | null; continent: string }[] = [];
+      const items: WanderlistItem[] = wanderlistData.map((item: any) => {
+        let country = item.country ?? undefined;
+        let continent = item.continent ?? undefined;
+
+        if (!continent || continent === 'Other') {
+          const derived = determineContinentFromPlaceName(item.place_name || '');
+          if (derived.continent !== 'Other') {
+            country = derived.country ?? country;
+            continent = derived.continent;
+            itemsToBackfill.push({ id: item.id, country: derived.country, continent: derived.continent });
+          }
+        }
+
+        return {
+          id: item.id,
+          placeName: item.place_name || 'Unknown',
+          notes: item.notes,
+          country,
+          continent,
+        };
+      });
       setWanderlist(items);
+
+      // Backfill DB rows with missing continent (fire-and-forget)
+      if (itemsToBackfill.length > 0) {
+        Promise.all(
+          itemsToBackfill.map(({ id, country, continent }) =>
+            supabase.from('wanderlist_items').update({ country, continent }).eq('id', id)
+          )
+        ).catch(() => {});
+      }
     }
 
     // Fetch saved recommendations

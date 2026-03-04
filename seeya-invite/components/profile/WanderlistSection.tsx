@@ -19,6 +19,7 @@ import {
   Waves,
   Snowflake,
 } from 'lucide-react';
+import { determineContinentFromPlaceName } from '@/lib/countryContinent';
 
 interface WanderlistItem {
   id: string;
@@ -109,13 +110,17 @@ const continentOrder = [
   'Africa',
   'Oceania',
   'Antarctica',
-  'Other',
 ];
 
 function groupByContinent(items: WanderlistItem[]): Record<string, WanderlistItem[]> {
   const grouped: Record<string, WanderlistItem[]> = {};
   items.forEach((item) => {
-    const continent = item.continent || 'Other';
+    let continent = item.continent;
+    // If continent is missing or "Other", try to derive from placeName
+    if (!continent || continent === 'Other') {
+      const derived = determineContinentFromPlaceName(item.placeName);
+      continent = derived.continent;
+    }
     if (!grouped[continent]) grouped[continent] = [];
     grouped[continent].push(item);
   });
@@ -198,7 +203,12 @@ export function WanderlistSection({
 }: WanderlistSectionProps) {
   const groupedItems = groupByContinent(items);
   const sortedContinents = continentOrder.filter((c) => groupedItems[c]?.length > 0);
-  const continentCount = sortedContinents.filter((c) => c !== 'Other').length;
+  // Show "Other" at the end only if there are truly unresolvable items
+  const extraContinents = Object.keys(groupedItems).filter(
+    (c) => !continentOrder.includes(c) && groupedItems[c]?.length > 0
+  );
+  const allContinents = [...sortedContinents, ...extraContinents];
+  const continentCount = allContinents.filter((c) => c !== 'Other').length;
 
   return (
     <div className={className}>
@@ -243,7 +253,7 @@ export function WanderlistSection({
           </div>
 
           {/* Continent rows */}
-          {sortedContinents.map((continent) => (
+          {allContinents.map((continent) => (
             <ContinentRow
               key={continent}
               continent={continent}
