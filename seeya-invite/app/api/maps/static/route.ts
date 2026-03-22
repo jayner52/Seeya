@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   // Build URL — do NOT encodeURIComponent the whole marker string;
   // Google parses pipe-delimited values after standard query decoding
-  let url = `https://maps.googleapis.com/maps/api/staticmap?size=640x320&scale=2&maptype=roadmap&key=${apiKey}`;
+  let url = `https://maps.googleapis.com/maps/api/staticmap?size=640x640&scale=2&maptype=roadmap&key=${apiKey}`;
 
   if (center) url += `&center=${encodeURIComponent(center)}`;
   if (zoom) url += `&zoom=${zoom}`;

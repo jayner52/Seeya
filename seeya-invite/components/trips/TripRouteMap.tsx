@@ -49,15 +49,15 @@ function buildSrc(locations: TripLocation[], zoomDelta: number): string | null {
 
   if (points.length === 0) return null;
 
-  let url = `/api/maps/static?v=4`;
+  let url = `/api/maps/static?v=5`;
 
-  if (zoomDelta !== 0) {
-    const coords = getCoordPoints(locations);
-    if (coords.length >= 1) {
-      const { centerLat, centerLng, zoom } = computeBaseZoom(coords);
-      const adjustedZoom = Math.max(2, Math.min(14, zoom + zoomDelta));
-      url += `&center=${centerLat},${centerLng}&zoom=${adjustedZoom}`;
-    }
+  // Always compute center/zoom to ensure all stops are visible with padding
+  const coords = getCoordPoints(locations);
+  if (coords.length >= 1) {
+    const { centerLat, centerLng, zoom } = computeBaseZoom(coords);
+    // Subtract 1 from base zoom for padding so all markers fit comfortably
+    const adjustedZoom = Math.max(2, Math.min(14, zoom - 1 + zoomDelta));
+    url += `&center=${centerLat},${centerLng}&zoom=${adjustedZoom}`;
   }
 
   url += `&${points.map(p => `loc=${encodeURIComponent(p)}`).join('&')}`;
