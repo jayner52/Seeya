@@ -315,9 +315,9 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
       destinations.slice(0, 4).map(async (dest) => {
         const city = dest.name.split(',')[0].trim();
         try {
-          const res = await fetch(`/api/unsplash/city-photo?city=${encodeURIComponent(city)}`);
+          const res = await fetch(`/api/unsplash/city-photo?query=${encodeURIComponent(city)}`);
           const data = await res.json();
-          if (data.photoUrl) photos[city] = data.photoUrl;
+          if (data.url) photos[city] = data.url;
         } catch { /* ignore */ }
       })
     );

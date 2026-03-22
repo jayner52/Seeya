@@ -25,10 +25,10 @@ async function fetchCoverPhoto(destination: string): Promise<string | null> {
   if (!UNSPLASH_ACCESS_KEY) return null;
   try {
     const res = await fetch(
-      `/api/unsplash/city-photo?city=${encodeURIComponent(destination)}`
+      `/api/unsplash/city-photo?query=${encodeURIComponent(destination)}`
     );
     const data = await res.json();
-    return data?.photoUrl || null;
+    return data?.url || null;
   } catch {
     return null;
   }

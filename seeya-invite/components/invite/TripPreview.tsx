@@ -43,9 +43,9 @@ export function TripPreview({
 
   useEffect(() => {
     if (!coverPhotoCity) return;
-    fetch(`/api/unsplash/city-photo?city=${encodeURIComponent(coverPhotoCity)}`)
+    fetch(`/api/unsplash/city-photo?query=${encodeURIComponent(coverPhotoCity)}`)
       .then(res => res.json())
-      .then(data => { if (data.photoUrl) setCoverPhotoUrl(data.photoUrl); })
+      .then(data => { if (data.url) setCoverPhotoUrl(data.url); })
       .catch(() => {});
   }, [coverPhotoCity]);
 
