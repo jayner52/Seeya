@@ -36,8 +36,12 @@ const CATEGORY_ICONS: Record<TripBitCategory, React.ReactNode> = {
 };
 
 function formatShareDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // Handle both "YYYY-MM-DD" and "YYYY-MM-DD HH:MM:SS+00" (timestamptz) formats
+  const datePart = dateStr.split(' ')[0]; // Strip time portion if present
+  const [year, month, day] = datePart.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export function InviteSection({ tripId, existingCode, className, tripName, startDate, endDate }: InviteSectionProps) {

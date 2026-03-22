@@ -6,9 +6,18 @@ export function formatDate(
 ): string {
   if (!date) return '';
   // Parse date-only strings (YYYY-MM-DD) as local midnight to avoid UTC off-by-one
-  const d = typeof date === 'string'
-    ? (date.length === 10 ? new Date(date + 'T00:00:00') : parseISO(date))
-    : date;
+  // Also handle Postgres timestamptz format ("2026-09-10 00:00:00+00")
+  let d: Date;
+  if (typeof date === 'string') {
+    const datePart = date.split(' ')[0]; // "YYYY-MM-DD" portion
+    if (date.length === 10 || (datePart.length === 10 && date.includes(' '))) {
+      d = new Date(datePart + 'T00:00:00');
+    } else {
+      d = parseISO(date);
+    }
+  } else {
+    d = date;
+  }
   if (!isValid(d)) return '';
   return format(d, formatStr);
 }
@@ -36,9 +45,17 @@ export function formatDateRange(
 
 export function formatRelativeDate(date: string | Date | null | undefined): string {
   if (!date) return '';
-  const d = typeof date === 'string'
-    ? (date.length === 10 ? new Date(date + 'T00:00:00') : parseISO(date))
-    : date;
+  let d: Date;
+  if (typeof date === 'string') {
+    const datePart = date.split(' ')[0];
+    if (date.length === 10 || (datePart.length === 10 && date.includes(' '))) {
+      d = new Date(datePart + 'T00:00:00');
+    } else {
+      d = parseISO(date);
+    }
+  } else {
+    d = date;
+  }
   if (!isValid(d)) return '';
   return formatDistance(d, new Date(), { addSuffix: true });
 }
@@ -46,13 +63,15 @@ export function formatRelativeDate(date: string | Date | null | undefined): stri
 export function getDaysUntil(date: string | Date | null | undefined): number | null {
   if (!date) return null;
   if (typeof date === 'string') {
+    // Normalize timestamptz ("2026-09-10 00:00:00+00") to date-only
+    const dateOnly = date.split(' ')[0];
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     // Compare date strings directly to avoid UTC parsing issues
-    if (date < todayStr) return -1;  // past
-    if (date === todayStr) return 0;  // today
+    if (dateOnly < todayStr) return -1;  // past
+    if (dateOnly === todayStr) return 0;  // today
     // For future dates, parse both as local midnight
-    const target = new Date(`${date}T00:00:00`);  // local midnight
+    const target = new Date(`${dateOnly}T00:00:00`);  // local midnight
     const today = new Date(`${todayStr}T00:00:00`);
     return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   }

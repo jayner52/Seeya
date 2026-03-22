@@ -124,6 +124,27 @@ async function getInviteData(code: string) {
   };
 }
 
+async function fetchCoverPhotoUrl(city: string): Promise<string | null> {
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (!accessKey) return null;
+  try {
+    const url = new URL('https://api.unsplash.com/search/photos');
+    url.searchParams.set('query', city);
+    url.searchParams.set('orientation', 'landscape');
+    url.searchParams.set('per_page', '1');
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Client-ID ${accessKey}` },
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const photo = data.results?.[0];
+    return photo ? `${photo.urls.raw}&w=1200&h=630&fit=crop` : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({
   params,
 }: InvitePageProps): Promise<Metadata> {
@@ -137,17 +158,22 @@ export async function generateMetadata({
   }
 
   const destination = data.trip.locations?.[0]?.name || data.trip.locations?.[0]?.city?.name;
+  const description = destination
+    ? `You're invited to join a trip to ${destination}!`
+    : "You've been invited to join a trip on Seeya!";
+
+  // Fetch cover photo for OG image
+  const photoCity = data.coverPhotoCity || destination;
+  const ogImageUrl = photoCity ? await fetchCoverPhotoUrl(photoCity) : null;
+
   return {
     title: `Join ${data.trip.name} - Seeya`,
-    description: destination
-      ? `You're invited to join a trip to ${destination}!`
-      : "You've been invited to join a trip on Seeya!",
+    description,
     openGraph: {
       title: `Join ${data.trip.name}`,
-      description: destination
-        ? `Trip to ${destination}`
-        : "You've been invited to join a trip!",
+      description,
       type: 'website',
+      ...(ogImageUrl ? { images: [{ url: ogImageUrl, width: 1200, height: 630 }] } : {}),
     },
   };
 }
