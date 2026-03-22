@@ -19,6 +19,7 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
     let visibility: VisibilityLevel?
     let isPast: Bool?
     let isLoggedPastTrip: Bool?
+    let coverPhotoCity: String?
     let createdAt: Date?
     let updatedAt: Date?
 
@@ -45,6 +46,7 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
         visibility: VisibilityLevel?,
         isPast: Bool?,
         isLoggedPastTrip: Bool? = nil,
+        coverPhotoCity: String? = nil,
         createdAt: Date?,
         updatedAt: Date?,
         locations: [TripLocation]?,
@@ -63,6 +65,7 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
         self.visibility = visibility
         self.isPast = isPast
         self.isLoggedPastTrip = isLoggedPastTrip
+        self.coverPhotoCity = coverPhotoCity
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.locations = locations
@@ -83,6 +86,7 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
         case visibility
         case isPast = "is_past"
         case isLoggedPastTrip = "is_logged_past_trip"
+        case coverPhotoCity = "cover_photo_city"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case locations = "trip_locations"

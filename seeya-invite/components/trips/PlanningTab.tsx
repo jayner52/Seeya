@@ -31,6 +31,7 @@ interface PlanningTabProps {
   ) => void;
   isOwner?: boolean;
   ownerUserId?: string;
+  currentUserId?: string;
   onParticipantsChanged?: () => void;
 }
 
@@ -51,6 +52,7 @@ export function PlanningTab({
   onAddRecommendation,
   isOwner,
   ownerUserId,
+  currentUserId,
   onParticipantsChanged,
 }: PlanningTabProps) {
   const [rateShareBit, setRateShareBit] = useState<TripBit | null>(null);
@@ -73,6 +75,7 @@ export function PlanningTab({
         isOwner={isOwner}
         ownerUserId={ownerUserId}
         tripId={tripId}
+        currentUserId={currentUserId}
         onParticipantsChanged={onParticipantsChanged}
       />
 

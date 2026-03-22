@@ -2,6 +2,8 @@ import SwiftUI
 
 struct NotificationCenterView: View {
     @State private var viewModel = NotificationViewModel()
+    var onNavigateToTrip: ((UUID) -> Void)?
+    var onNavigateToCircle: (() -> Void)?
 
     var body: some View {
         ScrollView {
@@ -74,6 +76,7 @@ struct NotificationCenterView: View {
                 ForEach(notifications) { notification in
                     NotificationRow(notification: notification) {
                         Task { await viewModel.markAsRead(notification) }
+                        handleNotificationTap(notification)
                     }
 
                     if notification.id != notifications.last?.id {
@@ -106,6 +109,21 @@ struct NotificationCenterView: View {
         }
         .padding(.horizontal, SeeyaSpacing.xl)
         .padding(.vertical, 60)
+    }
+
+    // MARK: - Navigation
+
+    private func handleNotificationTap(_ notification: AppNotification) {
+        switch notification.type {
+        case .tripInvite, .tripAccepted, .tripDeclined, .tripMaybe,
+             .tripMessage, .tripResource, .tripRecommendation,
+             .tripTripbit, .tripUpdated, .joinRequest, .tripbitParticipantAdded, .friendTrip:
+            if let tripId = notification.tripId {
+                onNavigateToTrip?(tripId)
+            }
+        case .friendRequest, .friendAccepted:
+            onNavigateToCircle?()
+        }
     }
 }
 

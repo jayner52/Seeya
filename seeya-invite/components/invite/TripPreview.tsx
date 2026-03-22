@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, Avatar, StackedAvatars, Badge } from '@/components/ui';
 import { formatDateRange, getDaysUntil } from '@/lib/utils/date';
 import { getLocationDisplayName } from '@/types/database';
@@ -21,6 +22,7 @@ interface InviterProfile {
 interface TripPreviewProps {
   trip: TripWithDetails;
   inviter?: InviterProfile | null;
+  coverPhotoCity?: string | null;
   showParticipants?: boolean;
   showLocations?: boolean;
 }
@@ -28,17 +30,37 @@ interface TripPreviewProps {
 export function TripPreview({
   trip,
   inviter,
+  coverPhotoCity,
   showParticipants = true,
   showLocations = true,
 }: TripPreviewProps) {
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState<string | null>(null);
   const dateRange = formatDateRange(trip.start_date, trip.end_date);
   const daysUntil = getDaysUntil(trip.start_date);
   const acceptedParticipants = trip.participants.filter(
     (p) => p.status === 'confirmed'
   );
 
+  useEffect(() => {
+    if (!coverPhotoCity) return;
+    fetch(`/api/unsplash/city-photo?city=${encodeURIComponent(coverPhotoCity)}`)
+      .then(res => res.json())
+      .then(data => { if (data.photoUrl) setCoverPhotoUrl(data.photoUrl); })
+      .catch(() => {});
+  }, [coverPhotoCity]);
+
   return (
-    <Card variant="elevated" padding="lg" className="animate-slide-up">
+    <Card variant="elevated" padding="none" className="animate-slide-up overflow-hidden">
+      {/* Cover Photo */}
+      {coverPhotoUrl && (
+        <div className="relative h-40 w-full">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={coverPhotoUrl} alt={coverPhotoCity || 'Trip'} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        </div>
+      )}
+
+      <div className="p-6">
       {/* Trip Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between mb-2">
@@ -162,6 +184,7 @@ export function TripPreview({
             </div>
           </div>
         )}
+      </div>
       </div>
     </Card>
   );

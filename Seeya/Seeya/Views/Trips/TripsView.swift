@@ -2,14 +2,18 @@ import SwiftUI
 
 struct TripsView: View {
     @State private var viewModel = TripsViewModel()
+    @State private var notificationViewModel = NotificationViewModel()
     @State private var showCreateTrip = false
     @State private var showLogPastTrip = false
     @State private var showEnterCodeSheet = false
+    @State private var showNotifications = false
     @State private var selectedTrip: Trip?
     @Binding var tripIdToOpen: UUID?
+    var navigationState: AppNavigationState?
 
-    init(tripIdToOpen: Binding<UUID?> = .constant(nil)) {
+    init(tripIdToOpen: Binding<UUID?> = .constant(nil), navigationState: AppNavigationState? = nil) {
         _tripIdToOpen = tripIdToOpen
+        self.navigationState = navigationState
     }
 
     var body: some View {
@@ -51,6 +55,28 @@ struct TripsView: View {
             .navigationTitle("My Trips")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showNotifications = true
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "bell")
+                                .font(.body)
+
+                            if notificationViewModel.unreadCount > 0 {
+                                Text("\(min(notificationViewModel.unreadCount, 99))")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color.red)
+                                    .clipShape(Capsule())
+                                    .offset(x: 8, y: -6)
+                            }
+                        }
+                    }
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
                         Button {
@@ -95,11 +121,27 @@ struct TripsView: View {
             }) {
                 LogPastTripView(viewModel: viewModel)
             }
+            .sheet(isPresented: $showNotifications, onDismiss: {
+                Task { await notificationViewModel.fetchUnreadCount() }
+            }) {
+                NotificationCenterView(
+                    onNavigateToTrip: { tripId in
+                        showNotifications = false
+                        tripIdToOpen = tripId
+                    },
+                    onNavigateToCircle: {
+                        showNotifications = false
+                        navigationState?.navigateToCircle()
+                    }
+                )
+            }
             .navigationDestination(item: $selectedTrip) { trip in
                 TripDetailView(viewModel: viewModel, trip: trip)
             }
             .task {
                 await viewModel.fetchTrips()
+                await notificationViewModel.fetchUnreadCount()
+                await notificationViewModel.subscribeToNotifications()
             }
             .onChange(of: tripIdToOpen) { _, newTripId in
                 if let tripId = newTripId {

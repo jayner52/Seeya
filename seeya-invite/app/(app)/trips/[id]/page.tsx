@@ -155,6 +155,29 @@ export default function TripDetailPage() {
       }
     }
 
+    // Ensure owner always appears in participant list (fallback for older trips)
+    const ownerInList = participants.some(p => p.user_id === tripData.user_id);
+    if (!ownerInList) {
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .eq('id', tripData.user_id)
+        .single();
+
+      if (ownerProfile) {
+        participants.unshift({
+          id: `owner-${tripData.user_id}`,
+          trip_id: tripId,
+          user_id: tripData.user_id,
+          status: 'confirmed',
+          role: 'owner',
+          invited_by: null,
+          created_at: tripData.created_at,
+          user: ownerProfile,
+        } as any);
+      }
+    }
+
     // Get tripbits
     const { data: bits } = await supabase
       .from('trip_bits')
@@ -335,8 +358,8 @@ export default function TripDetailPage() {
                               <p className="text-sm font-medium text-seeya-text">{getLocationDisplayName(loc)}</p>
                               {loc.arrival_date && loc.departure_date && (
                                 <p className="text-xs text-seeya-text-secondary">
-                                  {format(parseISO(loc.arrival_date), 'MMM d')} –{' '}
-                                  {format(parseISO(loc.departure_date), 'MMM d, yyyy')}
+                                  {format(new Date(loc.arrival_date + 'T00:00:00'), 'MMM d')} –{' '}
+                                  {format(new Date(loc.departure_date + 'T00:00:00'), 'MMM d, yyyy')}
                                 </p>
                               )}
                             </div>
@@ -376,7 +399,7 @@ export default function TripDetailPage() {
 
         {/* Map column — fills full height of header, scales with container */}
         {trip.locations.length > 0 && (
-          <div className="relative w-[45%] min-w-0">
+          <div className="relative w-[45%] min-w-0 hidden md:block">
             <div className="absolute inset-0 my-2 rounded-2xl overflow-hidden">
               <TripRouteMap locations={trip.locations} />
             </div>
@@ -478,6 +501,7 @@ export default function TripDetailPage() {
             onAddRecommendation={handleAddFromRecommendation}
             isOwner={isOwner}
             ownerUserId={trip.user_id}
+            currentUserId={user?.id}
             onParticipantsChanged={fetchTrip}
           />
         ) : (

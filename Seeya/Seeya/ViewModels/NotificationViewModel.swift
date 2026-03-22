@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import Realtime
 
 @Observable
 @MainActor
@@ -8,6 +9,57 @@ final class NotificationViewModel {
     var unreadCount: Int = 0
     var isLoading = false
     var error: String?
+
+    nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
+
+    deinit {
+        let channel = realtimeChannel
+        Task { @MainActor in
+            if let channel {
+                await SupabaseService.shared.client.realtimeV2.removeChannel(channel)
+            }
+        }
+    }
+
+    // MARK: - Realtime Subscription
+
+    func subscribeToNotifications() async {
+        guard let userId = try? await SupabaseService.shared.client.auth.session.user.id else { return }
+
+        // Remove existing channel if any
+        if let existing = realtimeChannel {
+            await SupabaseService.shared.client.realtimeV2.removeChannel(existing)
+        }
+
+        let channel = SupabaseService.shared.client.realtimeV2.channel("user-notifications-\(userId.uuidString)")
+
+        let insertions = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "notifications",
+            filter: "user_id=eq.\(userId.uuidString)"
+        )
+
+        self.realtimeChannel = channel
+
+        await channel.subscribe()
+
+        Task { [weak self] in
+            for await _ in insertions {
+                guard let self = self else { return }
+                await self.fetchNotifications()
+            }
+        }
+    }
+
+    func unsubscribe() async {
+        if let channel = realtimeChannel {
+            await SupabaseService.shared.client.realtimeV2.removeChannel(channel)
+            realtimeChannel = nil
+        }
+    }
+
+    // MARK: - Fetch
 
     func fetchNotifications() async {
         do {

@@ -19,6 +19,10 @@ class AppNavigationState {
         tripIdToOpen = tripId
         selectedTab = .trips
     }
+
+    func navigateToCircle() {
+        selectedTab = .circle
+    }
 }
 
 struct MainTabView: View {
@@ -30,7 +34,7 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $navigationState.selectedTab) {
             Tab("Trips", systemImage: "airplane", value: .trips) {
-                TripsView(tripIdToOpen: $navigationState.tripIdToOpen)
+                TripsView(tripIdToOpen: $navigationState.tripIdToOpen, navigationState: navigationState)
             }
 
             Tab("Explore", systemImage: "sparkles", value: .explore) {

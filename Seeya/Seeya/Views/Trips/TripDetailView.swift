@@ -52,6 +52,9 @@ struct TripDetailView: View {
     // Publish Itinerary
     @State private var showPublishSheet = false
 
+    // Leave Trip
+    @State private var showLeaveConfirmation = false
+
     // Calendar Export
     @State private var calendarExportURL: URL?
     @State private var itinerarySummaryURL: URL?
@@ -192,6 +195,14 @@ struct TripDetailView: View {
                                 Label("Delete Trip", systemImage: "trash")
                             }
                         }
+                    } else {
+                        Section {
+                            Button(role: .destructive) {
+                                showLeaveConfirmation = true
+                            } label: {
+                                Label("Leave Trip", systemImage: "arrow.right.square")
+                            }
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -235,6 +246,18 @@ struct TripDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Are you sure you want to delete this trip? This action cannot be undone.")
+        }
+        .confirmationDialog(
+            "Leave Trip",
+            isPresented: $showLeaveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Leave", role: .destructive) {
+                leaveTrip()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to leave this trip? You'll need a new invite to rejoin.")
         }
         .task {
             await viewModel.fetchTrip(id: trip.id)
@@ -925,6 +948,15 @@ struct TripDetailView: View {
     private func deleteTrip() {
         Task {
             let success = await viewModel.deleteTrip(id: currentTrip.id)
+            if success {
+                dismiss()
+            }
+        }
+    }
+
+    private func leaveTrip() {
+        Task {
+            let success = await viewModel.leaveTrip(id: currentTrip.id)
             if success {
                 dismiss()
             }

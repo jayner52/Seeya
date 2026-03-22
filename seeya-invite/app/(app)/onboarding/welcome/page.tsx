@@ -37,7 +37,7 @@ export default function OnboardingWelcomePage() {
           </h1>
           <p className="text-seeya-text-secondary mb-8">
             {next
-              ? "You've been added to a trip! Let's set up your Seeya profile first."
+              ? "You've been added to a trip! Setting up your profile is optional."
               : "Let's set up your travel profile. This will only take a minute."}
           </p>
 
@@ -81,12 +81,17 @@ export default function OnboardingWelcomePage() {
             Get Started
           </Button>
 
-          <button
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full mt-3"
             onClick={() => router.push(next || '/trips')}
-            className="mt-4 text-sm text-seeya-text-secondary hover:text-seeya-text"
           >
-            Skip for now
-          </button>
+            Do this later
+          </Button>
+          <p className="mt-3 text-xs text-seeya-text-secondary">
+            You can complete your profile anytime from Settings
+          </p>
         </Card>
       </div>
     </div>

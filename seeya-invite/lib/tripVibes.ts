@@ -20,6 +20,7 @@ export const tripVibes: TripVibe[] = [
   { id: 'concert', name: 'Concert/Festival', icon: 'Music', adjectives: ['Festival', 'Music', 'Epic', 'Ultimate'] },
   { id: 'ski', name: 'Ski Trip', icon: 'Mountain', adjectives: ['Ski', 'Snowy', 'Mountain', 'Alpine'] },
   { id: 'honeymoon', name: 'Honeymoon', icon: 'Heart', adjectives: ['Honeymoon', 'Romantic', 'Dreamy', 'Blissful'] },
+  { id: 'wedding', name: 'Wedding', icon: 'Heart', adjectives: ['Wedding', 'Celebration', 'Nuptial', 'Bridal'] },
 
   // Activity Vibes
   { id: 'adventure', name: 'Adventure', icon: 'Compass', adjectives: ['Epic', 'Wild', 'Ultimate', 'Adventurous'] },
@@ -229,6 +230,9 @@ function generateSingleVibeNames(vibe: TripVibe, city: string, startDate?: Date 
       break;
     case 'honeymoon':
       names.push(`${city} Honeymoon`, `Newlyweds in ${city}`, `Just Married: ${city}`, `Honeymoon Bliss: ${city}`);
+      break;
+    case 'wedding':
+      names.push(`${city} Wedding`, `Wedding in ${city}`, `${city} Celebration`, `Tying the Knot: ${city}`);
       break;
     case 'beach':
       names.push(`${city} Beach Escape`, `Sun & Sand: ${city}`, `${city} Shore Trip`, `Beachin' in ${city}`);

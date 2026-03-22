@@ -89,6 +89,14 @@ final class TripsViewModel {
         return trip.ownerId == userId
     }
 
+    /// Format a Date as "YYYY-MM-DD" for date-only DB columns
+    static func dateOnlyString(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.string(from: date)
+    }
+
     // MARK: - Computed Properties
 
     var upcomingTrips: [Trip] {
@@ -383,7 +391,9 @@ final class TripsViewModel {
                     countryId: countryId,
                     cityId: destination.city?.id,
                     customLocation: destination.city == nil ? destination.customLocation : nil,
-                    orderIndex: index
+                    orderIndex: index,
+                    arrivalDate: destination.startDate.map { Self.dateOnlyString(from: $0) },
+                    departureDate: destination.endDate.map { Self.dateOnlyString(from: $0) }
                 )
 
                 try await SupabaseService.shared.client
@@ -673,6 +683,21 @@ final class TripsViewModel {
             print("❌ [TripsViewModel] Error deleting trip: \(error)")
             errorMessage = error.localizedDescription
             isLoading = false
+            return false
+        }
+    }
+
+    func leaveTrip(id: UUID) async -> Bool {
+        do {
+            try await SupabaseService.shared.client
+                .rpc("leave_trip", params: ["p_trip_id": id.uuidString])
+                .execute()
+
+            trips.removeAll { $0.id == id }
+            return true
+        } catch {
+            print("❌ [TripsViewModel] Error leaving trip: \(error)")
+            errorMessage = error.localizedDescription
             return false
         }
     }

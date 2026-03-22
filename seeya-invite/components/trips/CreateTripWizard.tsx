@@ -6,6 +6,23 @@ import { cn } from '@/lib/utils/cn';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { Input, Button, Card, Spinner, Avatar } from '@/components/ui';
+import { CalendarPicker } from '@/components/ui/CalendarPicker';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   X,
   MapPin,
@@ -37,8 +54,7 @@ import {
   EyeOff,
   Globe,
   AlertTriangle,
-  ChevronUp,
-  ChevronDown,
+  GripVertical,
 } from 'lucide-react';
 import { tripVibes, generateTripNameSuggestions, getContinent, type TripVibe } from '@/lib/tripVibes';
 import type { Profile, VisibilityLevel } from '@/types/database';
@@ -87,6 +103,7 @@ const vibeIcons: Record<string, any> = {
   nature: TreePine,
   roadtrip: Car,
   backpacking: Backpack,
+  wedding: Heart,
 };
 
 interface PlacePrediction {
@@ -104,6 +121,105 @@ interface Destination {
   endDate?: string;
   country?: string;
   continent?: string;
+}
+
+// ── Sortable destination card (used in DndContext) ──────────────────────
+interface SortableDestinationProps {
+  dest: Destination;
+  index: number;
+  dateMode: DateMode;
+  destinations: Destination[];
+  onUpdateDate: (id: string, field: 'startDate' | 'endDate', value: string) => void;
+  onRemove: (id: string) => void;
+}
+
+function SortableDestination({ dest, index, dateMode, destinations, onUpdateDate, onRemove }: SortableDestinationProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: dest.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.9 : 1,
+  };
+
+  // minDate for arrive = previous stop's depart date
+  const prevEnd = index > 0 ? destinations[index - 1].endDate : undefined;
+  // minDate for depart = this stop's arrive date + 1 day
+  const departMin = dest.startDate
+    ? new Date(new Date(dest.startDate + 'T00:00:00').getTime() + 86400000).toISOString().split('T')[0]
+    : undefined;
+
+  // Overlap warning
+  const hasOverlap = (() => {
+    if (index === 0 || !dest.startDate) return false;
+    const prev = destinations[index - 1];
+    return prev.endDate ? dest.startDate < prev.endDate : false;
+  })();
+
+  return (
+    <div ref={setNodeRef} style={style} className={cn('bg-white rounded-xl border p-3', isDragging ? 'border-seeya-purple shadow-lg' : 'border-gray-200')}>
+      <div className="flex items-start gap-2">
+        {/* Drag handle */}
+        {destinations.length > 1 && (
+          <button
+            type="button"
+            className="mt-1 p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing touch-none"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={16} />
+          </button>
+        )}
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <MapPin size={16} className="text-seeya-purple flex-shrink-0" />
+              <span className="font-medium text-seeya-text truncate">{dest.name}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onRemove(dest.id)}
+              className="p-1 text-gray-400 hover:text-red-500 flex-shrink-0"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {dateMode === 'exact' && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-seeya-text-secondary">Arrive</label>
+                <CalendarPicker
+                  value={dest.startDate}
+                  onChange={(v) => onUpdateDate(dest.id, 'startDate', v)}
+                  minDate={prevEnd}
+                  placeholder="Arrive"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-seeya-text-secondary">Depart</label>
+                <CalendarPicker
+                  value={dest.endDate}
+                  onChange={(v) => onUpdateDate(dest.id, 'endDate', v)}
+                  minDate={departMin}
+                  placeholder="Depart"
+                />
+              </div>
+            </div>
+          )}
+
+          {hasOverlap && (
+            <div className="mt-2 flex items-center gap-1 text-amber-600 text-xs">
+              <AlertTriangle size={12} />
+              <span>Dates overlap with previous stop</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface CreateTripWizardProps {
@@ -289,13 +405,18 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
       dest.endDate = new Date(lastEnd.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     }
 
-    setDestinations([...destinations, dest]);
+    const newDests = [...destinations, dest];
+    setDestinations(newDests);
     setNewDestination('');
     setPlacePredictions([]);
     setShowPredictions(false);
-    // Clear cached photos so they refresh when user reaches name step
-    setCoverPhotos({});
-    setCoverCity('');
+    // Only clear cached photos if the city list actually changed
+    const newCities = newDests.map(d => d.name.split(',')[0].trim());
+    const oldCities = Object.keys(coverPhotos);
+    if (newCities.length !== oldCities.length || newCities.some(c => !oldCities.includes(c))) {
+      setCoverPhotos({});
+      setCoverCity('');
+    }
   };
 
   // Add destination from text input
@@ -313,22 +434,48 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
   };
 
   const handleRemoveDestination = (id: string) => {
-    setDestinations(destinations.filter((d) => d.id !== id));
-    // Clear cached photos so they refresh when user reaches name step
-    setCoverPhotos({});
-    setCoverCity('');
+    const newDests = destinations.filter((d) => d.id !== id);
+    setDestinations(newDests);
+    // Only clear cached photos if the city list actually changed
+    const newCities = newDests.map(d => d.name.split(',')[0].trim());
+    const oldCities = Object.keys(coverPhotos);
+    if (newCities.length !== oldCities.length || newCities.some(c => !oldCities.includes(c))) {
+      setCoverPhotos({});
+      setCoverCity('');
+    }
   };
 
-  const moveDestination = (id: string, direction: 'up' | 'down') => {
+  // Cascade dates after reorder: each location starts where the previous one ends
+  const cascadeDates = (dests: Destination[]): Destination[] => {
+    if (dateMode !== 'exact') return dests;
+    const result = [...dests];
+    for (let i = 1; i < result.length; i++) {
+      const prevEnd = result[i - 1].endDate;
+      if (prevEnd && result[i].startDate && result[i].endDate) {
+        const duration = new Date(result[i].endDate! + 'T00:00:00').getTime() - new Date(result[i].startDate! + 'T00:00:00').getTime();
+        result[i] = {
+          ...result[i],
+          startDate: prevEnd,
+          endDate: new Date(new Date(prevEnd + 'T00:00:00').getTime() + duration).toISOString().split('T')[0],
+        };
+      }
+    }
+    return result;
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
     setDestinations(prev => {
-      const idx = prev.findIndex(d => d.id === id);
-      if (idx === -1) return prev;
-      if (direction === 'up' && idx === 0) return prev;
-      if (direction === 'down' && idx === prev.length - 1) return prev;
-      const next = [...prev];
-      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-      return next;
+      const oldIndex = prev.findIndex(d => d.id === active.id);
+      const newIndex = prev.findIndex(d => d.id === over.id);
+      const reordered = arrayMove(prev, oldIndex, newIndex);
+      return cascadeDates(reordered);
     });
   };
 
@@ -558,130 +705,80 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
       )}
 
       {/* Destinations */}
-      <div className="space-y-3">
-        {destinations.map((dest, index) => (
-          <div key={dest.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="p-4 flex items-center gap-3">
-              <MapPin size={20} className="text-seeya-purple flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs text-seeya-text-secondary">Stop {index + 1}</p>
-                <p className="font-medium text-seeya-text">{dest.name}</p>
-              </div>
-              {destinations.length > 1 && (
-                <div className="flex flex-col gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => moveDestination(dest.id, 'up')}
-                    disabled={index === 0}
-                    className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-20"
-                  >
-                    <ChevronUp size={14} className="text-seeya-text-secondary" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveDestination(dest.id, 'down')}
-                    disabled={index === destinations.length - 1}
-                    className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-20"
-                  >
-                    <ChevronDown size={14} className="text-seeya-text-secondary" />
-                  </button>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => handleRemoveDestination(dest.id)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <X size={16} className="text-seeya-text-secondary" />
-              </button>
-            </div>
-
-            {dateMode === 'exact' && (
-              <div className="border-t border-gray-100">
-                {index > 0 && dest.startDate && destinations[index - 1].endDate &&
-                  dest.startDate < destinations[index - 1].endDate! && (
-                  <div className="flex items-center gap-1 px-4 pt-2 text-xs text-amber-600">
-                    <AlertTriangle size={12} />
-                    <span>Overlaps previous stop</span>
-                  </div>
-                )}
-                <div className="px-4 pb-4 pt-2 grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-seeya-text-secondary">Arrive</label>
-                    <input
-                      type="date"
-                      value={dest.startDate || ''}
-                      onChange={(e) => handleUpdateDestinationDate(dest.id, 'startDate', e.target.value)}
-                      className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-seeya-text-secondary">Depart</label>
-                    <input
-                      type="date"
-                      value={dest.endDate || ''}
-                      min={dest.startDate || undefined}
-                      onChange={(e) => handleUpdateDestinationDate(dest.id, 'endDate', e.target.value)}
-                      className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={destinations.map(d => d.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {destinations.map((dest, index) => (
+              <SortableDestination
+                key={dest.id}
+                dest={dest}
+                index={index}
+                dateMode={dateMode}
+                destinations={destinations}
+                onUpdateDate={handleUpdateDestinationDate}
+                onRemove={handleRemoveDestination}
+              />
+            ))}
           </div>
-        ))}
+        </SortableContext>
+      </DndContext>
 
-        {/* Add destination with Places autocomplete */}
+      {dateMode === 'exact' && destinations.length > 0 && (
+        <p className="text-xs text-seeya-text-secondary text-center">
+          Drag to reorder stops. You can always adjust dates later.
+        </p>
+      )}
+
+      {/* Add destination with Places autocomplete */}
+      <div className="relative">
         <div className="relative">
-          <div className="relative">
-            <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder={destinations.length === 0 ? 'Search for a city or country...' : 'Add another stop...'}
-              value={newDestination}
-              onChange={(e) => setNewDestination(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddDestination()}
-              onFocus={() => newDestination.length >= 2 && setShowPredictions(true)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none transition-all"
-            />
-            {isSearchingPlaces && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <Spinner size="sm" />
-              </div>
-            )}
-          </div>
-
-          {/* Autocomplete dropdown */}
-          {showPredictions && (placePredictions.length > 0 || newDestination.length >= 2) && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
-              {placePredictions.map((prediction) => (
-                <button
-                  key={prediction.placeId}
-                  type="button"
-                  onClick={() => handleSelectPrediction(prediction)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0"
-                >
-                  <MapPin size={18} className="text-seeya-purple shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-medium text-seeya-text">{prediction.mainText}</p>
-                    <p className="text-sm text-seeya-text-secondary truncate">{prediction.secondaryText}</p>
-                  </div>
-                </button>
-              ))}
-
-              {newDestination.length >= 2 && !isSearchingPlaces && (
-                <button
-                  type="button"
-                  onClick={handleAddDestination}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-seeya-purple"
-                >
-                  <Sparkles size={18} />
-                  <span>Use &quot;{newDestination}&quot; as custom location</span>
-                </button>
-              )}
+          <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder={destinations.length === 0 ? 'Search for a city or country...' : 'Add another stop...'}
+            value={newDestination}
+            onChange={(e) => setNewDestination(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddDestination()}
+            onFocus={() => newDestination.length >= 2 && setShowPredictions(true)}
+            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none transition-all"
+          />
+          {isSearchingPlaces && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Spinner size="sm" />
             </div>
           )}
         </div>
+
+        {/* Autocomplete dropdown */}
+        {showPredictions && (placePredictions.length > 0 || newDestination.length >= 2) && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-64 overflow-auto">
+            {placePredictions.map((prediction) => (
+              <button
+                key={prediction.placeId}
+                type="button"
+                onClick={() => handleSelectPrediction(prediction)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0"
+              >
+                <MapPin size={18} className="text-seeya-purple shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-seeya-text">{prediction.mainText}</p>
+                  <p className="text-sm text-seeya-text-secondary truncate">{prediction.secondaryText}</p>
+                </div>
+              </button>
+            ))}
+
+            {newDestination.length >= 2 && !isSearchingPlaces && (
+              <button
+                type="button"
+                onClick={handleAddDestination}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-seeya-purple"
+              >
+                <Sparkles size={18} />
+                <span>Use &quot;{newDestination}&quot; as custom location</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Itinerary Summary */}
@@ -693,9 +790,9 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           </p>
           {dateMode === 'exact' && destinations[0]?.startDate && (
             <p className="text-sm text-seeya-text-secondary mt-1">
-              {new Date(destinations[0].startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {new Date(destinations[0].startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               {destinations[destinations.length - 1]?.endDate && (
-                <> - {new Date(destinations[destinations.length - 1].endDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</>
+                <> - {new Date(destinations[destinations.length - 1].endDate! + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</>
               )}
             </p>
           )}
@@ -707,39 +804,45 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
   // Step 2: Vibe
   const renderVibeStep = () => (
     <div className="space-y-4">
-      {/* Selected vibes */}
-      {selectedVibes.size > 0 && (
-        <div className="flex flex-wrap gap-2 pb-2">
-          {Array.from(selectedVibes).map((vibeId) => {
-            const vibe = tripVibes.find((v) => v.id === vibeId);
-            if (!vibe) return null;
-            const Icon = vibeIcons[vibe.id] || Compass;
-            return (
-              <span
-                key={vibeId}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-seeya-purple text-white rounded-full text-sm"
-              >
-                <Icon size={14} />
-                {vibe.name}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = new Set(selectedVibes);
-                    next.delete(vibeId);
-                    setSelectedVibes(next);
-                  }}
-                  className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+      <p className="text-sm text-seeya-text-secondary font-medium">
+        Select one or more vibes — this helps generate trip name ideas
+      </p>
+
+      {/* Selected vibes — reserve space to prevent scroll jump */}
+      <div className="min-h-[44px]">
+        {selectedVibes.size > 0 && (
+          <div className="flex flex-wrap gap-2 pb-2">
+            {Array.from(selectedVibes).map((vibeId) => {
+              const vibe = tripVibes.find((v) => v.id === vibeId);
+              if (!vibe) return null;
+              const Icon = vibeIcons[vibe.id] || Compass;
+              return (
+                <span
+                  key={vibeId}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-seeya-purple text-white rounded-full text-sm"
                 >
-                  <X size={12} />
-                </button>
-              </span>
-            );
-          })}
-        </div>
-      )}
+                  <Icon size={14} />
+                  {vibe.name}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = new Set(selectedVibes);
+                      next.delete(vibeId);
+                      setSelectedVibes(next);
+                    }}
+                    className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Vibe grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3" style={{ overflowAnchor: 'none' }}>
         {tripVibes.map((vibe) => {
           const Icon = vibeIcons[vibe.id] || Compass;
           const isSelected = selectedVibes.has(vibe.id);
@@ -769,10 +872,6 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
           );
         })}
       </div>
-
-      <p className="text-center text-sm text-seeya-text-secondary">
-        Select one or more vibes to get AI-powered name suggestions!
-      </p>
     </div>
   );
 
@@ -851,7 +950,7 @@ export function CreateTripWizard({ onClose, onSuccess }: CreateTripWizardProps) 
                     )}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo} alt={city} className="w-full h-full object-cover" />
+                    <img src={photo} alt={city} className="w-full h-full object-cover transition-opacity duration-300" />
                     {isSelected && (
                       <div className="absolute inset-0 bg-seeya-purple/20 flex items-center justify-center">
                         <Check size={16} className="text-white drop-shadow" />

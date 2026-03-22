@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { Card, Avatar, Button } from '@/components/ui';
-import { UserPlus, Crown, CheckCircle2, Clock, XCircle, MoreHorizontal, Loader2 } from 'lucide-react';
+import { UserPlus, Crown, CheckCircle2, Clock, XCircle, MoreHorizontal, Loader2, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import type { TripParticipant } from '@/types/database';
 
 interface ParticipantsSectionProps {
@@ -13,6 +14,7 @@ interface ParticipantsSectionProps {
   isOwner?: boolean;
   ownerUserId?: string;
   tripId?: string;
+  currentUserId?: string;
   onParticipantsChanged?: () => void;
 }
 
@@ -30,11 +32,14 @@ export function ParticipantsSection({
   isOwner,
   ownerUserId,
   tripId,
+  currentUserId,
   onParticipantsChanged,
 }: ParticipantsSectionProps) {
+  const router = useRouter();
   const [localParticipants, setLocalParticipants] = useState(participants);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   // Sync local state when parent refreshes participants
   useEffect(() => {
@@ -79,6 +84,16 @@ export function ParticipantsSection({
       return;
     }
     onParticipantsChanged?.();
+  }
+
+  async function handleLeaveTrip() {
+    if (!tripId || !confirm('Are you sure you want to leave this trip?')) return;
+    setIsLeaving(true);
+    const res = await fetch(`/api/trips/${tripId}/leave`, { method: 'POST' });
+    setIsLeaving(false);
+    if (res.ok) {
+      router.push('/trips');
+    }
   }
 
   return (
@@ -213,6 +228,18 @@ export function ParticipantsSection({
           </div>
         )}
       </Card>
+
+      {/* Leave Trip — visible to non-owners only */}
+      {!isOwner && currentUserId && tripId && (
+        <button
+          onClick={handleLeaveTrip}
+          disabled={isLeaving}
+          className="mt-4 flex items-center gap-2 text-sm text-red-500 hover:text-red-600 transition-colors mx-auto"
+        >
+          <LogOut size={14} />
+          {isLeaving ? 'Leaving...' : 'Leave Trip'}
+        </button>
+      )}
     </div>
   );
 }

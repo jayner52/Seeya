@@ -42,6 +42,7 @@ async function getInviteData(code: string) {
       start_date,
       end_date,
       user_id,
+      cover_photo_city,
       created_at,
       updated_at
     `
@@ -119,6 +120,7 @@ async function getInviteData(code: string) {
     invite,
     trip: tripWithDetails,
     inviter,
+    coverPhotoCity: (trip as any).cover_photo_city as string | null,
   };
 }
 
@@ -209,7 +211,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           </div>
 
           {/* Trip Preview */}
-          <TripPreview trip={data.trip!} inviter={data.inviter} />
+          <TripPreview trip={data.trip!} inviter={data.inviter} coverPhotoCity={data.coverPhotoCity} />
 
           {/* Actions */}
           <InviteActions

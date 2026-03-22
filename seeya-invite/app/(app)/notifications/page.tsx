@@ -18,6 +18,8 @@ import {
   Sparkles,
   Package,
   Users,
+  HelpCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { formatDistanceToNow, isToday, isYesterday, format } from 'date-fns';
 import Link from 'next/link';
@@ -50,6 +52,8 @@ const typeConfig: Record<string, { icon: typeof Bell; color: string }> = {
   join_request: { icon: Users, color: 'bg-blue-50 text-blue-600' },
   tripbit_participant_added: { icon: Users, color: 'bg-green-50 text-green-600' },
   friend_trip: { icon: Plane, color: 'bg-purple-50 text-purple-600' },
+  trip_maybe: { icon: HelpCircle, color: 'bg-yellow-50 text-yellow-600' },
+  trip_updated: { icon: RefreshCw, color: 'bg-blue-50 text-blue-600' },
 };
 
 function groupNotificationsByDate(notifications: Notification[]) {

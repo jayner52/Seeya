@@ -31,6 +31,7 @@ struct TripNameGenerator {
         TripVibe(id: "concert", name: "Concert/Festival", icon: "music.note", adjectives: ["Festival", "Music", "Epic", "Ultimate"]),
         TripVibe(id: "ski", name: "Ski Trip", icon: "figure.skiing.downhill", adjectives: ["Ski", "Snowy", "Mountain", "Alpine"]),
         TripVibe(id: "honeymoon", name: "Honeymoon", icon: "heart.fill", adjectives: ["Honeymoon", "Romantic", "Dreamy", "Blissful"]),
+        TripVibe(id: "wedding", name: "Wedding", icon: "heart.fill", adjectives: ["Wedding", "Celebration", "Nuptial", "Bridal"]),
 
         // Activity Vibes
         TripVibe(id: "adventure", name: "Adventure", icon: "figure.hiking", adjectives: ["Epic", "Wild", "Ultimate", "Adventurous"]),
@@ -233,6 +234,8 @@ struct TripNameGenerator {
             names = ["Anniversary in \(city)", "\(city) Love Trip", "Our \(city) Escape", "Romance in \(city)"]
         case "honeymoon":
             names = ["\(city) Honeymoon", "Newlyweds in \(city)", "Just Married: \(city)", "Honeymoon Bliss: \(city)"]
+        case "wedding":
+            names = ["\(city) Wedding", "Wedding in \(city)", "\(city) Celebration", "Tying the Knot: \(city)"]
         case "beach":
             names = ["\(city) Beach Escape", "Sun & Sand: \(city)", "\(city) Shore Trip", "Beachin' in \(city)"]
         case "ski":

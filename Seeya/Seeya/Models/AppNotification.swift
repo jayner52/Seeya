@@ -13,6 +13,8 @@ enum NotificationType: String, Codable, Sendable {
     case tripTripbit = "trip_tripbit"
     case joinRequest = "join_request"
     case tripbitParticipantAdded = "tripbit_participant_added"
+    case tripMaybe = "trip_maybe"
+    case tripUpdated = "trip_updated"
 
     var displayTitle: String {
         switch self {
@@ -28,6 +30,8 @@ enum NotificationType: String, Codable, Sendable {
         case .tripTripbit: return "New TripBit"
         case .joinRequest: return "Join Request"
         case .tripbitParticipantAdded: return "Added to TripBit"
+        case .tripMaybe: return "Maybe"
+        case .tripUpdated: return "Trip Updated"
         }
     }
 
@@ -45,6 +49,8 @@ enum NotificationType: String, Codable, Sendable {
         case .tripTripbit: return "suitcase"
         case .joinRequest: return "person.2"
         case .tripbitParticipantAdded: return "person.badge.plus"
+        case .tripMaybe: return "questionmark.circle"
+        case .tripUpdated: return "pencil.circle"
         }
     }
 }

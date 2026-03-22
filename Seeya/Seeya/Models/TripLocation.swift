@@ -7,6 +7,8 @@ struct TripLocation: Codable, Identifiable, Hashable, Sendable {
     let cityId: UUID?
     let customLocation: String?
     let orderIndex: Int
+    let arrivalDate: String?
+    let departureDate: String?
     let createdAt: Date?
 
     // Relationships
@@ -20,6 +22,8 @@ struct TripLocation: Codable, Identifiable, Hashable, Sendable {
         case cityId = "city_id"
         case customLocation = "custom_location"
         case orderIndex = "order_index"
+        case arrivalDate = "arrival_date"
+        case departureDate = "departure_date"
         case createdAt = "created_at"
         case city = "cities"
         case country = "countries"
@@ -52,6 +56,8 @@ struct CreateTripLocation: Encodable {
     let cityId: UUID?
     let customLocation: String?
     let orderIndex: Int
+    let arrivalDate: String?
+    let departureDate: String?
 
     enum CodingKeys: String, CodingKey {
         case tripId = "trip_id"
@@ -59,5 +65,17 @@ struct CreateTripLocation: Encodable {
         case cityId = "city_id"
         case customLocation = "custom_location"
         case orderIndex = "order_index"
+        case arrivalDate = "arrival_date"
+        case departureDate = "departure_date"
+    }
+
+    init(tripId: UUID, countryId: UUID?, cityId: UUID?, customLocation: String?, orderIndex: Int, arrivalDate: String? = nil, departureDate: String? = nil) {
+        self.tripId = tripId
+        self.countryId = countryId
+        self.cityId = cityId
+        self.customLocation = customLocation
+        self.orderIndex = orderIndex
+        self.arrivalDate = arrivalDate
+        self.departureDate = departureDate
     }
 }

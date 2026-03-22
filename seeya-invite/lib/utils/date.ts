@@ -5,7 +5,10 @@ export function formatDate(
   formatStr: string = 'MMM d, yyyy'
 ): string {
   if (!date) return '';
-  const d = typeof date === 'string' ? parseISO(date) : date;
+  // Parse date-only strings (YYYY-MM-DD) as local midnight to avoid UTC off-by-one
+  const d = typeof date === 'string'
+    ? (date.length === 10 ? new Date(date + 'T00:00:00') : parseISO(date))
+    : date;
   if (!isValid(d)) return '';
   return format(d, formatStr);
 }
@@ -33,7 +36,9 @@ export function formatDateRange(
 
 export function formatRelativeDate(date: string | Date | null | undefined): string {
   if (!date) return '';
-  const d = typeof date === 'string' ? parseISO(date) : date;
+  const d = typeof date === 'string'
+    ? (date.length === 10 ? new Date(date + 'T00:00:00') : parseISO(date))
+    : date;
   if (!isValid(d)) return '';
   return formatDistance(d, new Date(), { addSuffix: true });
 }
