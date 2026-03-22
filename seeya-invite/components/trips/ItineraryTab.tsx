@@ -12,6 +12,7 @@ import {
   ChevronRight,
   MapPin,
   Plane,
+  Pencil,
 } from 'lucide-react';
 import {
   format,
@@ -38,6 +39,7 @@ interface ItineraryTabProps {
   onTripBitClick: (tripBit: TripBit) => void;
   onAddClick: () => void;
   locations?: TripLocation[];
+  onEditLocations?: () => void;
 }
 
 type ViewMode = 'list' | 'calendar';
@@ -49,6 +51,7 @@ export function ItineraryTab({
   onTripBitClick,
   onAddClick,
   locations,
+  onEditLocations,
 }: ItineraryTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [calendarMonth, setCalendarMonth] = useState(
@@ -125,7 +128,7 @@ export function ItineraryTab({
           const color = CITY_COLORS[colorIdx < 0 ? 0 : colorIdx];
           rows.push(
             <div key={`band-${loc.id}`} className="pt-6 pb-1">
-              <div className="flex items-center gap-3">
+              <div className={cn('flex items-center gap-3', onEditLocations && 'cursor-pointer group')} onClick={onEditLocations}>
                 <div className="h-px flex-1" style={{ backgroundColor: color.hex }} />
                 <div
                   className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white"
@@ -137,6 +140,9 @@ export function ItineraryTab({
                 <span className="text-xs text-seeya-text-secondary whitespace-nowrap">
                   {format(parseISO(loc.arrival_date!), 'MMM d')} – {format(parseISO(loc.departure_date!), 'MMM d')}
                 </span>
+                {onEditLocations && (
+                  <Pencil size={12} className="text-seeya-text-secondary/50 group-hover:text-seeya-text-secondary transition-colors flex-shrink-0" />
+                )}
                 <div className="h-px flex-1" style={{ backgroundColor: color.hex }} />
               </div>
             </div>
@@ -217,7 +223,7 @@ export function ItineraryTab({
         const color = CITY_COLORS[colorIdx < 0 ? 0 : colorIdx];
         rows.push(
           <div key={`band-${locB.id}`} className="pt-6 pb-1">
-            <div className="flex items-center gap-3">
+            <div className={cn('flex items-center gap-3', onEditLocations && 'cursor-pointer group')} onClick={onEditLocations}>
               <div className="h-px flex-1" style={{ backgroundColor: color.hex }} />
               <div
                 className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white"
@@ -229,6 +235,9 @@ export function ItineraryTab({
               <span className="text-xs text-seeya-text-secondary whitespace-nowrap">
                 {format(parseISO(locB.arrival_date!), 'MMM d')} – {format(parseISO(locB.departure_date!), 'MMM d')}
               </span>
+              {onEditLocations && (
+                <Pencil size={12} className="text-seeya-text-secondary/50 group-hover:text-seeya-text-secondary transition-colors flex-shrink-0" />
+              )}
               <div className="h-px flex-1" style={{ backgroundColor: color.hex }} />
             </div>
           </div>

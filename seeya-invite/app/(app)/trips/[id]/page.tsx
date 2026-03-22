@@ -36,6 +36,7 @@ import {
   Globe,
   X,
   ChevronDown,
+  ChevronRight,
   Pencil,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
@@ -314,17 +315,20 @@ export default function TripDetailPage() {
           </Link>
 
           <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <h1 className="text-2xl md:text-3xl font-display font-semibold">
-              {trip.name}
-            </h1>
-            {isOwner && (
+            {isOwner ? (
               <button
                 onClick={() => router.push(`/trips/${tripId}/edit`)}
-                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
-                title="Edit Trip"
+                className="flex items-center gap-2 hover:bg-white/10 rounded-lg px-2 -mx-2 py-1 -my-1 transition-colors group"
               >
-                <Pencil size={18} />
+                <h1 className="text-2xl md:text-3xl font-display font-semibold">
+                  {trip.name}
+                </h1>
+                <ChevronRight size={16} className="text-white/40 group-hover:text-white/70 transition-colors flex-shrink-0" />
               </button>
+            ) : (
+              <h1 className="text-2xl md:text-3xl font-display font-semibold">
+                {trip.name}
+              </h1>
             )}
             {daysUntil !== null && daysUntil > 0 && (
               <Badge variant="default" className="bg-white/20 text-white border-0">
@@ -376,6 +380,22 @@ export default function TripDetailPage() {
                           </div>
                         );
                       })}
+                      {isOwner && (
+                        <>
+                          <div className="border-t border-gray-100 -mx-1" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowLocationDates(false);
+                              router.push(`/trips/${tripId}/edit`);
+                            }}
+                            className="flex items-center gap-2 text-sm text-seeya-purple hover:bg-purple-50 rounded-lg px-1 py-1 -mx-1 transition-colors"
+                          >
+                            <Pencil size={14} />
+                            <span>Edit dates & locations</span>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </>
                 )}
@@ -384,10 +404,21 @@ export default function TripDetailPage() {
           )}
 
           {dateRange && (
-            <div className="flex items-center gap-2 text-white/80 mb-4">
-              <Calendar size={16} />
-              <span>{dateRange}</span>
-            </div>
+            isOwner ? (
+              <button
+                onClick={() => router.push(`/trips/${tripId}/edit`)}
+                className="flex items-center gap-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg px-2 -mx-2 py-1 mb-4 transition-colors group"
+              >
+                <Calendar size={16} />
+                <span>{dateRange}</span>
+                <ChevronRight size={14} className="text-white/40 group-hover:text-white/70 transition-colors" />
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 text-white/80 mb-4">
+                <Calendar size={16} />
+                <span>{dateRange}</span>
+              </div>
+            )
           )}
 
           <div className="flex items-center gap-3 mt-auto">
@@ -520,6 +551,7 @@ export default function TripDetailPage() {
             endDate={trip.end_date}
             onTripBitClick={handleTripBitClick}
             onAddClick={() => handleAddTripBit()}
+            onEditLocations={isOwner ? () => router.push(`/trips/${tripId}/edit`) : undefined}
             locations={trip.locations}
           />
         )}

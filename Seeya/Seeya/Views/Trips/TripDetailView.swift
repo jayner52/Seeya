@@ -88,7 +88,14 @@ struct TripDetailView: View {
         ScrollView {
             VStack(spacing: 24) {
                 // Header Card
-                headerCard
+                if isOwner {
+                    Button { showEditSheet = true } label: {
+                        headerCard
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    headerCard
+                }
 
                 // TripPack Section
                 if let packViewModel = tripPackViewModel {
@@ -408,15 +415,11 @@ struct TripDetailView: View {
                     Spacer()
 
                     if isOwner {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             StatusBadge(text: "Organizer", color: Color.seeyaPurple)
-                            Button {
-                                showEditSheet = true
-                            } label: {
-                                Image(systemName: "pencil.circle")
-                                    .font(.title3)
-                                    .foregroundStyle(Color.seeyaPurple)
-                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
                     }
                 }
