@@ -147,6 +147,8 @@ struct InviteLocationRow: View {
                 cityId: nil,
                 customLocation: "Mexico City",
                 orderIndex: 0,
+                arrivalDate: nil,
+                departureDate: nil,
                 createdAt: Date(),
                 city: nil,
                 country: nil

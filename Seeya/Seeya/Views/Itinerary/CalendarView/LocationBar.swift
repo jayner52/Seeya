@@ -110,6 +110,8 @@ struct LocationLegend: View {
                 cityId: nil,
                 customLocation: "Mexico City, CDMX, Mexico",
                 orderIndex: 0,
+                arrivalDate: nil,
+                departureDate: nil,
                 createdAt: nil,
                 city: nil,
                 country: nil
@@ -128,6 +130,8 @@ struct LocationLegend: View {
                 cityId: nil,
                 customLocation: "Playa del Carmen, Quintana Roo",
                 orderIndex: 1,
+                arrivalDate: nil,
+                departureDate: nil,
                 createdAt: nil,
                 city: nil,
                 country: nil
@@ -146,6 +150,8 @@ struct LocationLegend: View {
                 cityId: nil,
                 customLocation: "Valladolid, Yucatan",
                 orderIndex: 2,
+                arrivalDate: nil,
+                departureDate: nil,
                 createdAt: nil,
                 city: nil,
                 country: nil
