@@ -29,7 +29,9 @@ export function DateRangePicker({
 
   const formatDisplayDate = (dateStr: string | null) => {
     if (!dateStr) return 'Select date';
-    return format(new Date(dateStr), 'MMM d, yyyy');
+    // Normalize timestamptz ("2026-09-10 00:00:00+00") to date-only to avoid UTC off-by-one
+    const datePart = dateStr.split(' ')[0].split('T')[0];
+    return format(new Date(datePart + 'T00:00:00'), 'MMM d, yyyy');
   };
 
   const handleDateSelect = (date: Date) => {
@@ -48,12 +50,18 @@ export function DateRangePicker({
     }
   };
 
+  // Parse date string as local midnight (handles both YYYY-MM-DD and timestamptz)
+  const parseLocal = (dateStr: string) => {
+    const part = dateStr.split(' ')[0].split('T')[0];
+    return new Date(part + 'T00:00:00');
+  };
+
   const isDateDisabled = (date: Date) => {
     const today = startOfDay(new Date());
     if (isBefore(date, today)) return true;
 
     if (showCalendar === 'end' && startDate) {
-      return isBefore(date, new Date(startDate));
+      return isBefore(date, parseLocal(startDate));
     }
 
     return false;
@@ -61,17 +69,17 @@ export function DateRangePicker({
 
   const isDateInRange = (date: Date) => {
     if (!startDate || !endDate) return false;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = parseLocal(startDate);
+    const end = parseLocal(endDate);
     return isAfter(date, start) && isBefore(date, end);
   };
 
   const isStartDate = (date: Date) => {
-    return startDate && isSameDay(date, new Date(startDate));
+    return startDate && isSameDay(date, parseLocal(startDate));
   };
 
   const isEndDate = (date: Date) => {
-    return endDate && isSameDay(date, new Date(endDate));
+    return endDate && isSameDay(date, parseLocal(endDate));
   };
 
   const renderCalendar = () => {

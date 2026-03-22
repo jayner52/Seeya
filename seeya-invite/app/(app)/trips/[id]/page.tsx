@@ -358,8 +358,8 @@ export default function TripDetailPage() {
                               <p className="text-sm font-medium text-seeya-text">{getLocationDisplayName(loc)}</p>
                               {loc.arrival_date && loc.departure_date && (
                                 <p className="text-xs text-seeya-text-secondary">
-                                  {format(new Date(loc.arrival_date + 'T00:00:00'), 'MMM d')} –{' '}
-                                  {format(new Date(loc.departure_date + 'T00:00:00'), 'MMM d, yyyy')}
+                                  {format(new Date(loc.arrival_date.split(' ')[0] + 'T00:00:00'), 'MMM d')} –{' '}
+                                  {format(new Date(loc.departure_date.split(' ')[0] + 'T00:00:00'), 'MMM d, yyyy')}
                                 </p>
                               )}
                             </div>
@@ -427,14 +427,13 @@ export default function TripDetailPage() {
                       <Sparkles size={16} className="text-seeya-purple" />
                       <span>AI Quick Add</span>
                     </button>
-                    <Link
-                      href={`/trips/${tripId}/edit`}
-                      className="flex items-center gap-2 px-4 py-2 text-seeya-text hover:bg-gray-50"
-                      onClick={() => setShowMenu(false)}
+                    <button
+                      onClick={() => { setShowMenu(false); router.push(`/trips/${tripId}/edit`); }}
+                      className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"
                     >
                       <Settings size={16} />
                       <span>Edit Trip</span>
-                    </Link>
+                    </button>
                     <button
                       onClick={() => { setShowMenu(false); setShowPublishModal(true); }}
                       className="flex items-center gap-2 px-4 py-2 w-full text-left text-seeya-text hover:bg-gray-50"

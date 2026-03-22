@@ -25,6 +25,12 @@ interface EditTripFormProps {
   tripId: string;
 }
 
+/** Strip time portion from timestamptz strings ("2026-09-10 00:00:00+00" → "2026-09-10") */
+function toDateOnly(val: string | null | undefined): string | null {
+  if (!val) return null;
+  return val.split(' ')[0].split('T')[0];
+}
+
 export function EditTripForm({ tripId }: EditTripFormProps) {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -68,31 +74,41 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
 
       setTrip({ ...tripData, locations: locationsData || [], participants: [] });
 
-      // Populate form state
+      // Populate form state — normalize timestamptz to date-only
       setName(tripData.name);
       setDescription(tripData.description || '');
-      setStartDate(tripData.start_date);
-      setEndDate(tripData.end_date);
-      setFlexibleDates(tripData.is_flexible_dates || false);
+      setFlexibleDates(tripData.is_flexible || false);
       setVisibility(tripData.visibility || 'full_details');
 
-      if (locationsData && locationsData.length > 0) {
-        setLocations(
-          locationsData.map((loc: Record<string, unknown>) => ({
-            id: loc.id as string,
-            name: (loc.custom_location as string) || (loc.name as string) || '',
-            cityId: (loc.city_id as string) || undefined,
-            arrivalDate: (loc.arrival_date as string) || null,
-            departureDate: (loc.departure_date as string) || null,
-          }))
-        );
-      }
+      const locs: Location[] = (locationsData || []).map((loc: Record<string, unknown>) => ({
+        id: loc.id as string,
+        name: (loc.custom_location as string) || (loc.name as string) || '',
+        cityId: (loc.city_id as string) || undefined,
+        arrivalDate: toDateOnly(loc.arrival_date as string | null),
+        departureDate: toDateOnly(loc.departure_date as string | null),
+      }));
+      setLocations(locs);
+
+      // Sync trip dates from locations if locations have dates
+      const firstArrival = locs[0]?.arrivalDate;
+      const lastDeparture = locs[locs.length - 1]?.departureDate;
+      setStartDate(firstArrival || toDateOnly(tripData.start_date));
+      setEndDate(lastDeparture || toDateOnly(tripData.end_date));
 
       setIsLoading(false);
     }
 
     fetchTrip();
   }, [tripId]);
+
+  // Auto-sync trip dates when locations change
+  useEffect(() => {
+    if (isLoading) return;
+    const firstArrival = locations[0]?.arrivalDate;
+    const lastDeparture = locations[locations.length - 1]?.departureDate;
+    if (firstArrival) setStartDate(firstArrival);
+    if (lastDeparture) setEndDate(lastDeparture);
+  }, [locations, isLoading]);
 
   const isValid = name.trim() && locations.length > 0;
 
@@ -116,7 +132,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
           start_date: startDate,
           end_date: endDate,
           visibility,
-          is_flexible_dates: flexibleDates,
+          is_flexible: flexibleDates,
           updated_at: new Date().toISOString(),
         })
         .eq('id', tripId);
@@ -133,7 +149,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       if (locations.length > 0) {
         const locationInserts = locations.map((loc, index) => ({
           trip_id: tripId,
-          custom_location: loc.name,  // Use custom_location to match iOS
+          custom_location: loc.name,
           city_id: loc.cityId || null,
           order_index: index,
           arrival_date: loc.arrivalDate || null,
