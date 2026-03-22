@@ -121,6 +121,7 @@ struct CalendarGridMonthView: View {
 
     private var monthYearString: String {
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = viewModel.viewMode.isCompact ? "MMM yyyy" : "MMMM yyyy"
         return formatter.string(from: month)
     }

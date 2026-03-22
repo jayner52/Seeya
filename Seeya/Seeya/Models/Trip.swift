@@ -120,8 +120,10 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
             return "Dates TBD"
         }
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = "MMM d"
         let yearFormatter = DateFormatter()
+        yearFormatter.timeZone = TimeZone(identifier: "UTC")
         yearFormatter.dateFormat = "yyyy"
 
         let startStr = formatter.string(from: start)
@@ -176,7 +178,8 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
         guard let start = startDate, let end = endDate else {
             return "Duration TBD"
         }
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "UTC")!
         let days = calendar.dateComponents([.day], from: start, to: end).day ?? 0
         let totalDays = days + 1 // Include both start and end dates
         let nights = days
@@ -196,8 +199,10 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
             return "Dates TBD"
         }
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = "MMMM d"
         let yearFormatter = DateFormatter()
+        yearFormatter.timeZone = TimeZone(identifier: "UTC")
         yearFormatter.dateFormat = "yyyy"
 
         let startStr = formatter.string(from: start)
@@ -212,7 +217,8 @@ struct Trip: Codable, Identifiable, Sendable, Hashable {
         guard let start = startDate, let end = endDate else { return [] }
 
         var dates: [Date] = []
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "UTC")!
         var currentDate = calendar.startOfDay(for: start)
         let endDay = calendar.startOfDay(for: end)
 

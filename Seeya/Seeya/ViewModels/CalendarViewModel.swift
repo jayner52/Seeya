@@ -83,6 +83,7 @@ struct UpcomingTripInfo: Identifiable {
 
     var dateRange: String {
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = "MMM d"
         let startStr = formatter.string(from: startDate)
         let endStr = formatter.string(from: endDate)
@@ -223,12 +224,14 @@ final class CalendarViewModel {
 
     var dateRangeText: String {
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = "MMMM yyyy"
         return formatter.string(from: Date())
     }
 
     var monthTitleText: String {
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = "MMMM yyyy"
         return formatter.string(from: currentDate)
     }
@@ -544,7 +547,9 @@ final class CalendarViewModel {
         guard let userId = await getCurrentUserId() else { return }
 
         do {
-            let today = Calendar.current.startOfDay(for: Date())
+            var utcCalendar = Calendar.current
+            utcCalendar.timeZone = TimeZone(identifier: "UTC")!
+            let today = utcCalendar.startOfDay(for: Date())
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withFullDate]
             let todayStr = formatter.string(from: today)
@@ -591,7 +596,7 @@ final class CalendarViewModel {
                 guard let startDate = trip.startDate,
                       let endDate = trip.endDate else { return nil }
 
-                let daysUntil = Calendar.current.dateComponents([.day], from: today, to: startDate).day ?? 0
+                let daysUntil = utcCalendar.dateComponents([.day], from: today, to: startDate).day ?? 0
 
                 return UpcomingTripInfo(
                     id: trip.id,
@@ -612,7 +617,8 @@ final class CalendarViewModel {
     // MARK: - Get Trips for Date
 
     func trips(for date: Date) -> [CalendarTrip] {
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "UTC")!
         let dayStart = calendar.startOfDay(for: date)
 
         return displayTrips.filter { trip in

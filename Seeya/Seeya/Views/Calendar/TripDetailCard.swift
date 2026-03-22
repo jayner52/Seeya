@@ -55,12 +55,14 @@ struct TripDetailCard: View {
 
     private var dateRangeText: String {
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = "MMM d"
 
         let startStr = formatter.string(from: trip.startDate)
         let endStr = formatter.string(from: trip.endDate)
 
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "UTC")!
         if calendar.isDate(trip.startDate, equalTo: trip.endDate, toGranularity: .day) {
             return startStr
         }

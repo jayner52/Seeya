@@ -16,8 +16,9 @@ struct EditTripView: View {
         self.viewModel = viewModel
         self.trip = trip
         _name = State(initialValue: trip.name)
-        _startDate = State(initialValue: trip.startDate ?? Date())
-        _endDate = State(initialValue: trip.endDate ?? Date().addingTimeInterval(7 * 24 * 60 * 60))
+        // Shift to noon UTC to prevent DatePicker off-by-one (UTC midnight → previous day in US timezones)
+        _startDate = State(initialValue: trip.startDate?.addingTimeInterval(12 * 3600) ?? Date())
+        _endDate = State(initialValue: trip.endDate?.addingTimeInterval(12 * 3600) ?? Date().addingTimeInterval(7 * 24 * 60 * 60))
         _description = State(initialValue: trip.description ?? "")
         _visibility = State(initialValue: trip.visibility ?? .fullDetails)
         _useDates = State(initialValue: trip.hasDates)

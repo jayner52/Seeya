@@ -61,7 +61,8 @@ struct ItineraryDaySection: View {
 
     private var dayOfTrip: Int? {
         guard let startDate = trip.startDate else { return nil }
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "UTC")!
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: startDate), to: calendar.startOfDay(for: date)).day
         return (days ?? 0) + 1
     }
@@ -138,6 +139,7 @@ struct ItineraryDaySection: View {
 
     private var formattedDate: String {
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = "EEEE, MMMM d"
         return formatter.string(from: date)
     }

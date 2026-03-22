@@ -307,8 +307,10 @@ struct TripPopoverView: View {
 
     private var dateRangeText: String {
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.dateFormat = "MMM d"
         let yearFormatter = DateFormatter()
+        yearFormatter.timeZone = TimeZone(identifier: "UTC")
         yearFormatter.dateFormat = "yyyy"
 
         let startStr = formatter.string(from: trip.startDate)
