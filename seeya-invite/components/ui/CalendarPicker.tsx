@@ -11,6 +11,7 @@ import {
   isSameMonth,
   isSameDay,
   isBefore,
+  isAfter,
   addMonths,
   subMonths,
 } from 'date-fns';
@@ -21,6 +22,8 @@ interface CalendarPickerProps {
   value?: string; // YYYY-MM-DD
   onChange: (date: string) => void;
   minDate?: string; // YYYY-MM-DD
+  tripStartDate?: string; // YYYY-MM-DD — highlights trip range, defaults month
+  tripEndDate?: string; // YYYY-MM-DD — highlights trip range
   placeholder?: string;
   className?: string;
 }
@@ -33,12 +36,14 @@ export function CalendarPicker({
   value,
   onChange,
   minDate,
+  tripStartDate,
+  tripEndDate,
   placeholder = 'Select date',
   className,
 }: CalendarPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(
-    value ? parseLocalDate(value) : new Date()
+    value ? parseLocalDate(value) : tripStartDate ? parseLocalDate(tripStartDate) : new Date()
   );
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -56,6 +61,8 @@ export function CalendarPicker({
 
   const selectedDate = value ? parseLocalDate(value) : null;
   const minDateObj = minDate ? parseLocalDate(minDate) : null;
+  const tripStart = tripStartDate ? parseLocalDate(tripStartDate) : null;
+  const tripEnd = tripEndDate ? parseLocalDate(tripEndDate) : null;
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -74,6 +81,12 @@ export function CalendarPicker({
     return isBefore(day, minDateObj) && !isSameDay(day, minDateObj);
   };
 
+  const isInTripRange = (day: Date) => {
+    if (!tripStart || !tripEnd) return false;
+    return (isSameDay(day, tripStart) || isAfter(day, tripStart)) &&
+           (isSameDay(day, tripEnd) || isBefore(day, tripEnd));
+  };
+
   const displayValue = value
     ? format(parseLocalDate(value), 'MMM d, yyyy')
     : placeholder;
@@ -84,8 +97,12 @@ export function CalendarPicker({
       <button
         type="button"
         onClick={() => {
-          if (!isOpen && value) {
-            setCurrentMonth(parseLocalDate(value));
+          if (!isOpen) {
+            if (value) {
+              setCurrentMonth(parseLocalDate(value));
+            } else if (tripStartDate) {
+              setCurrentMonth(parseLocalDate(tripStartDate));
+            }
           }
           setIsOpen(!isOpen);
         }}
@@ -143,6 +160,7 @@ export function CalendarPicker({
               const inMonth = isSameMonth(day, currentMonth);
               const selected = selectedDate && isSameDay(day, selectedDate);
               const disabled = isDisabled(day);
+              const inTrip = inMonth && isInTripRange(day);
 
               return (
                 <button
@@ -154,6 +172,7 @@ export function CalendarPicker({
                     'w-9 h-9 rounded-lg text-sm flex items-center justify-center transition-colors',
                     !inMonth && 'text-gray-300',
                     inMonth && !selected && !disabled && 'text-seeya-text hover:bg-gray-100',
+                    inTrip && !selected && 'bg-seeya-purple/10',
                     selected && 'bg-seeya-purple text-white font-medium',
                     disabled && 'text-gray-200 cursor-not-allowed'
                   )}

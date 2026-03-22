@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils/cn';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { Input, Button } from '@/components/ui';
+import { CalendarPicker } from '@/components/ui/CalendarPicker';
 import {
   X,
   Plane,
@@ -57,6 +58,7 @@ interface AddTripBitSheetProps {
   initialTitle?: string;
   initialNotes?: string;
   locationDateRange?: { start: string; end: string; locationName?: string } | null;
+  tripDateRange?: { start: string; end: string };
 }
 
 const categories: { id: TripBitCategory; label: string; icon: typeof Plane; color: string }[] = [
@@ -120,6 +122,7 @@ export function AddTripBitSheet({
   initialTitle,
   initialNotes,
   locationDateRange,
+  tripDateRange,
 }: AddTripBitSheetProps) {
   const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -733,13 +736,13 @@ export function AddTripBitSheet({
             {/* Start */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-seeya-text-secondary w-12">Start</span>
-              <input
-                type="date"
-                value={startDate}
-                min={locationDateRange && !isEditMode ? locationDateRange.start : undefined}
-                max={locationDateRange && !isEditMode ? locationDateRange.end : undefined}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none transition-all text-sm"
+              <CalendarPicker
+                value={startDate || undefined}
+                onChange={setStartDate}
+                tripStartDate={tripDateRange?.start}
+                tripEndDate={tripDateRange?.end}
+                placeholder="Start date"
+                className="flex-1"
               />
               <input
                 type="time"
@@ -752,13 +755,13 @@ export function AddTripBitSheet({
             {/* End */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-seeya-text-secondary w-12">End</span>
-              <input
-                type="date"
-                value={endDate}
-                min={locationDateRange && !isEditMode ? locationDateRange.start : undefined}
-                max={locationDateRange && !isEditMode ? locationDateRange.end : undefined}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none transition-all text-sm"
+              <CalendarPicker
+                value={endDate || undefined}
+                onChange={setEndDate}
+                tripStartDate={tripDateRange?.start}
+                tripEndDate={tripDateRange?.end}
+                placeholder="End date"
+                className="flex-1"
               />
               <input
                 type="time"

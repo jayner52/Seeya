@@ -36,6 +36,7 @@ import {
   Globe,
   X,
   ChevronDown,
+  Pencil,
 } from 'lucide-react';
 import type { TripWithDetails, TripBit, TripBitCategory, TripInviteLink } from '@/types';
 import type { AIRecommendation } from '@/types';
@@ -316,6 +317,15 @@ export default function TripDetailPage() {
             <h1 className="text-2xl md:text-3xl font-display font-semibold">
               {trip.name}
             </h1>
+            {isOwner && (
+              <button
+                onClick={() => router.push(`/trips/${tripId}/edit`)}
+                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                title="Edit Trip"
+              >
+                <Pencil size={18} />
+              </button>
+            )}
             {daysUntil !== null && daysUntil > 0 && (
               <Badge variant="default" className="bg-white/20 text-white border-0">
                 In {daysUntil} days
@@ -527,6 +537,7 @@ export default function TripDetailPage() {
         initialTitle={recommendationPreset?.initialTitle}
         initialNotes={recommendationPreset?.initialNotes}
         locationDateRange={recommendationPreset?.locationDateRange}
+        tripDateRange={trip.start_date && trip.end_date ? { start: trip.start_date, end: trip.end_date } : undefined}
         onClose={() => {
           setShowAddSheet(false);
           setAddSheetCategory(undefined);

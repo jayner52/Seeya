@@ -408,7 +408,16 @@ struct TripDetailView: View {
                     Spacer()
 
                     if isOwner {
-                        StatusBadge(text: "Organizer", color: Color.seeyaPurple)
+                        HStack(spacing: 8) {
+                            StatusBadge(text: "Organizer", color: Color.seeyaPurple)
+                            Button {
+                                showEditSheet = true
+                            } label: {
+                                Image(systemName: "pencil.circle")
+                                    .font(.title3)
+                                    .foregroundStyle(Color.seeyaPurple)
+                            }
+                        }
                     }
                 }
 
