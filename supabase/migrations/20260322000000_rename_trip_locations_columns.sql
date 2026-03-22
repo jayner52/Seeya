@@ -1,12 +1,28 @@
--- Fix trip creation error 42703: rename trip_locations columns to match
--- the RPC (create_trip_with_locations) and frontend TypeScript types.
---
--- Table currently has: destination, start_date, end_date
--- RPC + frontend expect: custom_location, arrival_date, departure_date
+-- Fix trip_locations columns: rename if old names exist, add country_id.
+-- Production may already have the renames from an earlier migration,
+-- so we use DO blocks to make this idempotent.
 
-ALTER TABLE public.trip_locations RENAME COLUMN destination TO custom_location;
-ALTER TABLE public.trip_locations RENAME COLUMN start_date TO arrival_date;
-ALTER TABLE public.trip_locations RENAME COLUMN end_date TO departure_date;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'trip_locations' AND column_name = 'destination') THEN
+    ALTER TABLE public.trip_locations RENAME COLUMN destination TO custom_location;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'trip_locations' AND column_name = 'start_date') THEN
+    ALTER TABLE public.trip_locations RENAME COLUMN start_date TO arrival_date;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'trip_locations' AND column_name = 'end_date') THEN
+    ALTER TABLE public.trip_locations RENAME COLUMN end_date TO departure_date;
+  END IF;
+END $$;
 
 -- Add country_id column (iOS app sends this but the column was never created)
-ALTER TABLE public.trip_locations ADD COLUMN country_id UUID REFERENCES public.countries(id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'trip_locations' AND column_name = 'country_id') THEN
+    ALTER TABLE public.trip_locations ADD COLUMN country_id UUID REFERENCES public.countries(id);
+  END IF;
+END $$;
