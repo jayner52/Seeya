@@ -3,6 +3,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { MapPin, X, Plus, GripVertical, Search } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Location {
   id: string;
@@ -26,6 +42,93 @@ interface PlacePrediction {
   description: string;
 }
 
+// ── Sortable location card ──────────────────────────────────────────
+interface SortableLocationCardProps {
+  location: Location;
+  index: number;
+  totalCount: number;
+  onRemove: (id: string) => void;
+  onDateChange: (idx: number, field: 'arrivalDate' | 'departureDate', value: string | null) => void;
+}
+
+function SortableLocationCard({ location, index, totalCount, onRemove, onDateChange }: SortableLocationCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: location.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.9 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'p-3 bg-white border rounded-xl group',
+        isDragging ? 'border-seeya-purple shadow-lg' : 'border-gray-200'
+      )}
+    >
+      <div className="flex items-center gap-2">
+        {totalCount > 1 && (
+          <button
+            type="button"
+            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 touch-none"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={16} />
+          </button>
+        )}
+        <div className="w-8 h-8 rounded-lg bg-seeya-purple/10 flex items-center justify-center flex-shrink-0">
+          <span className="text-sm font-medium text-seeya-purple">
+            {index + 1}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-seeya-text truncate">
+            {location.name}
+          </p>
+          {location.country && (
+            <p className="text-sm text-seeya-text-secondary">
+              {location.country}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => onRemove(location.id)}
+          className="p-1.5 text-gray-400 hover:text-seeya-error hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        >
+          <X size={16} />
+        </button>
+      </div>
+      {/* Per-location date range */}
+      <div className="mt-2 ml-10 grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs text-seeya-text-secondary mb-1">Arrival</label>
+          <input
+            type="date"
+            value={location.arrivalDate ?? ''}
+            onChange={(e) => onDateChange(index, 'arrivalDate', e.target.value)}
+            className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-seeya-text-secondary mb-1">Departure</label>
+          <input
+            type="date"
+            value={location.departureDate ?? ''}
+            onChange={(e) => onDateChange(index, 'departureDate', e.target.value)}
+            className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function LocationPicker({
   locations,
   onChange,
@@ -37,6 +140,19 @@ export function LocationPicker({
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = locations.findIndex(l => l.id === active.id);
+    const newIndex = locations.findIndex(l => l.id === over.id);
+    onChange(arrayMove(locations, oldIndex, newIndex));
+  };
 
   useEffect(() => {
     if (showSearch && searchInputRef.current) {
@@ -167,67 +283,22 @@ export function LocationPicker({
 
       {/* Location List */}
       {locations.length > 0 && (
-        <div className="space-y-2">
-          {locations.map((location, index) => (
-            <div
-              key={location.id}
-              className="p-3 bg-white border border-gray-200 rounded-xl group"
-            >
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="cursor-grab text-gray-400 hover:text-gray-600"
-                  title="Drag to reorder"
-                >
-                  <GripVertical size={16} />
-                </button>
-                <div className="w-8 h-8 rounded-lg bg-seeya-purple/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-medium text-seeya-purple">
-                    {index + 1}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-seeya-text truncate">
-                    {location.name}
-                  </p>
-                  {location.country && (
-                    <p className="text-sm text-seeya-text-secondary">
-                      {location.country}
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeLocation(location.id)}
-                  className="p-1.5 text-gray-400 hover:text-seeya-error hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              {/* Per-location date range */}
-              <div className="mt-2 ml-10 grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-seeya-text-secondary mb-1">Arrival</label>
-                  <input
-                    type="date"
-                    value={location.arrivalDate ?? ''}
-                    onChange={(e) => handleDateChange(index, 'arrivalDate', e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-seeya-text-secondary mb-1">Departure</label>
-                  <input
-                    type="date"
-                    value={location.departureDate ?? ''}
-                    onChange={(e) => handleDateChange(index, 'departureDate', e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-seeya-purple focus:ring-2 focus:ring-seeya-purple/20 outline-none"
-                  />
-                </div>
-              </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={locations.map(l => l.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {locations.map((location, index) => (
+                <SortableLocationCard
+                  key={location.id}
+                  location={location}
+                  index={index}
+                  totalCount={locations.length}
+                  onRemove={removeLocation}
+                  onDateChange={handleDateChange}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Add Location */}
