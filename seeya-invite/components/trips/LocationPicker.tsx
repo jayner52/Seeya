@@ -151,7 +151,24 @@ export function LocationPicker({
     if (!over || active.id === over.id) return;
     const oldIndex = locations.findIndex(l => l.id === active.id);
     const newIndex = locations.findIndex(l => l.id === over.id);
-    onChange(arrayMove(locations, oldIndex, newIndex));
+
+    // Collect date slots in positional order (dates stay in their slots)
+    const dateSlots = locations.map(l => ({
+      arrivalDate: l.arrivalDate,
+      departureDate: l.departureDate,
+    }));
+
+    // Reorder the locations (names move, dates stay)
+    const reordered = arrayMove(locations, oldIndex, newIndex);
+
+    // Reassign the original positional dates to the new order
+    const result = reordered.map((loc, i) => ({
+      ...loc,
+      arrivalDate: dateSlots[i].arrivalDate,
+      departureDate: dateSlots[i].departureDate,
+    }));
+
+    onChange(result);
   };
 
   useEffect(() => {
